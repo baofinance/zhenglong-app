@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Geo } from "next/font/google";
-import TokenList from "@/components/TokenList";
+import TokenList from "../components/TokenList";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -136,6 +136,17 @@ export default function Home() {
         {/* Content */}
         <section className="container mx-auto px-6 py-32 relative">
           <div className="text-center">
+            <div className="mb-3 flex justify-center">
+              <div className="w-48 h-48">
+                <Image
+                  src="/logo.svg"
+                  alt="Zhenglong Protocol"
+                  width={192}
+                  height={192}
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
             <h1
               className={`text-7xl md:text-8xl font-normal mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#4A7C59] to-[#6B9E76] tracking-[0.2em] uppercase ${geo.className}`}
             >
@@ -166,12 +177,12 @@ export default function Home() {
         <h2
           className={`text-3xl md:text-4xl font-normal text-center mb-16 tracking-wider uppercase ${geo.className}`}
         >
-          Redeemable Token Types
+          Fully Backed and Redeemable Tokens
         </h2>
         <div className="space-y-8">
           <div className="grid md:grid-cols-2 gap-12">
             <div className="space-y-8">
-              <div className="text-center p-6 bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] transition-all border border-[#4A7C59]/20">
+              <div className="text-center p-6 bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] transition-all border border-[#4A7C59]/20 min-h-[280px]">
                 <div
                   className={`text-3xl md:text-4xl mb-6 text-[#4A7C59] ${geo.className}`}
                 >
@@ -254,7 +265,7 @@ export default function Home() {
               </div>
             </div>
             <div className="space-y-8">
-              <div className="text-center p-6 bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] transition-all border border-[#4A7C59]/20">
+              <div className="text-center p-6 bg-[#1A1A1A]/70 hover:bg-[#1A1A1A] transition-all border border-[#4A7C59]/20 min-h-[280px]">
                 <div
                   className={`text-3xl md:text-4xl mb-6 text-[#4A7C59] ${geo.className}`}
                 >
@@ -405,34 +416,72 @@ export default function Home() {
                   Dynamic Rebalancing
                 </h3>
                 <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                  The protocol automatically rebalances markets using the
-                  stability pool if collateral ratios become unhealthy,
-                  protecting all participants
+                  The protocol automatically rebalances markets when collateral
+                  value reaches 130% of pegged tokens, using the rebalance pool
+                  to reduce pegged token supply and maintain system health
                 </p>
               </div>
             </div>
           </div>
           <div className="bg-[#1A1A1A] p-8 aspect-square border border-[#4A7C59]/20">
             <div className="h-full flex flex-col items-center justify-center gap-8 text-[#4A7C59]">
-              <div className="flex items-center gap-8 w-full">
-                <div className="flex-1 text-center p-4 border border-current rounded-sm">
-                  <div className="animate-float-1 origin-right">
-                    <div className="font-medium mb-2">Collateral</div>
-                    <div className="text-sm opacity-80">ETH, USD, etc.</div>
+              {/* Collateral Section */}
+              <div className="w-full text-center p-4 border-2 border-current rounded-sm bg-[#4A7C59]/10">
+                <div className="font-medium mb-2">Collateral Value</div>
+              </div>
+
+              {/* Tokens Section */}
+              <div className="w-full grid grid-cols-2 gap-4">
+                <div className="text-center p-4 border border-current rounded-sm">
+                  <div className="animate-float-1">
+                    <div className="font-medium mb-2">Pegged Tokens</div>
+                    <div className="text-sm opacity-80">
+                      Supply adjusts via rebalancing
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center p-4 border border-current rounded-sm">
+                  <div className="animate-float-2">
+                    <div className="font-medium mb-2">Leverage Tokens</div>
+                    <div className="text-sm opacity-80">Absorb volatility</div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-8 w-full">
-                <div className="flex-1 text-center p-4 border border-current rounded-sm">
-                  <div className="animate-float-2 origin-left">
-                    <div className="font-medium mb-2">Leverage Token</div>
-                    <div className="text-sm opacity-80">Absorbs Volatility</div>
+
+              {/* Rebalance Pool with Arrows */}
+              <div className="relative w-full">
+                <div className="w-full text-center p-4 border border-current rounded-sm bg-[#4A7C59]/5">
+                  <div className="font-medium mb-2">Rebalance Pool</div>
+                  <div className="text-sm opacity-80">
+                    Reduces pegged token supply
                   </div>
                 </div>
-              </div>
-              <div className="w-full text-center p-4 border border-current rounded-sm">
-                <div className="font-medium mb-2">Stability Pool</div>
-                <div className="text-sm opacity-80">Market Protection</div>
+
+                {/* Animated Arrows */}
+                <svg
+                  className="absolute -top-12 left-1/4 w-6 h-12 text-[#4A7C59]"
+                  viewBox="0 0 24 48"
+                  fill="none"
+                >
+                  <path
+                    className="animate-pulse"
+                    d="M12 0v48M12 48l-4-8M12 48l4-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+                <svg
+                  className="absolute -top-12 right-1/4 w-6 h-12 text-[#4A7C59]"
+                  viewBox="0 0 24 48"
+                  fill="none"
+                >
+                  <path
+                    className="animate-pulse"
+                    d="M12 0v48M12 48l-4-8M12 48l4-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
               </div>
             </div>
           </div>
@@ -453,7 +502,7 @@ export default function Home() {
               ecosystem, offering holders multiple benefits and control over the
               protocol&apos;s future.
             </p>
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-3 gap-8">
               <div className="bg-[#1A1A1A] p-6 border border-[#4A7C59]/20">
                 <h3 className="text-lg font-medium mb-4 tracking-wider uppercase text-[#4A7C59]">
                   Revenue Share
@@ -477,36 +526,87 @@ export default function Home() {
                   Governance Rights
                 </h3>
                 <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                  Vote on protocol upgrades and direct the future of emissions
-                </p>
-              </div>
-              <div className="bg-[#1A1A1A] p-6 border border-[#4A7C59]/20">
-                <h3 className="text-lg font-medium mb-4 tracking-wider uppercase text-[#4A7C59]">
-                  Protocol Control
-                </h3>
-                <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                  Shape the future development and strategic direction of the
-                  protocol
+                  Vote in protocol governance and direct STEAM rewards
                 </p>
               </div>
             </div>
           </div>
           <div className="bg-[#1A1A1A] p-8 aspect-square border border-[#4A7C59]/20 relative overflow-hidden">
+            {/* Background Steam Effect */}
             <div className="absolute inset-0">
               <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#4A7C59]/10 rounded-full animate-steam-1"></div>
               <div className="absolute top-1/3 right-1/3 w-40 h-40 bg-[#4A7C59]/10 rounded-full animate-steam-2"></div>
               <div className="absolute bottom-1/4 left-1/3 w-36 h-36 bg-[#4A7C59]/10 rounded-full animate-steam-3"></div>
             </div>
-            <div className="relative h-full flex flex-col items-center justify-center text-center">
-              <div
-                className={`text-4xl md:text-5xl mb-6 text-[#4A7C59] ${geo.className}`}
-              >
-                STEAM
+
+            {/* Main Content */}
+            <div className="relative h-full flex flex-col items-center justify-center">
+              {/* Center STEAM Logo and Text */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                <div className="w-24 h-24 mb-3">
+                  <Image
+                    src="/logo.svg"
+                    alt="STEAM Token"
+                    width={96}
+                    height={96}
+                    className="w-full h-full"
+                  />
+                </div>
+                <div className={`text-3xl text-[#4A7C59] ${geo.className}`}>
+                  STEAM
+                </div>
               </div>
-              <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light max-w-sm">
-                The governance token that aligns incentives across the protocol
-                ecosystem
-              </p>
+
+              {/* Sub Boxes with Arrows */}
+              {/* Top Box */}
+              <div className="absolute top-12 left-1/2 -translate-x-1/2 w-44 p-3 bg-[#1A1A1A] border border-[#4A7C59]/20 text-center">
+                <p className="text-sm text-[#F5F5F5]/70">Revenue Share</p>
+                <svg
+                  className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-6 h-12 text-[#4A7C59]"
+                  viewBox="0 0 24 48"
+                  fill="none"
+                >
+                  <path
+                    d="M12 0v48M12 48l-4-8M12 48l4-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </div>
+
+              {/* Bottom Left Box */}
+              <div className="absolute bottom-12 left-12 w-44 p-3 bg-[#1A1A1A] border border-[#4A7C59]/20 text-center">
+                <p className="text-sm text-[#F5F5F5]/70">Boost Rewards</p>
+                <svg
+                  className="absolute -top-16 right-0 w-12 h-16 text-[#4A7C59]"
+                  viewBox="0 0 48 64"
+                  fill="none"
+                >
+                  <path d="M48 0L0 64" stroke="currentColor" strokeWidth="2" />
+                  <path
+                    d="M0 64l8-4M0 64l4-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </div>
+
+              {/* Bottom Right Box */}
+              <div className="absolute bottom-12 right-12 w-44 p-3 bg-[#1A1A1A] border border-[#4A7C59]/20 text-center">
+                <p className="text-sm text-[#F5F5F5]/70">Governance Power</p>
+                <svg
+                  className="absolute -top-16 left-0 w-12 h-16 text-[#4A7C59]"
+                  viewBox="0 0 48 64"
+                  fill="none"
+                >
+                  <path d="M0 0L48 64" stroke="currentColor" strokeWidth="2" />
+                  <path
+                    d="M48 64l-8-4M48 64l-4-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -519,14 +619,14 @@ export default function Home() {
         >
           Booster Program
         </h2>
+        <div className="bg-[#4A7C59]/10 p-6 border border-[#4A7C59]/20 rounded-sm mb-16">
+          <p className="text-2xl text-[#F5F5F5] leading-relaxed tracking-wide font-light text-center">
+            <span className="text-[#4A7C59] font-medium">3%</span> of STEAM
+            token supply is reserved for our community of boosters
+          </p>
+        </div>
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
-            <div className="bg-[#4A7C59]/10 p-6 border border-[#4A7C59]/20 rounded-sm">
-              <p className="text-2xl text-[#F5F5F5] leading-relaxed tracking-wide font-light">
-                <span className="text-[#4A7C59] font-medium">3%</span> of STEAM
-                token supply is reserved for our community of boosters
-              </p>
-            </div>
             <p className="text-xl text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
               Join our community of boosters and earn STEAM tokens for helping
               spread the word about Zhenglong Protocol. Any form of marketing
@@ -636,23 +736,23 @@ export default function Home() {
               <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-[#4A7C59]/10 rounded-full animate-float-3"></div>
               <div className="absolute bottom-1/3 left-1/3 w-40 h-40 bg-[#4A7C59]/10 rounded-full animate-float-4"></div>
             </div>
-            <div className="relative h-full flex flex-col items-center justify-center text-center space-y-8">
+            <div className="relative h-full flex flex-col items-center justify-start pt-12 text-center">
               <div className="space-y-4">
-                <div
-                  className={`text-4xl md:text-5xl text-[#4A7C59] ${geo.className}`}
-                >
+                <div className={`text-4xl text-[#4A7C59] ${geo.className}`}>
                   Become a Booster
                 </div>
-                <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light max-w-sm">
+                <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light max-w-sm text-lg">
                   Help grow the Zhenglong ecosystem and earn rewards for your
                   contributions
                 </p>
+                <div className="pt-4">
+                  <button
+                    className={`bg-[#4A7C59] hover:bg-[#3A6147] text-[#F5F5F5] px-8 py-3 tracking-wider transition-all uppercase text-lg ${geo.className}`}
+                  >
+                    Join Program
+                  </button>
+                </div>
               </div>
-              <button
-                className={`bg-[#4A7C59] hover:bg-[#3A6147] text-[#F5F5F5] px-8 py-3 tracking-wider transition-all uppercase text-lg ${geo.className}`}
-              >
-                Join Program
-              </button>
             </div>
           </div>
         </div>
@@ -733,109 +833,73 @@ export default function Home() {
         <h2
           className={`text-3xl md:text-4xl font-normal text-center mb-16 tracking-wider uppercase ${geo.className}`}
         >
-          Build Your Market
+          Collaborate on a New Market
         </h2>
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <p className="text-xl text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
-              Launch your own market with minimal requirements. If you have a
-              collateral token and a price feed, you&apos;re ready to go.
-            </p>
-            <div className="space-y-6">
-              <div className="flex gap-6 items-start">
-                <div className="w-12 h-12 shrink-0 bg-[#4A7C59]/10 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-[#4A7C59]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M20 12V8H6a2 2 0 00-2 2v4m16 0v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4m16 0h-2m-4 0h-8"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium mb-2 tracking-wider uppercase text-[#4A7C59]">
-                    Collateral Token
-                  </h3>
-                  <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                    Any ERC20 token can serve as collateral. Common choices
-                    include stablecoins and major cryptocurrencies.
-                  </p>
-                </div>
+        <div className="max-w-3xl mx-auto space-y-8">
+          <p className="text-xl text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
+            Launch your own market with minimal requirements. If you have a
+            collateral token and a price feed, you&apos;re ready to go.
+          </p>
+          <div className="space-y-6">
+            <div className="flex gap-6 items-start">
+              <div className="w-12 h-12 shrink-0 bg-[#4A7C59]/10 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-[#4A7C59]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 12V8H6a2 2 0 00-2 2v4m16 0v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4m16 0h-2m-4 0h-8"
+                  />
+                </svg>
               </div>
-              <div className="flex gap-6 items-start">
-                <div className="w-12 h-12 shrink-0 bg-[#4A7C59]/10 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-[#4A7C59]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium mb-2 tracking-wider uppercase text-[#4A7C59]">
-                    Price Feed
-                  </h3>
-                  <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                    Connect any data source through Chainlink oracles. From
-                    traditional markets to novel data streams.
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-lg font-medium mb-2 tracking-wider uppercase text-[#4A7C59]">
+                  Collateral Token
+                </h3>
+                <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                  Any ERC20 token can serve as collateral. Common choices
+                  include stablecoins and major cryptocurrencies.
+                </p>
               </div>
             </div>
-            <div className="pt-8">
-              <button
-                className={`bg-[#4A7C59] hover:bg-[#3A6147] text-[#F5F5F5] px-8 py-3 tracking-wider transition-all uppercase text-lg ${geo.className}`}
-              >
-                Contact Us
-              </button>
+            <div className="flex gap-6 items-start">
+              <div className="w-12 h-12 shrink-0 bg-[#4A7C59]/10 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-[#4A7C59]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium mb-2 tracking-wider uppercase text-[#4A7C59]">
+                  Price Feed
+                </h3>
+                <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                  Connect any data source through Chainlink oracles. From
+                  traditional markets to novel data streams.
+                </p>
+              </div>
             </div>
           </div>
-          <div className="bg-[#1A1A1A] p-8 aspect-square border border-[#4A7C59]/20 relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-full max-w-sm">
-                <div className="space-y-6">
-                  <div className="p-4 border border-[#4A7C59]/20 bg-[#1A1A1A] rounded-sm">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-8 h-8 bg-[#4A7C59]/10 rounded flex items-center justify-center">
-                        <span className="text-[#4A7C59]">1</span>
-                      </div>
-                      <div className="text-[#F5F5F5]/70">Choose Collateral</div>
-                    </div>
-                  </div>
-                  <div className="p-4 border border-[#4A7C59]/20 bg-[#1A1A1A] rounded-sm">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-8 h-8 bg-[#4A7C59]/10 rounded flex items-center justify-center">
-                        <span className="text-[#4A7C59]">2</span>
-                      </div>
-                      <div className="text-[#F5F5F5]/70">
-                        Connect Price Feed
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 border border-[#4A7C59]/20 bg-[#1A1A1A] rounded-sm">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-8 h-8 bg-[#4A7C59]/10 rounded flex items-center justify-center">
-                        <span className="text-[#4A7C59]">3</span>
-                      </div>
-                      <div className="text-[#F5F5F5]/70">Launch Market</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="pt-8 text-center">
+            <button
+              className={`bg-[#4A7C59] hover:bg-[#3A6147] text-[#F5F5F5] px-8 py-3 tracking-wider transition-all uppercase text-lg ${geo.className}`}
+            >
+              Contact Us
+            </button>
           </div>
         </div>
       </section>
