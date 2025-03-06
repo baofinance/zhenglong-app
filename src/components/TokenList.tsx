@@ -12,8 +12,8 @@ export default function TokenList({ tokens, duration }: TokenListProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // Show each token for 3 seconds
-    const DISPLAY_TIME = 3000;
+    // Show each token for the specified duration (in seconds, converted to ms)
+    const DISPLAY_TIME = (duration / tokens.length) * 1000;
     const FADE_TIME = 500;
 
     const timer = setInterval(() => {
@@ -25,7 +25,7 @@ export default function TokenList({ tokens, duration }: TokenListProps) {
     }, DISPLAY_TIME + FADE_TIME);
 
     return () => clearInterval(timer);
-  }, [tokens, tokens.length]);
+  }, [tokens, tokens.length, duration]);
 
   return (
     <div className="h-16 relative overflow-hidden">

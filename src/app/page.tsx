@@ -451,7 +451,7 @@ export default function Home() {
             <p className="text-xl text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light mb-12">
               STEAM is the governance token that powers the Zhenglong Protocol
               ecosystem, offering holders multiple benefits and control over the
-              protocol's future.
+              protocol&apos;s future.
             </p>
             <div className="grid grid-cols-2 gap-8">
               <div className="bg-[#1A1A1A] p-6 border border-[#4A7C59]/20">
@@ -601,7 +601,8 @@ export default function Home() {
                   Articles & Blogs
                 </h3>
                 <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
-                  Write articles explaining the protocol's features and benefits
+                  Write articles explaining the protocol&apos;s features and
+                  benefits
                 </p>
               </div>
               <div className="bg-[#1A1A1A] p-6 border border-[#4A7C59]/20">
@@ -722,7 +723,7 @@ export default function Home() {
         </div>
         <div className="mt-12 text-center">
           <p className="text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light max-w-3xl mx-auto">
-            If there is a data feed and demand, we can create any market.
+            If there&apos;s a data feed and demand, we can create any market
           </p>
         </div>
       </section>
@@ -738,7 +739,7 @@ export default function Home() {
           <div className="space-y-8">
             <p className="text-xl text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
               Launch your own market with minimal requirements. If you have a
-              collateral token and a price feed, you're ready to go.
+              collateral token and a price feed, you&apos;re ready to go.
             </p>
             <div className="space-y-6">
               <div className="flex gap-6 items-start">
