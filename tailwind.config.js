@@ -68,6 +68,30 @@ module.exports = {
           "0%, 100%": { transform: "translate(0, 0) rotate(-12deg)" },
           "50%": { transform: "translate(-5px, -15px) rotate(-12deg)" },
         },
+        "pulse-width": {
+          "0%, 100%": { width: "100%" },
+          "50%": { width: "130%" },
+        },
+        "pulse-width-mirror": {
+          "0%, 100%": { width: "100%" },
+          "50%": { width: "130%" },
+        },
+        "scale-pulse": {
+          "0%, 100%": {
+            transform: "scale(1)",
+          },
+          "50%": {
+            transform: "scale(1.2)",
+          },
+        },
+        "scale-pulse-mirror": {
+          "0%, 100%": {
+            transform: "scale(1)",
+          },
+          "50%": {
+            transform: "scale(1.2)",
+          },
+        },
       },
       animation: {
         "steam-1": "steam-1 20s ease-in-out infinite",
@@ -81,6 +105,12 @@ module.exports = {
         "float-2": "float-2 12s ease-in-out infinite",
         "float-3": "float-3 10s ease-in-out infinite",
         "float-4": "float-4 9s ease-in-out infinite",
+        "pulse-width": "pulse-width 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "pulse-width-mirror":
+          "pulse-width-mirror 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "scale-pulse": "scale-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "scale-pulse-mirror":
+          "scale-pulse-mirror 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
       },
       transitionProperty: {
         opacity: "opacity",
