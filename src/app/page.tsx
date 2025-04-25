@@ -350,17 +350,8 @@ export default function Home() {
                       ZHE TOKENS
                     </div>
                     <div className="flex flex-col items-center gap-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-24 h-24">
-                          <Image
-                            src="/peg.svg"
-                            alt="Pegged Token Icon"
-                            width={96}
-                            height={96}
-                            className="w-full h-full"
-                          />
-                        </div>
-                        <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                      <div className="flex items-center">
+                        <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light text-center max-w-lg">
                           Pegged tokens that track price feeds with 1:1, with
                           built in real yield via stability pools
                         </p>
@@ -429,17 +420,8 @@ export default function Home() {
                       STEAMED TOKENS
                     </div>
                     <div className="flex flex-col items-center gap-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-24 h-24">
-                          <Image
-                            src="/leverage.svg"
-                            alt="Leverage Token Icon"
-                            width={96}
-                            height={96}
-                            className="w-full h-full"
-                          />
-                        </div>
-                        <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                      <div className="flex items-center">
+                        <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light text-center max-w-lg">
                           Get supercharged market exposure through
                           liquidation-protected variable leverage tokens
                         </p>
