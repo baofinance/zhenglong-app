@@ -296,7 +296,7 @@ export default function Home() {
                   </div>
                 </div>
                 <h1
-                  className={`text-7xl md:text-8xl font-normal mb-4 bg-clip-text text-transparent bg-gradient-to-r from-[#4A7C59] to-[#6B9E76] tracking-[0.2em] uppercase ${geo.className}`}
+                  className={`text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-normal mb-4 bg-clip-text text-transparent bg-gradient-to-r from-[#4A7C59] to-[#6B9E76] tracking-[0.15em] sm:tracking-[0.2em] uppercase ${geo.className}`}
                 >
                   Zhenglong
                 </h1>
@@ -377,7 +377,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/yield.svg"
@@ -387,11 +387,11 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         Earn real yield for depositing into the stability pool
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/rocket.svg"
@@ -401,11 +401,11 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         Earn STEAM for providing AMM liquidity
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/defi.svg"
@@ -415,7 +415,7 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         Use in DeFi
                       </p>
                     </div>
@@ -456,7 +456,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/funding.svg"
@@ -466,11 +466,11 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         No Funding Rates
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/rebalance.svg"
@@ -480,11 +480,11 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         Automated Rebalancing
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative h-[140px]">
+                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
                         <Image
                           src="/defi.svg"
@@ -494,7 +494,7 @@ export default function Home() {
                           className="w-12 h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center">
+                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
                         Use in DeFi
                       </p>
                     </div>
