@@ -377,8 +377,8 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/yield.svg"
                           alt="Yield Icon"
@@ -391,8 +391,8 @@ export default function Home() {
                         Earn real yield for depositing into the stability pool
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/rocket.svg"
                           alt="Rocket Icon"
@@ -405,8 +405,8 @@ export default function Home() {
                         Earn STEAM for providing AMM liquidity
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/defi.svg"
                           alt="DeFi Icon"
@@ -456,8 +456,8 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/funding.svg"
                           alt="Funding Icon"
@@ -470,8 +470,8 @@ export default function Home() {
                         No Funding Rates
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/rebalance.svg"
                           alt="Rebalance Icon"
@@ -484,8 +484,8 @@ export default function Home() {
                         Automated Rebalancing
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-12 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px] overflow-hidden">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
                         <Image
                           src="/defi.svg"
                           alt="DeFi Icon"
