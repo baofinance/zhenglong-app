@@ -343,7 +343,7 @@ export default function Home() {
               >
                 Fully Backed and Redeemable Tokens
               </h2>
-              <div className="grid md:grid-cols-2 gap-12">
+              <div className="grid lg:grid-cols-2 gap-12">
                 <div className="space-y-8">
                   <div className="text-center p-12 bg-black shadow-[0_0_15px_rgba(74,124,89,0.1)] min-h-[280px] relative">
                     <div
@@ -369,46 +369,46 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/yield.svg"
                           alt="Yield Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         Earn real yield for depositing into the stability pool
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/rocket.svg"
                           alt="Rocket Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         Earn STEAM for providing AMM liquidity
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/defi.svg"
                           alt="DeFi Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         Use in DeFi
                       </p>
                     </div>
@@ -439,46 +439,46 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-8">
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/funding.svg"
                           alt="Funding Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         No Funding Rates
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/rebalance.svg"
                           alt="Rebalance Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         Automated Rebalancing
                       </p>
                     </div>
-                    <div className="bg-black p-4 pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[140px]">
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10">
+                    <div className="bg-black p-4 pt-8 sm:pt-16 shadow-[0_0_15px_rgba(74,124,89,0.1)] rounded-sm relative min-h-[100px] sm:min-h-[140px] flex sm:block items-center">
+                      <div className="absolute sm:top-0 sm:-translate-y-1/2 sm:left-1/2 sm:-translate-x-1/2 top-1/2 -translate-y-1/2 left-4 w-12 h-12 bg-[#4A7C59] flex items-center justify-center z-10 mr-4 sm:mr-0">
                         <Image
                           src="/defi.svg"
                           alt="DeFi Icon"
                           width={48}
                           height={48}
-                          className="w-12 h-12"
+                          className="w-8 h-8 sm:w-12 sm:h-12"
                         />
                       </div>
-                      <p className="text-base text-[#F5F5F5]/70 text-center whitespace-normal">
+                      <p className="text-base text-[#F5F5F5]/70 text-left sm:text-center whitespace-normal pl-16 sm:pl-0 mt-0 sm:mt-0">
                         Use in DeFi
                       </p>
                     </div>
