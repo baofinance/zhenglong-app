@@ -235,13 +235,14 @@ export default function Home() {
                       Participate in IDO →
                     </Link>
                   </ComingSoonOverlay>
-                  <ComingSoonOverlay>
-                    <button
-                      className={`border border-white/50 text-white/50 px-6 py-2 tracking-wider uppercase text-lg cursor-not-allowed ${geo.className}`}
-                    >
-                      Learn More
-                    </button>
-                  </ComingSoonOverlay>
+                  <a
+                    href="https://docs.zhenglong.finance"
+                    className={`border border-white/80 text-white px-6 py-2 tracking-wider uppercase text-lg transition-colors hover:bg-white/10 ${geo.className}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Learn More
+                  </a>
                 </div>
               </div>
             </div>
@@ -312,13 +313,14 @@ export default function Home() {
                       Get Started
                     </button>
                   </ComingSoonOverlay>
-                  <ComingSoonOverlay>
-                    <button
-                      className={`border border-[#4A7C59] text-[#F5F5F5] px-8 py-3 tracking-wider uppercase text-lg hover:bg-[#4A7C59]/10 transition-colors ${geo.className}`}
-                    >
-                      Learn More
-                    </button>
-                  </ComingSoonOverlay>
+                  <a
+                    href="https://docs.zhenglong.finance"
+                    className={`border border-[#4A7C59] text-[#F5F5F5] px-8 py-3 tracking-wider uppercase text-lg hover:bg-[#4A7C59]/10 transition-colors ${geo.className}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Learn More
+                  </a>
                 </div>
               </div>
             </section>
@@ -671,6 +673,420 @@ export default function Home() {
                   >
                     Banking Industry Experience
                   </h3>
+                  <p className="text-lg text-[#F5F5F5]/70 leading-relaxed font-light">
+                    Built by professionals with 30+ years of banking software
+                    experience, ensuring institutional-quality standards and
+                    robust risk management.
+                  </p>
+                </div>
+                <div className="bg-black p-12 shadow-[0_0_20px_rgba(74,124,89,0.15)] border border-[#4A7C59]/20 rounded-sm flex flex-col items-start relative">
+                  <h3
+                    className={`text-3xl mb-4 text-[#4A7C59] tracking-wider uppercase ${geo.className}`}
+                  >
+                    Multi-layered Testing
+                  </h3>
+                  <ul className="list-disc list-inside text-lg text-[#F5F5F5]/70 space-y-1">
+                    <li>Comprehensive unit & integration testing</li>
+                    <li>System-wide market scenario stress tests</li>
+                    <li>Real-time security monitoring</li>
+                    <li>Continuous risk assessment</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* STEAM Token Section */}
+          <section className="relative z-10">
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Steam squares for STEAM Token section */}
+              <div className="absolute top-[10%] left-[25%] w-[450px] h-[320px] bg-[#4A7C59]/[0.06]"></div>
+              <div className="absolute top-[15%] right-[25%] w-[380px] h-[280px] bg-[#4A7C59]/[0.05]"></div>
+              <div className="absolute top-[30%] left-[40%] w-[300px] h-[220px] bg-[#4A7C59]/[0.07] animate-float-2"></div>
+              <div className="absolute bottom-[20%] right-[35%] w-[180px] h-[180px] bg-[#4A7C59]/[0.06] animate-float-3"></div>
+              <div className="absolute bottom-[30%] left-[30%] w-[120px] h-[120px] bg-[#4A7C59]/[0.08] animate-steam-1"></div>
+            </div>
+            <div className="container mx-auto px-6 py-32">
+              <h2
+                className={`text-3xl md:text-4xl font-normal text-center mb-16 tracking-wider uppercase ${geo.className}`}
+              >
+                STEAM Token
+              </h2>
+              <div className="space-y-12">
+                <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light mb-8 max-w-4xl mx-auto text-center">
+                  STEAM is the governance token that powers the Zhenglong
+                  Protocol ecosystem, offering holders multiple benefits and
+                  control over the protocol&apos;s future.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  <div className="bg-black p-12 shadow-[0_0_15px_rgba(74,124,89,0.2)] border border-[#4A7C59]/20">
+                    <h3
+                      className={`text-3xl text-[#4A7C59] mb-4 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                    >
+                      Revenue Share
+                    </h3>
+                    <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
+                      Earn a share of protocol revenue from market operations
+                      and fees
+                    </p>
+                  </div>
+                  <div className="bg-black p-12 shadow-[0_0_15px_rgba(74,124,89,0.2)] border border-[#4A7C59]/20">
+                    <h3
+                      className={`text-3xl text-[#4A7C59] mb-4 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                    >
+                      Boost Rewards
+                    </h3>
+                    <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
+                      Increase your earnings from stability pool and AMM
+                      liquidity provision
+                    </p>
+                  </div>
+                  <div className="bg-black p-12 shadow-[0_0_15px_rgba(74,124,89,0.2)] border border-[#4A7C59]/20">
+                    <h3
+                      className={`text-3xl text-[#4A7C59] mb-4 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                    >
+                      Governance Rights
+                    </h3>
+                    <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light">
+                      Vote in protocol governance and direct STEAM rewards
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full mt-8">
+                  <ComingSoonOverlay>
+                    <button
+                      className={`inline-block bg-black border border-[#4A7C59] text-[#4A7C59] hover:bg-[#4A7C59]/10 px-6 py-2 tracking-wider transition-all uppercase text-lg ${geo.className}`}
+                    >
+                      Get STEAM
+                    </button>
+                  </ComingSoonOverlay>
+                  <ComingSoonOverlay>
+                    <button
+                      className={`inline-block bg-[#4A7C59] text-white hover:bg-[#4A7C59]/90 px-6 py-2 tracking-wider transition-all uppercase text-lg ${geo.className}`}
+                    >
+                      Earn STEAM
+                    </button>
+                  </ComingSoonOverlay>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Booster Program Section */}
+          <section className="relative z-10">
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Steam squares for Booster Program section */}
+              <div className="absolute top-[5%] left-[20%] w-[380px] h-[280px] bg-[#4A7C59]/[0.04]"></div>
+              <div className="absolute top-[15%] right-[25%] w-[320px] h-[240px] bg-[#4A7C59]/[0.03]"></div>
+              <div className="absolute top-[25%] left-[35%] w-[260px] h-[200px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
+              <div className="absolute bottom-[20%] right-[30%] w-[160px] h-[160px] bg-[#4A7C59]/[0.04] animate-float-4"></div>
+              <div className="absolute bottom-[25%] left-[25%] w-[140px] h-[140px] bg-[#4A7C59]/[0.06] animate-steam-2"></div>
+            </div>
+            <div className="container mx-auto px-6 py-32">
+              <h2
+                className={`text-3xl md:text-4xl font-normal text-center mb-16 tracking-wider uppercase ${geo.className}`}
+              >
+                Community Booster Program
+              </h2>
+              <div className="space-y-16">
+                <div className="space-y-12">
+                  <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light text-center max-w-3xl mx-auto">
+                    Join our community of boosters and earn STEAM tokens for
+                    helping spread the word about Zhenglong Protocol. Any form
+                    of marketing contribution is welcome.
+                  </p>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-black p-6 pt-10 shadow-[0_0_15px_rgba(74,124,89,0.1)] relative">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-6 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                        <Image
+                          src="/social.svg"
+                          alt="Social Media Icon"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12"
+                        />
+                      </div>
+                      <h3
+                        className={`text-3xl text-[#4A7C59] mb-3 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                      >
+                        Social Media
+                      </h3>
+                      <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                        Create X threads, engage in discussions, and share
+                        insights about the protocol
+                      </p>
+                    </div>
+                    <div className="bg-black p-6 pt-10 shadow-[0_0_15px_rgba(74,124,89,0.1)] relative">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-6 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                        <Image
+                          src="/content.svg"
+                          alt="Content Creation Icon"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12"
+                        />
+                      </div>
+                      <h3
+                        className={`text-3xl text-[#4A7C59] mb-3 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                      >
+                        Content Creation
+                      </h3>
+                      <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                        Produce videos, tutorials, articles, blogs, and
+                        educational content about Zhenglong
+                      </p>
+                    </div>
+                    <div className="bg-black p-6 pt-10 shadow-[0_0_15px_rgba(74,124,89,0.1)] relative">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-6 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                        <Image
+                          src="/art.svg"
+                          alt="Art and Memes Icon"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12"
+                        />
+                      </div>
+                      <h3
+                        className={`text-3xl text-[#4A7C59] mb-3 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                      >
+                        Art & Memes
+                      </h3>
+                      <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                        Create artwork, memes, and visual content to promote
+                        Zhenglong
+                      </p>
+                    </div>
+                    <div className="bg-black p-6 pt-10 shadow-[0_0_15px_rgba(74,124,89,0.1)] relative">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-6 w-12 h-12 bg-[#4A7C59] flex items-center justify-center">
+                        <Image
+                          src="/community.svg"
+                          alt="Community Building Icon"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12"
+                        />
+                      </div>
+                      <h3
+                        className={`text-3xl text-[#4A7C59] mb-3 text-center uppercase tracking-wider font-semibold ${geo.className}`}
+                      >
+                        Community Building
+                      </h3>
+                      <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                        Organize community events and foster discussions in your
+                        local network
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg md:text-xl text-[#F5F5F5] leading-relaxed tracking-wider font-light">
+                      <span className="block mb-2">
+                        <span
+                          className={`text-3xl md:text-5xl font-medium text-[#4A7C59] border-b border-[#4A7C59]/50 pb-1 ${geo.className}`}
+                        >
+                          3%
+                        </span>
+                      </span>
+                      <span className="block text-[#F5F5F5]/90">
+                        of STEAM token supply is distributed to our community of
+                        boosters
+                      </span>
+                    </p>
+                  </div>
+                  <div className="max-w-2xl mx-auto">
+                    <div className="bg-black p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] relative">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="space-y-3">
+                          <div
+                            className={`text-3xl text-[#4A7C59] ${geo.className}`}
+                          >
+                            Become a Booster
+                          </div>
+                          <p className="text-lg text-[#F5F5F5]/70 leading-relaxed tracking-wide font-light">
+                            Help grow the Zhenglong ecosystem and earn rewards
+                            for your contributions
+                          </p>
+                          <div className="pt-3">
+                            <ComingSoonOverlay>
+                              <button
+                                className={`bg-[#4A7C59] text-[#F5F5F5] px-8 py-3 tracking-wider uppercase text-lg hover:bg-[#4A7C59]/90 transition-colors ${geo.className}`}
+                              >
+                                Join Program
+                              </button>
+                            </ComingSoonOverlay>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Use Cases */}
+          <section className="relative z-10">
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Steam squares for Use Cases section */}
+              <div className="absolute top-[8%] left-[18%] w-[420px] h-[300px] bg-[#4A7C59]/[0.08]"></div>
+              <div className="absolute top-[12%] right-[22%] w-[360px] h-[260px] bg-[#4A7C59]/[0.06]"></div>
+              <div className="absolute top-[20%] left-[38%] w-[280px] h-[220px] bg-[#4A7C59]/[0.10] animate-float-2"></div>
+              <div className="absolute bottom-[18%] right-[28%] w-[180px] h-[180px] bg-[#4A7C59]/[0.08] animate-float-3"></div>
+              <div className="absolute bottom-[22%] left-[22%] w-[140px] h-[140px] bg-[#4A7C59]/[0.12] animate-steam-1"></div>
+            </div>
+            <div className="container mx-auto px-6 py-32">
+              <h2
+                className={`text-3xl md:text-4xl font-normal text-center mb-16 tracking-wider uppercase ${geo.className}`}
+              >
+                Use Cases
+              </h2>
+              <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light max-w-3xl mx-auto mb-16 text-center">
+                Zhenglong Protocol empowers innovation by tokenizing any
+                reliable data source into yield-generating markets. If there's
+                reliable price data and market demand, it can be tokenized.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto items-stretch">
+                <UseCaseBox
+                  title="ETH Gas Price Tokens"
+                  tokens={["zheGAS"]}
+                  summary="Hedge transaction fee exposure or speculate on Ethereum congestion."
+                  details="zheGAS is pegged to Ethereum gas prices, letting users hedge or speculate on network fees."
+                />
+                <UseCaseBox
+                  title="Governance Power Markets"
+                  tokens={["zheCVX", "zheAURA"]}
+                  summary="Track and gain exposure to governance token yields without direct protocol staking."
+                  details="Tokens track yields from protocol governance (e.g. Convex, Aura) including bribes and rewards, enabling speculation on governance value without lock-ups."
+                />
+                <UseCaseBox
+                  title="Crypto Yield Markets"
+                  tokens={["zheYIELD", "zheLEND"]}
+                  summary="Track and gain exposure to DeFi yield rates without direct protocol interaction."
+                  details="zheYIELD tracks liquid staking yields while zheLEND follows lending market rates, enabling yield speculation and hedging without protocol lock-ins."
+                />
+                <UseCaseBox
+                  title="Crypto Adoption Metrics"
+                  tokens={["zheADOPT"]}
+                  summary="Speculate on crypto adoption growth without investing in a single asset."
+                  details="zheADOPT tracks blockchain adoption or transaction metrics, enabling new ways to bet on crypto's future."
+                />
+                <UseCaseBox
+                  title="Currency Markets"
+                  tokens={["zheEUR", "zheJPY", "zheINR", "zheBRL"]}
+                  summary="Global, decentralized FX markets accessible 24/7 for both major and emerging market currencies."
+                  details="Tokens like zheEUR, zheJPY (major) and zheINR, zheBRL (emerging) enable on-chain trading and hedging of global currencies, expanding access to forex markets through DeFi."
+                />
+                <UseCaseBox
+                  title="Precious Metals"
+                  tokens={["zheGOLD", "zheSILVER"]}
+                  summary="Store of value alternatives or hedging instruments fully backed by crypto collateral."
+                  details="zheGOLD and zheSILVER provide synthetic, on-chain exposure to gold and silver prices."
+                />
+                <UseCaseBox
+                  title="Energy Commodities"
+                  tokens={["zheOIL", "zheGAS"]}
+                  summary="Traders or companies hedge energy exposure directly through DeFi markets."
+                  details="zheOIL and zheGAS track oil and natural gas prices, bringing energy markets to DeFi."
+                />
+                <UseCaseBox
+                  title="Carbon Credit & ESG Tokens"
+                  tokens={["zheCO2"]}
+                  summary="Businesses offset carbon exposure directly via DeFi, incentivizing green initiatives."
+                  details="zheCO2 tracks global carbon prices, allowing companies to offset emissions and participate in ESG markets on-chain."
+                />
+                <UseCaseBox
+                  title="Equity Indices"
+                  tokens={["zheSPX", "zheNDX"]}
+                  summary="DeFi traders gain exposure to equities without leaving crypto ecosystems."
+                  details="Synthetic tokens like zheSPX and zheNDX track S&P 500 and Nasdaq indices, enabling global, 24/7 access to equity markets."
+                />
+                <UseCaseBox
+                  title="Individual Stock Tokens"
+                  tokens={["zheTSLA", "zheAAPL"]}
+                  summary="Global accessibility to popular stocks, especially for users in restricted jurisdictions."
+                  details="zheTSLA and zheAAPL provide synthetic exposure to Tesla and Apple, democratizing access to top equities."
+                />
+                <UseCaseBox
+                  title="Weather Derivatives"
+                  tokens={["zheRAIN"]}
+                  summary="Farmers hedge against drought or excessive rainfall; insurers offer coverage without centralized providers."
+                  details="Pegged to rainfall or weather indices, zheRAIN enables decentralized weather risk management for agriculture and insurance markets."
+                />
+                <UseCaseBox
+                  title="Athlete Performance Metrics"
+                  tokens={["zheGOALS"]}
+                  summary="Fans gain financial exposure to athlete performance, boosting engagement."
+                  details="zheGOALS is pegged to athlete stats, letting fans and traders speculate on or hedge against sports performance."
+                />
+                <UseCaseBox
+                  title="Music & Streaming Revenue"
+                  tokens={["zheSTREAM"]}
+                  summary="Artists tokenize future royalties, allowing direct fan investment."
+                  details="zheSTREAM tracks streaming revenue indexes or royalties, opening new funding models for creators."
+                />
+                <UseCaseBox
+                  title="Inflation & CPI Tokens"
+                  tokens={["zheCPI"]}
+                  summary="Users hedge against inflation risk directly on-chain, protecting their purchasing power."
+                  details="zheCPI is pegged to consumer price indices, enabling on-chain inflation hedging for DeFi users."
+                />
+                <UseCaseBox
+                  title="GDP Growth Tokens"
+                  tokens={["zheGDP"]}
+                  summary="Economists or investors hedge against or speculate on economic growth data."
+                  details="zheGDP tracks GDP growth, allowing macro speculation and risk management on-chain."
+                />
+                <UseCaseBox
+                  title="AI & Machine Learning Performance"
+                  tokens={["zheAI"]}
+                  summary="Investors gain exposure to AI advancements, rewarding R&D success transparently."
+                  details="zheAI is pegged to AI performance benchmarks, letting users invest in the growth of AI technology."
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Build a Market Section */}
+          <section className="relative z-10">
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Steam squares for Build a Market section */}
+              <div className="absolute top-[10%] left-[22%] w-[360px] h-[260px] bg-[#4A7C59]/[0.04]"></div>
+              <div className="absolute top-[15%] right-[20%] w-[300px] h-[220px] bg-[#4A7C59]/[0.03]"></div>
+              <div className="absolute top-[25%] left-[35%] w-[240px] h-[180px] bg-[#4A7C59]/[0.05] animate-float-4"></div>
+              <div className="absolute bottom-[20%] right-[25%] w-[160px] h-[160px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
+              <div className="absolute bottom-[25%] left-[28%] w-[120px] h-[120px] bg-[#4A7C59]/[0.06] animate-steam-3"></div>
+              {/* Large Collaborate Icon Background */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-[0.08]">
+                <Image
+                  src="/collaborate.svg"
+                  alt=""
+                  width={600}
+                  height={600}
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
+            <div className="container mx-auto px-6 py-24">
+              <div className="flex flex-col items-center mb-12">
+                <h2
+                  className={`text-3xl md:text-4xl font-normal text-center tracking-wider uppercase ${geo.className}`}
+                >
+                  Collaborate on a New Market
+                </h2>
+              </div>
+              <div className="max-w-5xl mx-auto space-y-6">
+                <p className="text-lg text-[#F5F5F5]/80 leading-relaxed tracking-wide font-light mb-8 max-w-4xl mx-auto text-center">
+                  Choose your ingredients, create yield and leverage. Bring your
+                  own collateral token and select a price feed—Zhenglong will
+                  steam it into a pair of tokens.
+                </p>
+                <div className="pt-6 text-center">
+                  <ComingSoonOverlay className="inline-block">
+                    <button
+                      className={`bg-[#4A7C59] text-[#F5F5F5] px-8 py-3 tracking-wider uppercase text-lg hover:bg-[#4A7C59]/90 transition-colors ${geo.className}`}
+                    >
+                      Steam Your Market
+                    </button>
+                  </ComingSoonOverlay>
                 </div>
               </div>
             </div>
@@ -680,3 +1096,5 @@ export default function Home() {
     </>
   );
 }
+// Test comment
+// Test comment 2
