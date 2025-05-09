@@ -14,6 +14,7 @@
     "@radix-ui/react-select": "^2.1.6",
     "@tailwindcss/postcss": "^4.1.5",
     "class-variance-authority": "^0.7.1",
+    "hardhat": "^2.24.0",
     "lucide-react": "^0.483.0",
     "next": "^15.4.0-canary.27",
     "react": "18.2.0",
