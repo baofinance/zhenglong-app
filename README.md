@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛠️ Local Development Setup for Bao Minter
 
-## Getting Started
+This guide walks you through the local setup process for deploying and configuring the Bao Minter system on a local Anvil testnet using a specific chain ID, setting up a local multisig, and performing admin tasks like updating the price oracle and granting roles.
 
-First, run the development server:
+---
+
+## 📦 Prerequisites
+
+Make sure you have the following installed:
+
+- Node.js (v18+ recommended)
+- Yarn
+- Foundry (for Anvil)
+
+---
+
+## 🚀 Step-by-Step Setup
+
+### 1. Start Anvil
+
+Launch Anvil with a fixed Chain ID:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn anvil start --chain-id 31337
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Deploy the Minter Contract
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deploy the minter contract to your local Anvil instance:
 
-## Learn More
+```bash
+yarn deploy:local:test
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Setup Local Multisig
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Start the local multisig environment:
 
-## Deploy on Vercel
+```bash
+yarn multisig:local
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4. Update the Price Oracle
+
+#### Update Minter’s Price Feed
+
+Send a transaction to set the price oracle used by the minter:
+
+```bash
+yarn anvil -vvv send \
+  --sig Minter_v1.updatePriceOracle \
+  --as baomultisig \
+  --to minter 0xD6b8Eb34413f07a1a67A469345cFEa6633efd58d
+```
+
+Make sure the address (`0xD6b8...`) is your new oracle address.
+
+---
+
+### 5. Grant ZERO_FEE_ROLE
+
+Give your address permission to mint pegged and leveraged tokens via the admin interface:
+
+```bash
+yarn anvil grant \
+  --role ZERO_FEE_ROLE \
+  --on minter \
+  --to 0xAE7Dbb17bc40D53A6363409c6B1ED88d3cFdc31e \
+  --as baomultisig
+```
+
+---
+
+### 6. Update Frontend Contract Addresses
+
+After deployment, copy the addresses from:
+
+```bash
+bao-minter/deploy-local.log
+```
+
+Update them in the `contracts.ts` file.
+
+---
+
+## ✅ Done!
+
+You should now be able to interact with your locally deployed Bao Minter environment, including minting tokens and simulating admin actions.
