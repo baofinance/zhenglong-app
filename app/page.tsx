@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Geo } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
 import {
   useAccount,
   useContractReads,
@@ -11,11 +9,9 @@ import {
   useContractRead,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { markets, marketConfig } from "../../config/contracts";
-import TradingViewChart from "../../components/TradingViewChart";
-import ConnectButton from "../../components/ConnectButton";
-import Navigation from "../../components/Navigation";
-import PriceChart from "../../components/PriceChart";
+import { markets } from "../config/contracts";
+import Navigation from "../components/Navigation";
+import PriceChart from "../components/PriceChart";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -227,21 +223,6 @@ const formatValue = (value: string | undefined): string => {
   return parseFloat(value).toString();
 };
 
-const formatAllowance = (
-  allowance: { result?: bigint } | undefined
-): string => {
-  if (!allowance || typeof allowance.result === "undefined") {
-    return "0";
-  }
-  return formatEther(allowance.result);
-};
-
-const formatTokenBalance = (balance: bigint | undefined): string => {
-  if (typeof balance === "undefined") {
-    return "0";
-  }
-  return formatEther(balance);
-};
 
 // Calculate output amount based on input
 const calculateOutput = (inputValue: number): string => {
@@ -273,8 +254,6 @@ const getContractReadResult = (
 
 // SystemHealth component definition
 const SystemHealthComponent: React.FC<SystemHealthProps> = ({
-  marketId,
-  collateralTokenBalance,
 }) => {
   return (
     <div className="bg-[#1A1A1A] p-4 relative overflow-hidden">
@@ -285,11 +264,7 @@ const SystemHealthComponent: React.FC<SystemHealthProps> = ({
 
 const SystemHealthValue: React.FC<SystemHealthValueProps> = ({
   type,
-  marketId,
   collateralTokenBalance,
-  collateralAllowance,
-  peggedAllowance,
-  leveragedAllowance,
   totalCollateralValue,
   collateralRatio,
   peggedTokenData,
@@ -378,7 +353,6 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState<string>("steth-usd");
   const [selectedType, setSelectedType] = useState<TokenType>("LONG");
-  const [selectedAction, setSelectedAction] = useState<TokenAction>("MINT");
   const [selectedToken, setSelectedToken] = useState<string>(
     tokens[selectedType][0]
   );
@@ -935,108 +909,6 @@ export default function App() {
     setTimeout(() => {
       setShowPopup(false);
     }, 2500); // 2.5s total (2s delay + 0.5s fade)
-  };
-
-  // Event handlers
-  const handleMarketChange = (marketId: number) => {
-    setSelectedMarket(marketId.toString());
-    setInputAmount("");
-    setOutputAmount("");
-  };
-
-  const handleAmountChange = (value: string) => {
-    setAmount(value);
-    setInputAmount(value);
-    const calculatedOutput = calculateOutput(parseFloat(value) || 0);
-    setOutputAmount(calculatedOutput);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputAmount(value);
-    if (!value) {
-      setOutputAmount("");
-      return;
-    }
-    const calculatedOutput = calculateOutput(parseFloat(value) || 0);
-    setOutputAmount(calculatedOutput);
-  };
-
-  const handleOutputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setOutputAmount(value);
-    if (!value) {
-      setInputAmount("");
-      return;
-    }
-    const calculatedInput = calculateInput(parseFloat(value) || 0);
-    setInputAmount(calculatedInput);
-  };
-
-  const handleBalanceUpdate = (balance: bigint) => {
-    setInputAmount(formatValue(balance.toString()));
-  };
-
-  const handleCalculatedOutputUpdate = (calculatedOutput: number) => {
-    setOutputAmount(formatValue(calculatedOutput.toString()));
-  };
-
-  const handleCalculatedInputUpdate = (calculatedInput: number) => {
-    setInputAmount(formatValue(calculatedInput.toString()));
-  };
-
-  const getInputToken = (
-    isCollateralAtTop: boolean,
-    selectedType: TokenType
-  ) => {
-    if (!isCollateralAtTop) {
-      return selectedType === "LONG" ? "zheUSD" : "steamedETH";
-    } else {
-      return "wstETH";
-    }
-  };
-
-  const getOutputToken = (
-    isCollateralAtTop: boolean,
-    selectedType: TokenType
-  ) => {
-    if (!isCollateralAtTop) {
-      return "wstETH";
-    } else {
-      return selectedType === "LONG" ? "zheUSD" : "steamedETH";
-    }
-  };
-
-  const getInputBalance = (
-    isCollateralAtTop: boolean,
-    collateralBalance: any,
-    peggedBalance: any,
-    leveragedBalance: any,
-    selectedType: TokenType
-  ) => {
-    if (isCollateralAtTop) {
-      return collateralBalance?.[0]?.result;
-    } else {
-      return selectedType === "LONG"
-        ? peggedBalance?.[0]?.result
-        : leveragedBalance?.[0]?.result;
-    }
-  };
-
-  const getOutputBalance = (
-    isCollateralAtTop: boolean,
-    collateralBalance: any,
-    peggedBalance: any,
-    leveragedBalance: any,
-    selectedType: TokenType
-  ) => {
-    if (!isCollateralAtTop) {
-      return collateralBalance?.[0]?.result;
-    } else {
-      return selectedType === "LONG"
-        ? peggedBalance?.[0]?.result
-        : leveragedBalance?.[0]?.result;
-    }
   };
 
   return (
