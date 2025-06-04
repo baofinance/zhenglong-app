@@ -18,70 +18,55 @@ export default function Navigation() {
         <div className="flex items-center h-20">
           {/* Left side: Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-20 h-18 flex items-center justify-center">
+            <div className="w-8 h-8 flex items-center justify-center">
               <Image
                 src="/logo.svg"
                 alt="Zhenglong Protocol"
-                width={80}
-                height={70}
+                width={32}
+                height={32}
                 className="w-full h-full"
               />
             </div>
             <span
-              className={`text-3xl tracking-wider text-[#4A7C59] ${geo.className}`}
+              className={`text-xl tracking-wider text-[#4A7C59] ${geo.className}`}
             >
-              zhenglong
+              ZHENGLONG
             </span>
           </Link>
 
           {/* Center: Navigation Links */}
           <div className="flex-1 flex justify-center">
             <div className="flex items-center gap-12">
-              <span
-                className={`text-xl text-white/50 cursor-not-allowed transition-colors ${geo.className} relative group`}
-                title="Coming Soon"
+              <Link
+                href="/app"
+                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
-                Mint/Redeem
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Coming Soon
-                </span>
-              </span>
-              <span
-                className={`text-xl text-white/50 cursor-not-allowed transition-colors ${geo.className} relative group`}
-                title="Coming Soon"
+                MINT/REDEEM
+              </Link>
+              <Link
+                href="/earn"
+                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
-                Earn
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Coming Soon
-                </span>
-              </span>
-              <span
-                className={`text-xl text-white/50 cursor-not-allowed transition-colors ${geo.className} relative group`}
-                title="Coming Soon"
+                EARN
+              </Link>
+              <Link
+                href="/vote"
+                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
-                Vote
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Coming Soon
-                </span>
-              </span>
-              <span
-                className={`text-xl text-white/50 cursor-not-allowed transition-colors ${geo.className} relative group`}
-                title="Coming Soon"
+                VOTE
+              </Link>
+              <Link
+                href="/genesis"
+                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
-                Genesis
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Coming Soon
-                </span>
-              </span>
-              <span
-                className={`text-xl text-white/50 cursor-not-allowed transition-colors ${geo.className} relative group`}
-                title="Coming Soon"
+                GENESIS
+              </Link>
+              <Link
+                href="/staking"
+                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
-                Staking
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Coming Soon
-                </span>
-              </span>
+                STAKING
+              </Link>
             </div>
           </div>
 

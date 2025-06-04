@@ -190,15 +190,16 @@ export default function Admin() {
     functionName: "updatePriceOracle",
   });
 
-  const { write: writeFreeMintPeggedToken } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "freeMintPeggedToken",
-    args: [
-      parseEther(freeMintCollateralAmount || "0"),
-      receiverAddress as `0x${string}`,
-    ] as [bigint, `0x${string}`],
-  });
+  const { write: writeFreeMintPeggedToken, isLoading: isMintingPegged } =
+    useContractWrite({
+      address: minterAddress,
+      abi: minterABI,
+      functionName: "freeMintPeggedToken",
+      args: [
+        safeParseEther(freeMintCollateralAmount || "0"),
+        receiverAddress as `0x${string}`,
+      ] as [bigint, `0x${string}`],
+    });
 
   const { write: freeRedeemPeggedToken } = useContractWrite({
     address: minterAddress,
@@ -220,15 +221,16 @@ export default function Admin() {
     ] as [bigint, `0x${string}`],
   });
 
-  const { write: writeFreeMintLeveragedToken } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "freeMintLeveragedToken",
-    args: [
-      parseEther(freeMintLeveragedCollateralAmount || "0"),
-      receiverAddress as `0x${string}`,
-    ] as [bigint, `0x${string}`],
-  });
+  const { write: writeFreeMintLeveragedToken, isLoading: isMintingLeveraged } =
+    useContractWrite({
+      address: minterAddress,
+      abi: minterABI,
+      functionName: "freeMintLeveragedToken",
+      args: [
+        safeParseEther(freeMintLeveragedCollateralAmount || "0"),
+        receiverAddress as `0x${string}`,
+      ] as [bigint, `0x${string}`],
+    });
 
   const { write: freeRedeemLeveragedToken } = useContractWrite({
     address: minterAddress,
@@ -292,9 +294,36 @@ export default function Admin() {
     }
   };
 
-  const handleFreeMintPeggedToken = () => {
-    if (freeMintCollateralAmount && receiverAddress) {
-      writeFreeMintPeggedToken();
+  const handleFreeMintPeggedToken = async () => {
+    if (!isConnected || !address) {
+      console.error("Wallet not connected");
+      return;
+    }
+
+    if (!freeMintCollateralAmount || !receiverAddress) {
+      console.error("Missing amount or receiver address");
+      return;
+    }
+
+    try {
+      const parsedAmount = safeParseEther(freeMintCollateralAmount);
+      if (parsedAmount === BigInt(0)) {
+        console.error("Invalid amount");
+        return;
+      }
+
+      console.log("Minting pegged token with:", {
+        amount: freeMintCollateralAmount,
+        parsedAmount: parsedAmount.toString(),
+        receiver: receiverAddress,
+        minter: minterAddress,
+        allowance: allowance?.toString(),
+      });
+
+      const result = await writeFreeMintPeggedToken();
+      console.log("Mint transaction result:", result);
+    } catch (error) {
+      console.error("Error minting pegged token:", error);
     }
   };
 
@@ -310,9 +339,36 @@ export default function Admin() {
     }
   };
 
-  const handleFreeMintLeveragedToken = () => {
-    if (freeMintLeveragedCollateralAmount && receiverAddress) {
-      writeFreeMintLeveragedToken();
+  const handleFreeMintLeveragedToken = async () => {
+    if (!isConnected || !address) {
+      console.error("Wallet not connected");
+      return;
+    }
+
+    if (!freeMintLeveragedCollateralAmount || !receiverAddress) {
+      console.error("Missing amount or receiver address");
+      return;
+    }
+
+    try {
+      const parsedAmount = safeParseEther(freeMintLeveragedCollateralAmount);
+      if (parsedAmount === BigInt(0)) {
+        console.error("Invalid amount");
+        return;
+      }
+
+      console.log("Minting leveraged token with:", {
+        amount: freeMintLeveragedCollateralAmount,
+        parsedAmount: parsedAmount.toString(),
+        receiver: receiverAddress,
+        minter: minterAddress,
+        allowance: allowance?.toString(),
+      });
+
+      const result = await writeFreeMintLeveragedToken();
+      console.log("Mint transaction result:", result);
+    } catch (error) {
+      console.error("Error minting leveraged token:", error);
     }
   };
 

@@ -50,9 +50,28 @@ const minterABI = [
   },
 ] as const;
 
+// Add minimal ABI for Chainlink oracle
+const chainlinkOracleABI = [
+  {
+    name: "latestAnswer",
+    outputs: [{ type: "int256" }],
+    stateMutability: "view",
+    type: "function",
+    inputs: [],
+  },
+  {
+    name: "decimals",
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+    inputs: [],
+  },
+] as const;
+
 interface SystemHealthProps {
   marketId: string;
   collateralTokenBalance?: bigint;
+  geoClassName?: string;
 }
 
 interface SystemHealthValueProps {
@@ -154,13 +173,32 @@ function Value({
   });
 
   const { data, isError, error } = useContractReads({
-    contracts: [
-      {
-        address: addresses.minter as `0x${string}`,
-        abi: minterABI,
-        functionName,
-      },
-    ],
+    contracts:
+      type === "collateralValue"
+        ? [
+            {
+              address: addresses.minter as `0x${string}`,
+              abi: minterABI,
+              functionName,
+            },
+            {
+              address: addresses.priceOracle as `0x${string}`,
+              abi: chainlinkOracleABI,
+              functionName: "latestAnswer",
+            },
+            {
+              address: addresses.priceOracle as `0x${string}`,
+              abi: chainlinkOracleABI,
+              functionName: "decimals",
+            },
+          ]
+        : [
+            {
+              address: addresses.minter as `0x${string}`,
+              abi: minterABI,
+              functionName,
+            },
+          ],
     watch: true,
     enabled: mounted,
     select: (data) => {
@@ -212,7 +250,32 @@ function Value({
       });
       return <>-</>;
     }
-    return <>{formatUSD(data[0].result)}</>;
+    const tokenBal = data[0]?.result as bigint | undefined;
+    const priceRaw = data[1]?.result as bigint | undefined;
+    const priceDecimals = data[2]?.result as number | undefined;
+
+    if (!tokenBal || !priceRaw || priceDecimals === undefined) {
+      console.log("[DEBUG] Missing required values for collateral value:", {
+        hasTokenBal: !!tokenBal,
+        hasPriceRaw: !!priceRaw,
+        hasPriceDecimals: priceDecimals !== undefined,
+      });
+      return <>-</>;
+    }
+
+    // Normalize price to 18 decimals
+    const normalizedPrice = priceRaw * BigInt(10 ** (18 - priceDecimals));
+    // USD value = tokenBal * normalizedPrice / 1e18
+    const usdValue = (tokenBal * normalizedPrice) / BigInt(1e18);
+    // Format USD value
+    const num = Number(usdValue) / 1e18;
+    const usdFormatted = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    }).format(num);
+    return <>{usdFormatted}</>;
   } else if (type === "peggedTokens" || type === "leveragedTokens") {
     if (!data?.[0]?.result) {
       console.log("[DEBUG] No token data:", {
@@ -261,14 +324,21 @@ export default Object.assign(SystemHealth, { Value });
 
 // The main SystemHealth component is now just a container
 function SystemHealth({
-  marketId = "steth-usd",
+  marketId,
   collateralTokenBalance,
+  geoClassName,
 }: SystemHealthProps) {
+  console.log("[DEBUG SystemHealth.tsx] received geoClassName:", geoClassName);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Define constants for Price Oracle
+  const currentMarketDetails = markets[marketId];
+  const oracleAddress = currentMarketDetails?.addresses.priceOracle;
+  const oraclePairName = currentMarketDetails?.name;
 
   console.log("[DEBUG] SystemHealth mounted:", mounted);
   console.log(
@@ -284,67 +354,155 @@ function SystemHealth({
   if (!mounted) return null;
 
   return (
-    <div className="space-y-2">
-      <div className="bg-[#1A1A1A]/95 p-3">
-        <div className="text-[#F5F5F5]/70 text-xs mb-1">Total Collateral</div>
-        <div className="text-sm font-medium">
-          <Value
-            type="collateralValue"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />
+    <div className="bg-neutral-800 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {/* Total Collateral Box */}
+        <div className="bg-black p-3">
+          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
+            Total Collateral
+          </div>
+          <div
+            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
+          >
+            <Value
+              type="collateralValue"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />
+          </div>
+          <div className="text-[#F5F5F5]/50 text-xs text-center">
+            <Value
+              type="collateralTokens"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />{" "}
+            wstETH
+          </div>
         </div>
-        <div className="text-[#F5F5F5]/50 text-xs">
-          <Value
-            type="collateralTokens"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />{" "}
-          wstETH
+        {/* Pegged Tokens Box */}
+        <div className="bg-black p-3">
+          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
+            Pegged Tokens
+          </div>
+          <div
+            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
+          >
+            <Value
+              type="peggedValue"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />
+          </div>
+          <div className="text-[#F5F5F5]/50 text-xs text-center">
+            <Value
+              type="peggedTokens"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />{" "}
+            tokens
+          </div>
         </div>
-      </div>
-      <div className="bg-[#1A1A1A]/95 p-3">
-        <div className="text-[#F5F5F5]/70 text-xs mb-1">Pegged Tokens</div>
-        <div className="text-sm font-medium">
-          <Value
-            type="peggedValue"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />
+        {/* Leveraged Tokens Box */}
+        <div className="bg-black p-3">
+          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
+            Leveraged Tokens
+          </div>
+          <div
+            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
+          >
+            <Value
+              type="leveragedValue"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />
+          </div>
+          <div className="text-[#F5F5F5]/50 text-xs text-center">
+            <Value
+              type="leveragedTokens"
+              marketId={marketId}
+              collateralTokenBalance={collateralTokenBalance}
+            />{" "}
+            tokens
+          </div>
         </div>
-        <div className="text-[#F5F5F5]/50 text-xs">
-          <Value
-            type="peggedTokens"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />{" "}
-          tokens
+        {/* Collateral Ratio Box */}
+        <div className="bg-black p-3">
+          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
+            Collateral Ratio
+          </div>
+          <div
+            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
+          >
+            <Value type="collateralRatio" marketId={marketId} />
+          </div>
+          <div className="text-[#F5F5F5]/50 text-xs text-center">
+            Target: 150%
+          </div>
         </div>
-      </div>
-      <div className="bg-[#1A1A1A]/95 p-3">
-        <div className="text-[#F5F5F5]/70 text-xs mb-1">Leveraged Tokens</div>
-        <div className="text-sm font-medium">
-          <Value
-            type="leveragedValue"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />
+        {/* Price Oracle Box */}
+        <div className="bg-black p-3 flex flex-col items-center justify-center">
+          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
+            Price Oracle
+          </div>
+          <div
+            className={`text-2xl Price Oracle font-medium text-center ${
+              geoClassName || ""
+            }`}
+          >
+            Chainlink
+          </div>
+          <div className="text-[#F5F5F5]/50 text-xs mt-0.5 text-center">
+            <div className="flex items-center justify-center gap-1">
+              {oraclePairName}
+              {oracleAddress && (
+                <>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(oracleAddress);
+                    }}
+                    title="Copy Oracle Address"
+                    className="text-[#F5F5F5]/50 hover:text-[#F5F5F5]/70 transition-colors"
+                  >
+                    <svg
+                      className="w-2.5 h-2.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </button>
+                  <a
+                    href={`https://etherscan.io/address/${oracleAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View Oracle on Etherscan"
+                    className="text-[#F5F5F5]/50 hover:text-[#F5F5F5]/70 transition-colors"
+                  >
+                    <svg
+                      className="w-2.5 h-2.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="text-[#F5F5F5]/50 text-xs">
-          <Value
-            type="leveragedTokens"
-            marketId={marketId}
-            collateralTokenBalance={collateralTokenBalance}
-          />{" "}
-          tokens
-        </div>
-      </div>
-      <div className="bg-[#1A1A1A]/95 p-3">
-        <div className="text-[#F5F5F5]/70 text-xs mb-1">Collateral Ratio</div>
-        <div className="text-sm font-medium">
-          <Value type="collateralRatio" marketId={marketId} />
-        </div>
-        <div className="text-[#F5F5F5]/50 text-xs">Target: 150%</div>
       </div>
     </div>
   );

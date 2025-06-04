@@ -2,7 +2,7 @@
 
 import { WagmiConfig } from "wagmi";
 import { configureChains, createConfig } from "wagmi";
-import { Chain } from "wagmi/chains";
+import { Chain, mainnet, sepolia } from "wagmi/chains";
 import { InjectedConnector } from "wagmi/connectors/injected";
 import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
 import { useEffect } from "react";
@@ -25,20 +25,23 @@ const anvil: Chain = {
       http: ["http://127.0.0.1:8545"],
     },
   },
+  testnet: true,
 };
 
-// Configure chains & providers with debug logging
-const { publicClient } = configureChains(
+// Configure chains & providers
+const { publicClient, webSocketPublicClient } = configureChains(
   [anvil],
   [
     jsonRpcProvider({
-      rpc: () => {
-        console.log(
-          "[DEBUG] Setting up RPC connection to:",
-          "http://127.0.0.1:8545"
-        );
+      rpc: (chain) => {
+        console.log("[DEBUG] Setting up RPC connection for chain:", chain.name);
+        if (chain.id === anvil.id) {
+          return {
+            http: "http://127.0.0.1:8545",
+          };
+        }
         return {
-          http: "http://127.0.0.1:8545",
+          http: chain.rpcUrls.default.http[0],
         };
       },
     }),
@@ -58,12 +61,13 @@ const wagmiConfig = createConfig({
     }),
   ],
   publicClient,
+  webSocketPublicClient,
 });
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log("[DEBUG] Public client configuration:", publicClient);
-    console.log("[DEBUG] Available chains:", anvil);
+    console.log("[DEBUG] Available chains:", [anvil]);
   }, []);
 
   return <WagmiConfig config={wagmiConfig}>{children}</WagmiConfig>;

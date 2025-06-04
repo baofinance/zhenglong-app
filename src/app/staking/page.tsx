@@ -318,7 +318,7 @@ export default function Staking() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-            Stake STEAM
+            STAKE STEAM
           </h1>
           <p className="text-[#F5F5F5]/60 text-sm mt-2">
             Boost rewards, Share protocol revenue and vote on liquidity

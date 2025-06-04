@@ -99,7 +99,7 @@ export default function Vote() {
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>Vote</h1>
+            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>VOTE</h1>
             <p className="text-[#F5F5F5]/60 text-sm mt-2">
               Allocate your voting power across the protocol's gauges
             </p>

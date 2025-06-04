@@ -994,7 +994,7 @@ export default function Earn() {
                   {/* Table Headers */}
                   <div className="grid grid-cols-6 gap-4 px-6 text-[#F5F5F5]/70 mb-4">
                     <div className={`col-span-2 ${geo.className} text-lg`}>
-                      Pool
+                      POOL
                     </div>
                     <div className="col-span-4 grid grid-cols-5 gap-2">
                       <div className={`${geo.className} text-lg`}>TVL</div>
