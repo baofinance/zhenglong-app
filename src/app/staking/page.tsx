@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Geo } from "next/font/google";
-import { useAccount, useContractReads, useContractWrite } from "wagmi";
-import { parseEther } from "viem";
-import Link from "next/link";
-import Image from "next/image";
-import ConnectButton from "../../components/ConnectButton";
-import Navigation from "../../components/Navigation";
+import { useAccount, useContractRead, useContractWrite, useWaitForTransaction } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { toast } from "react-hot-toast";
+import ConnectButton from "@/components/ConnectButton";
+import Navigation from "@/components/Navigation";
+import { votingEscrowABI } from "@/abis/votingEscrowABI";
+import { erc20ABI } from "@/abis/erc20ABI";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -15,104 +16,13 @@ const geo = Geo({
   display: "swap",
 });
 
-const votingEscrowABI = [
-  {
-    inputs: [],
-    name: "token",
-    outputs: [{ type: "address", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "addr", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "addr", type: "address" }],
-    name: "locked__end",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "value", type: "uint256" },
-      { name: "unlock_time", type: "uint256" },
-    ],
-    name: "create_lock",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "value", type: "uint256" }],
-    name: "increase_amount",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "unlock_time", type: "uint256" }],
-    name: "increase_unlock_time",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+interface StakingInfo {
+  totalStaked: bigint;
+  userStaked: bigint;
+  userLockEnd: bigint;
+  userBalance: bigint;
+  userAllowance: bigint;
+}
 
 interface StakingState {
   amount: string;
@@ -121,165 +31,214 @@ interface StakingState {
 }
 
 export default function Staking() {
-  const { isConnected, address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [stakingState, setStakingState] = useState<StakingState>({
     amount: "",
     lockDuration: 1,
     activeTab: "stake",
   });
-  const [isPending, setIsPending] = useState(false);
-
-  // Contract reads
-  const { data: stakingData } = useContractReads({
-    contracts: [
-      {
-        address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
-        functionName: "totalSupply",
-      },
-      ...(address
-        ? [
-            {
-              address: "0xVotingEscrowAddress" as `0x${string}`,
-              abi: votingEscrowABI,
-              functionName: "balanceOf",
-              args: [address],
-            },
-            {
-              address: "0xVotingEscrowAddress" as `0x${string}`,
-              abi: votingEscrowABI,
-              functionName: "locked__end",
-              args: [address],
-            },
-          ]
-        : []),
-    ],
-    watch: true,
+  const [stakingInfo, setStakingInfo] = useState<StakingInfo>({
+    totalStaked: BigInt(0),
+    userStaked: BigInt(0),
+    userLockEnd: BigInt(0),
+    userBalance: BigInt(0),
+    userAllowance: BigInt(0),
   });
 
-  const formatEther = (value: bigint | undefined) => {
-    if (!value) return "0";
-    return (Number(value) / 1e18).toFixed(4);
-  };
+  // Contract reads
+  const { data: totalStaked, isLoading: isLoadingTotalStaked } = useContractRead({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "totalSupply",
+  });
 
+  const { data: userStaked, isLoading: isLoadingUserStaked } = useContractRead({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "balanceOf",
+    args: [address as `0x${string}`],
+    enabled: !!address,
+  });
+
+  const { data: userLockEnd, isLoading: isLoadingLockEnd } = useContractRead({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "locked__end",
+    args: [address as `0x${string}`],
+    enabled: !!address,
+  });
+
+  const { data: userBalance, isLoading: isLoadingBalance } = useContractRead({
+    address: "0xTokenAddress" as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "balanceOf",
+    args: [address as `0x${string}`],
+    enabled: !!address,
+  });
+
+  const { data: userAllowance, isLoading: isLoadingAllowance } = useContractRead({
+    address: "0xTokenAddress" as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "allowance",
+    args: [address as `0x${string}`, "0xVotingEscrowAddress" as `0x${string}`],
+    enabled: !!address,
+  });
+
+  // Contract writes
+  const { write: approve, data: approveData } = useContractWrite({
+    address: "0xTokenAddress" as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "approve",
+  });
+
+  const { write: createLock, data: createLockData } = useContractWrite({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "create_lock",
+  });
+
+  const { write: increaseAmount, data: increaseAmountData } = useContractWrite({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "increase_amount",
+  });
+
+  const { write: increaseLockTime, data: increaseLockTimeData } = useContractWrite({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "increase_unlock_time",
+  });
+
+  const { write: withdraw, data: withdrawData } = useContractWrite({
+    address: "0xVotingEscrowAddress" as `0x${string}`,
+    abi: votingEscrowABI,
+    functionName: "withdraw",
+  });
+
+  // Transaction status
+  const { isLoading: isApproving } = useWaitForTransaction({
+    hash: approveData?.hash,
+  });
+
+  const { isLoading: isStaking } = useWaitForTransaction({
+    hash: createLockData?.hash,
+  });
+
+  const { isLoading: isIncreasing } = useWaitForTransaction({
+    hash: increaseAmountData?.hash,
+  });
+
+  const { isLoading: isExtending } = useWaitForTransaction({
+    hash: increaseLockTimeData?.hash,
+  });
+
+  const { isLoading: isWithdrawing } = useWaitForTransaction({
+    hash: withdrawData?.hash,
+  });
+
+  // Update staking info
+  useEffect(() => {
+    if (totalStaked && userStaked && userLockEnd && userBalance && userAllowance) {
+      setStakingInfo({
+        totalStaked: totalStaked as bigint,
+        userStaked: userStaked as bigint,
+        userLockEnd: userLockEnd as bigint,
+        userBalance: userBalance as bigint,
+        userAllowance: userAllowance as bigint,
+      });
+    }
+  }, [totalStaked, userStaked, userLockEnd, userBalance, userAllowance]);
+
+  // Handle stake
   const handleStake = async () => {
     if (!isConnected || !stakingState.amount || !address) return;
 
     try {
-      setIsPending(true);
       const parsedAmount = parseEther(stakingState.amount);
-      const unlockTime =
-        Math.floor(Date.now() / 1000) +
-        stakingState.lockDuration * 7 * 24 * 60 * 60;
+      const unlockTime = Math.floor(Date.now() / 1000) + stakingState.lockDuration * 7 * 24 * 60 * 60;
 
-      // First approve tokens
-      const { writeAsync: approve } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xTokenAddress" as `0x${string}`,
-          abi: erc20ABI,
-          functionName: "approve",
-        })
-      );
+      // Check if approval is needed
+      if (parsedAmount > stakingInfo.userAllowance) {
+        await approve({
+          args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
+        });
+        toast.success("Approval successful!");
+      }
 
-      await approve({
-        args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
-      });
-
-      // Then create lock
-      const { writeAsync: createLock } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "create_lock",
-        })
-      );
-
+      // Create lock
       await createLock({
         args: [parsedAmount, BigInt(unlockTime)],
       });
-
+      toast.success("Staking successful!");
       setStakingState((prev) => ({ ...prev, amount: "" }));
     } catch (error) {
-      console.error("Error staking:", error);
-    } finally {
-      setIsPending(false);
+      toast.error("Failed to stake. Please try again.");
+      console.error("Stake error:", error);
     }
   };
 
+  // Handle increase amount
   const handleIncreaseAmount = async () => {
     if (!isConnected || !stakingState.amount || !address) return;
 
     try {
-      setIsPending(true);
       const parsedAmount = parseEther(stakingState.amount);
 
-      const { writeAsync: increaseAmount } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_amount",
-        })
-      );
+      // Check if approval is needed
+      if (parsedAmount > stakingInfo.userAllowance) {
+        await approve({
+          args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
+        });
+        toast.success("Approval successful!");
+      }
 
       await increaseAmount({
         args: [parsedAmount],
       });
-
+      toast.success("Stake increased successfully!");
       setStakingState((prev) => ({ ...prev, amount: "" }));
     } catch (error) {
-      console.error("Error increasing amount:", error);
-    } finally {
-      setIsPending(false);
+      toast.error("Failed to increase stake. Please try again.");
+      console.error("Increase stake error:", error);
     }
   };
 
+  // Handle extend lock
   const handleExtendLock = async () => {
     if (!isConnected || !address) return;
 
     try {
-      setIsPending(true);
-      const unlockTime =
-        Math.floor(Date.now() / 1000) +
-        stakingState.lockDuration * 7 * 24 * 60 * 60;
-
-      const { writeAsync: increaseLockTime } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_unlock_time",
-        })
-      );
+      const unlockTime = Math.floor(Date.now() / 1000) + stakingState.lockDuration * 7 * 24 * 60 * 60;
 
       await increaseLockTime({
         args: [BigInt(unlockTime)],
       });
+      toast.success("Lock extended successfully!");
     } catch (error) {
-      console.error("Error extending lock:", error);
-    } finally {
-      setIsPending(false);
+      toast.error("Failed to extend lock. Please try again.");
+      console.error("Extend lock error:", error);
     }
   };
 
+  // Handle withdraw
   const handleWithdraw = async () => {
     if (!isConnected || !address) return;
 
     try {
-      setIsPending(true);
-
-      const { writeAsync: withdraw } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "withdraw",
-        })
-      );
-
       await withdraw();
+      toast.success("Withdrawal successful!");
     } catch (error) {
-      console.error("Error withdrawing:", error);
-    } finally {
-      setIsPending(false);
+      toast.error("Failed to withdraw. Please try again.");
+      console.error("Withdraw error:", error);
     }
+  };
+
+  // Calculate boost multiplier based on lock duration
+  const calculateBoost = (weeks: number) => {
+    const baseBoost = 1;
+    const maxBoost = 2.5;
+    const maxWeeks = 208; // 4 years
+    return baseBoost + ((maxBoost - baseBoost) * weeks) / maxWeeks;
   };
 
   return (
@@ -287,274 +246,186 @@ export default function Staking() {
       {/* Steam Background */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Large base squares */}
-        <div className="absolute top-[10%] left-[20%] w-[200px] h-[200px] bg-[#4A7C59]/[0.06]"></div>
-        <div className="absolute top-[15%] left-[35%] w-[180px] h-[180px] bg-[#4A7C59]/[0.05]"></div>
-        <div className="absolute top-[20%] left-[50%] w-[160px] h-[160px] bg-[#4A7C59]/[0.07]"></div>
+        <div className="absolute top-[15%] left-[20%] w-[600px] h-[400px] bg-[#4A7C59]/[0.06]"></div>
+        <div className="absolute top-[25%] right-[15%] w-[500px] h-[450px] bg-[#4A7C59]/[0.05]"></div>
+        <div className="absolute top-[20%] left-[35%] w-[400px] h-[300px] bg-[#4A7C59]/[0.07]"></div>
 
         {/* Medium squares - Layer 1 */}
-        <div className="absolute top-[30%] left-[15%] w-[150px] h-[150px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
-        <div className="absolute top-[35%] left-[30%] w-[140px] h-[140px] bg-[#4A7C59]/[0.045] animate-float-2"></div>
-        <div className="absolute top-[40%] left-[45%] w-[130px] h-[130px] bg-[#4A7C59]/[0.055] animate-float-3"></div>
+        <div className="absolute top-[22%] left-[10%] w-[300px] h-[250px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
+        <div className="absolute top-[28%] right-[25%] w-[280px] h-[320px] bg-[#4A7C59]/[0.045] animate-float-2"></div>
+        <div className="absolute top-[35%] left-[40%] w-[350px] h-[280px] bg-[#4A7C59]/[0.055] animate-float-3"></div>
 
         {/* Medium squares - Layer 2 */}
-        <div className="absolute top-[50%] left-[25%] w-[120px] h-[120px] bg-[#4A7C59]/[0.065] animate-float-4"></div>
-        <div className="absolute top-[55%] left-[40%] w-[110px] h-[110px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
-        <div className="absolute top-[60%] left-[55%] w-[100px] h-[100px] bg-[#4A7C59]/[0.06] animate-float-2"></div>
+        <div className="absolute top-[30%] left-[28%] w-[250px] h-[200px] bg-[#4A7C59]/[0.065] animate-float-4"></div>
+        <div className="absolute top-[25%] right-[30%] w-[220px] h-[180px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
+        <div className="absolute top-[40%] left-[15%] w-[280px] h-[240px] bg-[#4A7C59]/[0.06] animate-float-2"></div>
 
-        {/* Small squares */}
-        <div className="absolute top-[70%] left-[20%] w-[80px] h-[80px] bg-[#4A7C59]/[0.075] animate-steam-1"></div>
-        <div className="absolute top-[75%] left-[35%] w-[70px] h-[70px] bg-[#4A7C59]/[0.07] animate-steam-2"></div>
-        <div className="absolute top-[80%] left-[50%] w-[60px] h-[60px] bg-[#4A7C59]/[0.08] animate-steam-3"></div>
-        <div className="absolute top-[85%] left-[65%] w-[50px] h-[50px] bg-[#4A7C59]/[0.065] animate-steam-1"></div>
-        <div className="absolute top-[90%] left-[80%] w-[40px] h-[40px] bg-[#4A7C59]/[0.075] animate-steam-2"></div>
-        <div className="absolute top-[95%] left-[95%] w-[30px] h-[30px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
+        {/* Small pixel squares */}
+        <div className="absolute top-[20%] left-[45%] w-[120px] h-[120px] bg-[#4A7C59]/[0.075] animate-steam-1"></div>
+        <div className="absolute top-[35%] right-[40%] w-[150px] h-[150px] bg-[#4A7C59]/[0.07] animate-steam-2"></div>
+        <div className="absolute top-[30%] left-[25%] w-[100px] h-[100px] bg-[#4A7C59]/[0.08] animate-steam-3"></div>
+        <div className="absolute top-[25%] right-[20%] w-[80px] h-[80px] bg-[#4A7C59]/[0.065] animate-steam-1"></div>
+        <div className="absolute top-[45%] left-[30%] w-[90px] h-[90px] bg-[#4A7C59]/[0.075] animate-steam-2"></div>
+        <div className="absolute top-[38%] right-[35%] w-[110px] h-[110px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
       </div>
 
       {/* Navigation */}
       <Navigation />
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+      <main className="container mx-auto px-6 pt-28 pb-20 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
             STAKE STEAM
           </h1>
-          <p className="text-[#F5F5F5]/60 text-sm mt-2">
-            Boost rewards, Share protocol revenue and vote on liquidity
-            incentives
+          <p className="text-[#F5F5F5]/60 text-sm mt-2 max-w-xl mx-auto">
+            Lock your STEAM tokens to earn voting power and protocol rewards
           </p>
         </div>
 
-        <div className="max-w-5xl mx-auto space-y-6">
-          <div className="bg-[#1A1A1A] p-6 relative">
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">Total Staked</p>
-                <p className="text-sm font-medium text-[#4A7C59]">
-                  {formatEther(stakingData?.[0]?.result as bigint)} STEAM
-                </p>
-              </div>
-              {address && (
-                <div className="bg-black p-4 border border-[#4A7C59]/20">
-                  <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                    Your Voting Power
-                  </p>
-                  <p className="text-sm font-medium text-[#4A7C59]">
-                    {formatEther(stakingData?.[1]?.result as bigint)} vSTEAM
-                  </p>
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto">
+          {/* Stats Overview */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <div className="bg-[#0A0A0A] p-6 shadow-custom-dark">
+              <p className="text-[#F5F5F5]/60 text-sm mb-2">Total Value Locked</p>
+              <p className="text-[#4A7C59] text-2xl font-medium">
+                {isLoadingTotalStaked
+                  ? "Loading..."
+                  : `${formatEther(stakingInfo.totalStaked)} STEAM`}
+              </p>
+            </div>
+            <div className="bg-[#0A0A0A] p-6 shadow-custom-dark">
+              <p className="text-[#F5F5F5]/60 text-sm mb-2">Your Stake</p>
+              <p className="text-[#4A7C59] text-2xl font-medium">
+                {isLoadingUserStaked
+                  ? "Loading..."
+                  : `${formatEther(stakingInfo.userStaked)} STEAM`}
+              </p>
+            </div>
+            <div className="bg-[#0A0A0A] p-6 shadow-custom-dark">
+              <p className="text-[#F5F5F5]/60 text-sm mb-2">Your Balance</p>
+              <p className="text-[#4A7C59] text-2xl font-medium">
+                {isLoadingBalance
+                  ? "Loading..."
+                  : `${formatEther(stakingInfo.userBalance)} STEAM`}
+              </p>
+            </div>
+          </div>
+
+          {/* Staking Interface */}
+          <div className="bg-[#0A0A0A] p-8 shadow-custom-dark">
+            {/* Action Tabs */}
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              {(["stake", "increase", "extend", "withdraw"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setStakingState((prev) => ({ ...prev, activeTab: tab }))}
+                  className={`px-6 py-3 text-sm font-medium transition-colors ${
+                    stakingState.activeTab === tab
+                      ? "bg-[#4A7C59] text-white"
+                      : "bg-[#1A1A1A] text-[#F5F5F5]/60 hover:bg-[#2A2A2A]"
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Section */}
+            {stakingState.activeTab !== "withdraw" && (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <p className="text-[#F5F5F5]/60">Amount</p>
+                    <p className="text-[#F5F5F5]/60">
+                      Balance: {isLoadingBalance ? "Loading..." : `${formatEther(stakingInfo.userBalance)} STEAM`}
+                    </p>
+                  </div>
+                  <input
+                    type="text"
+                    value={stakingState.amount}
+                    onChange={(e) => setStakingState((prev) => ({ ...prev, amount: e.target.value }))}
+                    placeholder="Enter amount in STEAM"
+                    className="w-full bg-[#1A1A1A] border border-[#4A7C59]/20 focus:border-[#4A7C59] outline-none transition-all p-4 text-[#F5F5F5] placeholder-[#F5F5F5]/30"
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* Tabs */}
-            <div className="flex space-x-4 mb-6">
-              <button
-                onClick={() =>
-                  setStakingState((prev) => ({ ...prev, activeTab: "stake" }))
-                }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                  stakingState.activeTab === "stake"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                }`}
-              >
-                Stake
-              </button>
-              <button
-                onClick={() =>
-                  setStakingState((prev) => ({
-                    ...prev,
-                    activeTab: "increase",
-                  }))
-                }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                  stakingState.activeTab === "increase"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                }`}
-              >
-                Increase
-              </button>
-              <button
-                onClick={() =>
-                  setStakingState((prev) => ({
-                    ...prev,
-                    activeTab: "extend",
-                  }))
-                }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                  stakingState.activeTab === "extend"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                }`}
-              >
-                Extend
-              </button>
-              <button
-                onClick={() =>
-                  setStakingState((prev) => ({
-                    ...prev,
-                    activeTab: "withdraw",
-                  }))
-                }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                  stakingState.activeTab === "withdraw"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                }`}
-              >
-                Withdraw
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            {isConnected ? (
-              <div className="space-y-4">
-                {(stakingState.activeTab === "stake" ||
-                  stakingState.activeTab === "increase") && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm text-[#F5F5F5]/70">
-                          Amount
-                        </label>
-                        <span className="text-sm text-[#F5F5F5]/50">
-                          Balance: 0 STEAM
-                        </span>
-                      </div>
-                      <input
-                        type="text"
-                        value={stakingState.amount}
-                        onChange={(e) =>
-                          setStakingState((prev) => ({
-                            ...prev,
-                            amount: e.target.value,
-                          }))
-                        }
-                        placeholder="Enter amount in STEAM"
-                        className="w-full bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
-                      />
-                    </div>
-
-                    {stakingState.activeTab === "stake" && (
-                      <div className="space-y-2">
-                        <label className="text-sm text-[#F5F5F5]/70">
-                          Lock Duration (weeks)
-                        </label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="208"
-                          value={stakingState.lockDuration}
-                          onChange={(e) =>
-                            setStakingState((prev) => ({
-                              ...prev,
-                              lockDuration: parseInt(e.target.value),
-                            }))
-                          }
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-sm text-[#F5F5F5]/50">
-                          <span>1 week</span>
-                          <span>{stakingState.lockDuration} weeks</span>
-                          <span>4 years</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={
-                        stakingState.activeTab === "stake"
-                          ? handleStake
-                          : handleIncreaseAmount
-                      }
-                      disabled={isPending || !stakingState.amount}
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                    >
-                      {isPending
-                        ? "Pending..."
-                        : stakingState.activeTab === "stake"
-                        ? "Stake"
-                        : "Increase"}
-                    </button>
-                  </div>
-                )}
-
-                {stakingState.activeTab === "extend" && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm text-[#F5F5F5]/70">
-                        New Lock Duration (weeks)
-                      </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="208"
-                        value={stakingState.lockDuration}
-                        onChange={(e) =>
-                          setStakingState((prev) => ({
-                            ...prev,
-                            lockDuration: parseInt(e.target.value),
-                          }))
-                        }
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-sm text-[#F5F5F5]/50">
-                        <span>1 week</span>
-                        <span>{stakingState.lockDuration} weeks</span>
-                        <span>4 years</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleExtendLock}
-                      disabled={isPending}
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                    >
-                      {isPending ? "Pending..." : "Extend Lock"}
-                    </button>
-                  </div>
-                )}
-
-                {stakingState.activeTab === "withdraw" && (
-                  <div className="space-y-4">
-                    <div className="bg-black p-4 border border-[#4A7C59]/20">
-                      <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                        Lock End Time
-                      </p>
-                      <p className="text-lg font-medium text-[#4A7C59]">
-                        {new Date(
-                          Number(stakingData?.[2]?.result ?? 0) * 1000
-                        ).toLocaleString()}
+                {stakingState.activeTab !== "increase" && (
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <p className="text-[#F5F5F5]/60">Lock Duration</p>
+                      <p className="text-[#4A7C59]">
+                        Boost: {calculateBoost(stakingState.lockDuration).toFixed(2)}x
                       </p>
                     </div>
-
-                    <button
-                      onClick={handleWithdraw}
-                      disabled={
-                        isPending ||
-                        (stakingData?.[2]?.result !== undefined &&
-                          Number(stakingData[2].result) > Date.now() / 1000)
-                      }
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                    >
-                      {isPending
-                        ? "Pending..."
-                        : stakingData?.[2]?.result !== undefined &&
-                          Number(stakingData[2].result) > Date.now() / 1000
-                        ? "Lock Not Expired"
-                        : "Withdraw"}
-                    </button>
+                    <input
+                      type="range"
+                      min="1"
+                      max="208"
+                      value={stakingState.lockDuration}
+                      onChange={(e) => setStakingState((prev) => ({ ...prev, lockDuration: Number(e.target.value) }))}
+                      className="w-full h-2 bg-[#1A1A1A] border border-[#4A7C59]/20 focus:border-[#4A7C59] outline-none transition-all"
+                    />
+                    <div className="flex justify-between mt-2">
+                      <span className="text-[#F5F5F5]/60 text-sm">1 week</span>
+                      <span className="text-[#F5F5F5]/60 text-sm">4 years</span>
+                    </div>
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="text-center">
-                <ConnectButton />
               </div>
             )}
+
+            {/* Action Button */}
+            <div className="mt-8">
+              <button
+                onClick={
+                  stakingState.activeTab === "stake"
+                    ? handleStake
+                    : stakingState.activeTab === "increase"
+                    ? handleIncreaseAmount
+                    : stakingState.activeTab === "extend"
+                    ? handleExtendLock
+                    : handleWithdraw
+                }
+                disabled={
+                  isApproving ||
+                  isStaking ||
+                  isIncreasing ||
+                  isExtending ||
+                  isWithdrawing ||
+                  (stakingState.activeTab !== "withdraw" && !stakingState.amount)
+                }
+                className={`w-full px-6 py-3 text-sm font-medium transition-colors ${
+                  isApproving ||
+                  isStaking ||
+                  isIncreasing ||
+                  isExtending ||
+                  isWithdrawing ||
+                  (stakingState.activeTab !== "withdraw" && !stakingState.amount)
+                    ? "bg-[#1F3529] text-[#4A7C59] cursor-not-allowed"
+                    : "bg-[#4A7C59] text-white hover:bg-[#3A6147]"
+                }`}
+              >
+                {isApproving
+                  ? "Approving..."
+                  : isStaking
+                  ? "Staking..."
+                  : isIncreasing
+                  ? "Increasing..."
+                  : isExtending
+                  ? "Extending..."
+                  : isWithdrawing
+                  ? "Withdrawing..."
+                  : stakingState.activeTab.charAt(0).toUpperCase() + stakingState.activeTab.slice(1)}
+              </button>
+            </div>
+
+            {!isConnected ? (
+              <div className="flex justify-center mt-8">
+                <ConnectButton />
+              </div>
+            ) : null}
           </div>
         </div>
       </main>

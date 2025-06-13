@@ -38,7 +38,7 @@ export default function Navigation() {
           <div className="flex-1 flex justify-center">
             <div className="flex items-center gap-12">
               <Link
-                href="/app"
+                href="/"
                 className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
               >
                 MINT/REDEEM

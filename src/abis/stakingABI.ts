@@ -1,0 +1,61 @@
+export const stakingABI = [
+  {
+    inputs: [],
+    name: "totalStaked",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ type: "address", name: "user" }],
+    name: "userStaked",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ type: "address", name: "user" }],
+    name: "userVotingPower",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ type: "address", name: "user" }],
+    name: "userLockEnd",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { type: "uint256", name: "amount" },
+      { type: "uint256", name: "lockDuration" },
+    ],
+    name: "stake",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ type: "uint256", name: "amount" }],
+    name: "increaseStake",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ type: "uint256", name: "lockDuration" }],
+    name: "extendLock",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const; 
