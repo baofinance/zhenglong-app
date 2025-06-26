@@ -9,7 +9,7 @@ import {
   useContractReads,
   useContractWrite,
   useContractRead,
-  useNetwork,
+  useChainId,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { markets, marketConfig } from "../config/contracts";
@@ -215,7 +215,7 @@ export default function App() {
   // State hooks
   const [mounted, setMounted] = useState(false);
   const { address, isConnected } = useAccount();
-  const { chain } = useNetwork();
+  const chainId = useChainId();
   const [selectedMarket, setSelectedMarket] = useState<string>("steth-usd");
   const [showPopup, setShowPopup] = useState(false);
   const formCardRef = useRef<HTMLDivElement>(null);

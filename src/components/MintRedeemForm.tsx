@@ -7,11 +7,11 @@ import clsx from "clsx";
 import { formatEther, parseEther } from "viem";
 import {
   useAccount,
-  useNetwork,
+  useChainId,
   useBalance,
   useContractRead,
   useContractReads,
-  useContractWrite,
+  useWriteContract,
   usePublicClient,
   useWalletClient,
 } from "wagmi";
@@ -294,9 +294,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   userAddress,
 }) => {
   const [mounted, setMounted] = useState(false);
-  const { chain } = useNetwork();
-  const { data: walletClient } = useWalletClient({ chainId: chain?.id });
-  const publicClient = usePublicClient({ chainId: chain?.id });
+  const chainId = useChainId();
+  const { data: walletClient } = useWalletClient({ chainId });
+  const publicClient = usePublicClient({ chainId });
 
   // State variables previously in App component, now local to MintRedeemForm
   const [isFlipped, setIsFlipped] = useState(false);
@@ -337,8 +337,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           : undefined,
       },
     ],
-    watch: true,
-    enabled: mounted && !!userAddress,
+    query: {
+      enabled: mounted && !!userAddress,
+    },
   });
 
   const { data: peggedBalance } = useContractReads({
@@ -361,8 +362,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           : undefined,
       },
     ],
-    watch: true,
-    enabled: mounted && !!userAddress && selectedType === "LONG",
+    query: {
+      enabled: mounted && !!userAddress && selectedType === "LONG",
+    },
   });
 
   const { data: leveragedBalance } = useContractReads({
@@ -385,8 +387,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           : undefined,
       },
     ],
-    watch: true,
-    enabled: mounted && !!userAddress && selectedType === "STEAMED",
+    query: {
+      enabled: mounted && !!userAddress && selectedType === "STEAMED",
+    },
   });
 
   const { data } = useContractReads({
@@ -407,8 +410,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         functionName: "redeemPeggedTokenIncentiveRatio",
       },
     ],
-    watch: true,
-    enabled: mounted,
+    query: {
+      enabled: mounted,
+    },
   });
 
   const { data: mintPeggedDryRunResult, refetch: refetchMintPeggedDryRun } =
@@ -417,13 +421,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       abi: minterABI,
       functionName: "mintPeggedTokenDryRun",
       args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
-      watch: true,
-      enabled:
-        mounted &&
-        isCollateralAtTop &&
-        selectedType === "LONG" &&
-        !!inputAmount &&
-        parseFloat(inputAmount) > 0,
+      query: {
+        enabled:
+          mounted &&
+          isCollateralAtTop &&
+          selectedType === "LONG" &&
+          !!inputAmount &&
+          parseFloat(inputAmount) > 0,
+      },
     });
 
   const { data: redeemPeggedDryRunResult, error: redeemPeggedDryRunError } =
@@ -432,13 +437,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
       args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
-      watch: true,
-      enabled:
-        mounted &&
-        !isCollateralAtTop &&
-        selectedType === "LONG" &&
-        !!inputAmount &&
-        parseFloat(inputAmount) > 0,
+      query: {
+        enabled:
+          mounted &&
+          !isCollateralAtTop &&
+          selectedType === "LONG" &&
+          !!inputAmount &&
+          parseFloat(inputAmount) > 0,
+      },
     });
 
   const {
@@ -449,13 +455,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     abi: minterABI,
     functionName: "redeemLeveragedTokenDryRun",
     args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
-    watch: true,
-    enabled:
-      mounted &&
-      !isCollateralAtTop &&
-      selectedType === "STEAMED" &&
-      !!inputAmount &&
-      parseFloat(inputAmount) > 0,
+    query: {
+      enabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+    },
   });
 
   const {
@@ -466,13 +473,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     abi: minterABI,
     functionName: "mintLeveragedTokenDryRun",
     args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
-    watch: true,
-    enabled:
-      mounted &&
-      isCollateralAtTop &&
-      selectedType === "STEAMED" &&
-      !!inputAmount &&
-      parseFloat(inputAmount) > 0,
+    query: {
+      enabled:
+        mounted &&
+        isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+    },
   });
 
   useEffect(() => {
@@ -520,49 +528,16 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
       },
     ],
-    enabled:
-      mounted &&
-      !!inputAmount &&
-      parseFloat(inputAmount) > 0 &&
-      !(isCollateralAtTop && selectedType === "LONG"), // Disable if using dry run
-    watch: true,
+    query: {
+      enabled:
+        mounted &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0 &&
+        !(isCollateralAtTop && selectedType === "LONG"), // Disable if using dry run
+    },
   });
 
-  const { writeAsync: mintPeggedToken } = useContractWrite({
-    address: currentMarket.addresses.minter as `0x${string}`,
-    abi: minterABI,
-    functionName: "mintPeggedToken",
-  });
-  const { writeAsync: redeemPeggedToken } = useContractWrite({
-    address: currentMarket.addresses.minter as `0x${string}`,
-    abi: minterABI,
-    functionName: "redeemPeggedToken",
-  });
-  const { writeAsync: mintLeveragedToken } = useContractWrite({
-    address: currentMarket.addresses.minter as `0x${string}`,
-    abi: minterABI,
-    functionName: "mintLeveragedToken",
-  });
-  const { writeAsync: redeemLeveragedToken } = useContractWrite({
-    address: currentMarket.addresses.minter as `0x${string}`,
-    abi: minterABI,
-    functionName: "redeemLeveragedToken",
-  });
-  const { writeAsync: approveCollateral } = useContractWrite({
-    address: currentMarket.addresses.collateralToken as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-  });
-  const { writeAsync: approvePegged } = useContractWrite({
-    address: currentMarket.addresses.peggedToken as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-  });
-  const { writeAsync: approveLeveraged } = useContractWrite({
-    address: currentMarket.addresses.leveragedToken as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-  });
+  const { writeContractAsync } = useWriteContract();
 
   // Effect Hooks
   useEffect(() => setMounted(true), []);
@@ -685,50 +660,60 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     setPendingStep(null);
     try {
       const parsedAmount = parseEther(inputAmount);
-      let currentAllowanceBigInt: bigint = BigInt(0);
       let approveFn,
-        approveArgs,
-        needsApproval = false;
+        currentAllowanceBigInt: bigint = BigInt(0);
+      let needsApproval = false;
+
       if (isCollateralAtTop) {
         currentAllowanceBigInt =
           (collateralBalance?.[1]?.result as bigint) ?? BigInt(0);
-        approveFn = approveCollateral;
-        approveArgs = [
-          currentMarket.addresses.minter as `0x${string}`,
-          parsedAmount,
-        ] as const;
         needsApproval = currentAllowanceBigInt < parsedAmount;
+        if (needsApproval) {
+          setPendingStep("approval");
+          await writeContractAsync({
+            address: currentMarket.addresses.collateralToken as `0x${string}`,
+            abi: erc20ABI,
+            functionName: "approve",
+            args: [
+              currentMarket.addresses.minter as `0x${string}`,
+              parsedAmount,
+            ],
+          });
+        }
       } else if (selectedType === "LONG") {
         currentAllowanceBigInt =
           (peggedBalance?.[1]?.result as bigint) ?? BigInt(0);
-        approveFn = approvePegged;
-        approveArgs = [
-          currentMarket.addresses.minter as `0x${string}`,
-          parsedAmount,
-        ] as const;
         needsApproval = currentAllowanceBigInt < parsedAmount;
+        if (needsApproval) {
+          setPendingStep("approval");
+          await writeContractAsync({
+            address: currentMarket.addresses.peggedToken as `0x${string}`,
+            abi: erc20ABI,
+            functionName: "approve",
+            args: [
+              currentMarket.addresses.minter as `0x${string}`,
+              parsedAmount,
+            ],
+          });
+        }
       } else {
         currentAllowanceBigInt =
           (leveragedBalance?.[1]?.result as bigint) ?? BigInt(0);
-        approveFn = approveLeveraged;
-        approveArgs = [
-          currentMarket.addresses.minter as `0x${string}`,
-          parsedAmount,
-        ] as const;
         needsApproval = currentAllowanceBigInt < parsedAmount;
-      }
-      // 1. If approval is needed, send approval and wait for confirmation
-      if (needsApproval) {
-        setPendingStep("approval");
-        const tx = await approveFn({ args: approveArgs });
-        // Wait for the approval tx to be mined if possible
-        if (tx && tx.hash && publicClient) {
-          await publicClient.waitForTransactionReceipt({ hash: tx.hash });
-        } else {
-          // fallback: wait a few seconds
-          await new Promise((res) => setTimeout(res, 5000));
+        if (needsApproval) {
+          setPendingStep("approval");
+          await writeContractAsync({
+            address: currentMarket.addresses.leveragedToken as `0x${string}`,
+            abi: erc20ABI,
+            functionName: "approve",
+            args: [
+              currentMarket.addresses.minter as `0x${string}`,
+              parsedAmount,
+            ],
+          });
         }
       }
+
       // 2. Proceed with mint/redeem
       setPendingStep("mintOrRedeem");
       if (isCollateralAtTop) {
@@ -741,7 +726,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           ) {
             minPeggedOut = mintPeggedDryRunResult[2] as bigint;
           }
-          await mintPeggedToken({
+          await writeContractAsync({
+            address: currentMarket.addresses.minter as `0x${string}`,
+            abi: minterABI,
+            functionName: "mintPeggedToken",
             args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
           });
         } else {
@@ -765,7 +753,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               );
             }
           }
-          await mintLeveragedToken({
+          await writeContractAsync({
+            address: currentMarket.addresses.minter as `0x${string}`,
+            abi: minterABI,
+            functionName: "mintLeveragedToken",
             args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
           });
         }
@@ -779,7 +770,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           ) {
             minCollateralOut = redeemPeggedDryRunResult[2] as bigint;
           }
-          await redeemPeggedToken({
+          await writeContractAsync({
+            address: currentMarket.addresses.minter as `0x${string}`,
+            abi: minterABI,
+            functionName: "redeemPeggedToken",
             args: [
               parsedAmount,
               userAddress as `0x${string}`,
@@ -795,7 +789,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           ) {
             minCollateralOut = redeemLeveragedDryRunResult[2] as bigint;
           }
-          await redeemLeveragedToken({
+          await writeContractAsync({
+            address: currentMarket.addresses.minter as `0x${string}`,
+            abi: minterABI,
+            functionName: "redeemLeveragedToken",
             args: [
               parsedAmount,
               userAddress as `0x${string}`,
