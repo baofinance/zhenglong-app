@@ -1,5 +1,6 @@
 export interface ContractAddresses {
   collateralToken: string;
+  underlyingCollateralToken?: string;
   feeReceiver: string;
   genesis: string;
   leveragedToken: string;
@@ -10,6 +11,9 @@ export interface ContractAddresses {
   stabilityPoolCollateral: string;
   stabilityPoolLeveraged: string;
   reservePool: string;
+  rebalancePoolCollateral: string;
+  rebalancePoolLeveraged: string;
+  collateralPrice: string;
 }
 
 export interface MarketConfig {
@@ -46,16 +50,19 @@ export const markets: Markets = {
     description: "Lido Staked ETH / US Dollar",
     addresses: {
       collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
-      feeReceiver: "0x99aA73dA6309b8eC484eF2C95e96C131C1BBF7a0",
-      genesis: "0xEd3AAE51d33138ef67555AE0925A38E77Df5B7e0",
-      leveragedToken: "0xAf7868a9BB72E16B930D50636519038d7F057470",
-      minter: "0x3aD2306eDfBe72ce013cdb6b429212d9CdDE4F96",
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
+      genesis: "0xb53249FEBB6562Abf19BD728d6775c09d2ae0438",
+      leveragedToken: "0xC6c0E14c02C2dBd4f116230f01D03836620167B9",
+      minter: "0xAD44f37213E7b7f08Ac9A984993429Dac957Ec62",
       owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0x7945b0A6674b175695e5d1D08aE1e6F13744Abb0",
-      priceOracle: "0x97541208c6C8ecfbe57B8A44ba86f2A88bA783e2",
+      peggedToken: "0xD0725945859175dabd070855bC3F1c37a3aF605F",
+      priceOracle: "0x6dB83DF31b4402Cbd0D113481c3B1F114321d0ca",
+      stabilityPoolCollateral: "0xEeED66583c579F3eEDF7270AE204419fE3fF09f5",
+      stabilityPoolLeveraged: "0x733697D06E9AbC1C45d1a1c75D18910d43133a6F",
+      reservePool: "0x96e74d78A9EC0dB11C8c9fF2FD93bC98D8895B5A",
       rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
       rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
-      reservePool: "0xFBc00Fa47a7d3bbE3e82B5Aa560B47008c1bD64c",
       collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
     },
     genesis: {

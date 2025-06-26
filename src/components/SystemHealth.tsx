@@ -2,7 +2,7 @@
 
 import { useContractReads } from "wagmi";
 import { markets } from "../config/contracts";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { formatEther } from "viem";
 
 const minterABI = [
@@ -54,14 +54,12 @@ const minterABI = [
 const chainlinkOracleABI = [
   {
     name: "latestAnswer",
-    outputs: [{ type: "int256" }],
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-  },
-  {
-    name: "decimals",
-    outputs: [{ type: "uint8" }],
+    outputs: [
+      { name: "minUnderlyingPrice", type: "uint256" },
+      { name: "maxUnderlyingPrice", type: "uint256" },
+      { name: "minWrappedRate", type: "uint256" },
+      { name: "maxWrappedRate", type: "uint256" },
+    ],
     stateMutability: "view",
     type: "function",
     inputs: [],
@@ -140,14 +138,15 @@ function Value({
     }).format(num);
   };
 
-  const formatRatio = (value: bigint | undefined) => {
-    if (!value || !mounted) return "-";
-    if (value > BigInt("1" + "0".repeat(30))) return "-";
-    const num = (Number(value) / 1e18) * 100;
-    return num.toFixed(4) + "%";
+  const formatRatio = (value: bigint) => {
+    if (!value) return "-";
+    // The ratio is a value with 18 decimals, representing a percentage.
+    // To get the percentage value, divide by 1e16.
+    const percentage = Number(value) / 1e16;
+    return `${percentage.toFixed(2)}%`;
   };
 
-  const addresses = markets[marketId].addresses;
+  const { addresses } = markets[marketId];
 
   const functionName =
     type === "collateralValue"
@@ -164,41 +163,42 @@ function Value({
       ? "leveragedTokenBalance"
       : "collateralRatio";
 
-  // Enhanced debug logging
-  console.log("[DEBUG] Contract call details:", {
-    type,
-    functionName,
-    address: addresses.minter,
-    isPeggedOrLeveraged: type.includes("pegged") || type.includes("leveraged"),
-  });
+  const contractsToRead = useMemo(() => {
+    const baseContracts = [
+      {
+        address: addresses.minter as `0x${string}`,
+        abi: minterABI,
+        functionName,
+      },
+    ];
+
+    if (type === "collateralValue") {
+      return [
+        ...baseContracts,
+        {
+          address: addresses.priceOracle as `0x${string}`,
+          abi: chainlinkOracleABI,
+          functionName: "latestAnswer",
+        },
+      ];
+    }
+
+    if (type === "leveragedValue") {
+      return [
+        ...baseContracts,
+        {
+          address: addresses.minter as `0x${string}`,
+          abi: minterABI,
+          functionName: "leveragedTokenPrice",
+        },
+      ];
+    }
+
+    return baseContracts;
+  }, [type, addresses, functionName]);
 
   const { data, isError, error } = useContractReads({
-    contracts:
-      type === "collateralValue"
-        ? [
-            {
-              address: addresses.minter as `0x${string}`,
-              abi: minterABI,
-              functionName,
-            },
-            {
-              address: addresses.priceOracle as `0x${string}`,
-              abi: chainlinkOracleABI,
-              functionName: "latestAnswer",
-            },
-            {
-              address: addresses.priceOracle as `0x${string}`,
-              abi: chainlinkOracleABI,
-              functionName: "decimals",
-            },
-          ]
-        : [
-            {
-              address: addresses.minter as `0x${string}`,
-              abi: minterABI,
-              functionName,
-            },
-          ],
+    contracts: contractsToRead,
     watch: true,
     enabled: mounted,
     select: (data) => {
@@ -251,14 +251,16 @@ function Value({
       return <>-</>;
     }
     const tokenBal = data[0]?.result as bigint | undefined;
-    const priceRaw = data[1]?.result as bigint | undefined;
-    const priceDecimals = data[2]?.result as number | undefined;
+    const priceData = data[1]?.result as
+      | readonly [bigint, bigint, bigint, bigint]
+      | undefined;
+    const priceRaw = priceData?.[0]; // minUnderlyingPrice is the first element
+    const priceDecimals = 18; // Mock contract uses ether units, so 18 decimals
 
-    if (!tokenBal || !priceRaw || priceDecimals === undefined) {
+    if (tokenBal === undefined || !priceRaw) {
       console.log("[DEBUG] Missing required values for collateral value:", {
-        hasTokenBal: !!tokenBal,
+        hasTokenBal: tokenBal !== undefined,
         hasPriceRaw: !!priceRaw,
-        hasPriceDecimals: priceDecimals !== undefined,
       });
       return <>-</>;
     }
@@ -272,8 +274,8 @@ function Value({
     const usdFormatted = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(num);
     return <>{usdFormatted}</>;
   } else if (type === "peggedTokens" || type === "leveragedTokens") {
@@ -297,7 +299,7 @@ function Value({
     const formattedValue = formatValue(data[0].result);
     console.log("[DEBUG] Formatted token value:", formattedValue);
     return <>{formattedValue}</>;
-  } else if (type === "peggedValue" || type === "leveragedValue") {
+  } else if (type === "peggedValue") {
     if (!data?.[0]?.result) {
       console.log("[DEBUG] No value data:", {
         type,
@@ -309,10 +311,43 @@ function Value({
       });
       return <>-</>;
     }
-    return <>{formatUSD(data[0].result)}</>;
+    const tokenBal = data[0].result as bigint;
+    const num = Number(tokenBal) / 1e18;
+    const usdFormatted = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+    return <>{usdFormatted}</>;
+  } else if (type === "leveragedValue") {
+    if (!data?.[0]?.result || !data?.[1]?.result) {
+      console.log("[DEBUG] No value data for leveraged token:", {
+        type,
+        functionName,
+        hasData: !!data,
+        isError,
+        errorDetails: error,
+        rawData: data,
+      });
+      return <>-</>;
+    }
+    const tokenBal = data[0].result as bigint;
+    const priceRaw = data[1].result as bigint;
+    const price = Number(priceRaw) / 1e18;
+    const bal = Number(tokenBal) / 1e18;
+    const num = bal * price;
+    const usdFormatted = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+    return <>{usdFormatted}</>;
   } else if (type === "collateralRatio") {
     if (!data?.[0]?.result) return <>-</>;
-    return <>{formatRatio(data[0].result)}</>;
+    const ratio = data[0].result as bigint;
+    return <>{formatRatio(ratio)}</>;
   } else {
     if (!data?.[0]?.result) return <>-</>;
     return <>{formatValue(data[0].result)}</>;
@@ -354,153 +389,146 @@ function SystemHealth({
   if (!mounted) return null;
 
   return (
-    <div className="bg-neutral-800 p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {/* Total Collateral Box */}
-        <div className="bg-black p-3">
-          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
-            Total Collateral
-          </div>
-          <div
-            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
-          >
-            <Value
-              type="collateralValue"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />
-          </div>
-          <div className="text-[#F5F5F5]/50 text-xs text-center">
-            <Value
-              type="collateralTokens"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />{" "}
-            wstETH
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+      {/* Total Collateral Box */}
+      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+          Total Collateral
         </div>
-        {/* Pegged Tokens Box */}
-        <div className="bg-black p-3">
-          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
-            Pegged Tokens
-          </div>
-          <div
-            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
-          >
-            <Value
-              type="peggedValue"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />
-          </div>
-          <div className="text-[#F5F5F5]/50 text-xs text-center">
-            <Value
-              type="peggedTokens"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />{" "}
-            tokens
-          </div>
+        <div
+          className={`text-2xl font-medium text-[#4A7C59] ${
+            geoClassName || ""
+          }`}
+        >
+          <Value type="collateralValue" marketId={marketId} />
         </div>
-        {/* Leveraged Tokens Box */}
-        <div className="bg-black p-3">
-          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
-            Leveraged Tokens
-          </div>
-          <div
-            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
-          >
-            <Value
-              type="leveragedValue"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />
-          </div>
-          <div className="text-[#F5F5F5]/50 text-xs text-center">
-            <Value
-              type="leveragedTokens"
-              marketId={marketId}
-              collateralTokenBalance={collateralTokenBalance}
-            />{" "}
-            tokens
-          </div>
+        <div className="text-zinc-500 text-xs mt-1 opacity-80">
+          <Value
+            type="collateralTokens"
+            marketId={marketId}
+            collateralTokenBalance={collateralTokenBalance}
+          />{" "}
+          wstETH
         </div>
-        {/* Collateral Ratio Box */}
-        <div className="bg-black p-3">
-          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
-            Collateral Ratio
-          </div>
-          <div
-            className={`text-2xl font-medium text-center ${geoClassName || ""}`}
-          >
-            <Value type="collateralRatio" marketId={marketId} />
-          </div>
-          <div className="text-[#F5F5F5]/50 text-xs text-center">
-            Target: 150%
-          </div>
+      </div>
+      {/* Pegged Tokens Box */}
+      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+          Pegged Tokens
         </div>
-        {/* Price Oracle Box */}
-        <div className="bg-black p-3 flex flex-col items-center justify-center">
-          <div className="text-[#F5F5F5]/70 text-xs mb-1 text-center">
-            Price Oracle
-          </div>
-          <div
-            className={`text-2xl Price Oracle font-medium text-center ${
-              geoClassName || ""
-            }`}
-          >
-            Chainlink
-          </div>
-          <div className="text-[#F5F5F5]/50 text-xs mt-0.5 text-center">
-            <div className="flex items-center justify-center gap-1">
-              {oraclePairName}
-              {oracleAddress && (
-                <>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(oracleAddress);
-                    }}
-                    title="Copy Oracle Address"
-                    className="text-[#F5F5F5]/50 hover:text-[#F5F5F5]/70 transition-colors"
+        <div
+          className={`text-2xl font-medium text-[#4A7C59] ${
+            geoClassName || ""
+          }`}
+        >
+          <Value type="peggedValue" marketId={marketId} />
+        </div>
+        <div className="text-zinc-500 text-xs mt-1 opacity-80">
+          <Value type="peggedTokens" marketId={marketId} /> tokens
+        </div>
+      </div>
+      {/* Leveraged Tokens Box */}
+      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+          Leveraged Tokens
+        </div>
+        <div
+          className={`text-2xl font-medium text-[#4A7C59] ${
+            geoClassName || ""
+          }`}
+        >
+          <Value
+            type="leveragedValue"
+            marketId={marketId}
+            collateralTokenBalance={collateralTokenBalance}
+          />
+        </div>
+        <div className="text-zinc-500 text-xs mt-1 opacity-80">
+          <Value
+            type="leveragedTokens"
+            marketId={marketId}
+            collateralTokenBalance={collateralTokenBalance}
+          />{" "}
+          tokens
+        </div>
+      </div>
+      {/* Collateral Ratio Box */}
+      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+          Collateral Ratio
+        </div>
+        <div
+          className={`text-2xl font-medium text-[#4A7C59] ${
+            geoClassName || ""
+          }`}
+        >
+          <Value type="collateralRatio" marketId={marketId} />
+        </div>
+        <div className="text-zinc-500 text-xs mt-1 opacity-80">
+          Target: 150%
+        </div>
+      </div>
+      {/* Price Oracle Box */}
+      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+          Price Oracle
+        </div>
+        <div
+          className={`text-2xl font-medium text-[#4A7C59] ${
+            geoClassName || ""
+          }`}
+        >
+          Chainlink
+        </div>
+        <div className="text-zinc-500 text-xs mt-1 opacity-80">
+          <div className="flex items-center justify-center gap-1.5">
+            {oraclePairName}
+            {oracleAddress && (
+              <>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(oracleAddress);
+                  }}
+                  title="Copy Oracle Address"
+                  className="text-zinc-500 hover:text-white transition-colors opacity-60 hover:opacity-100"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <svg
-                      className="w-2.5 h-2.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
-                  <a
-                    href={`https://etherscan.io/address/${oracleAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="View Oracle on Etherscan"
-                    className="text-[#F5F5F5]/50 hover:text-[#F5F5F5]/70 transition-colors"
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                </button>
+                <a
+                  href={`https://etherscan.io/address/${oracleAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="View on Etherscan"
+                  className="text-zinc-500 hover:text-white transition-colors opacity-60 hover:opacity-100"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <svg
-                      className="w-2.5 h-2.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
-                </>
-              )}
-            </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </a>
+              </>
+            )}
           </div>
         </div>
       </div>

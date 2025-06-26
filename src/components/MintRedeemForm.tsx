@@ -4,7 +4,6 @@ import Head from "next/head";
 import Image from "next/image";
 import { Georama } from "next/font/google";
 import clsx from "clsx";
-import { ethers } from "ethers";
 import { formatEther, parseEther } from "viem";
 import {
   useAccount,
@@ -16,7 +15,6 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
-import { ChevronDownIcon, ArrowPathIcon } from "@heroicons/react/24/outline"; // Assuming these are used, adjust if not
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -841,7 +839,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   if (!mounted) {
     // Optional: render a simpler loading state for this component if needed
     return (
-      <div className="bg-[#1A1A1A] p-6 rounded-lg shadow-custom-dark">
+      <div className="px-6 py-2">
         <h2 className={`text-2xl text-[#F5F5F5] mb-4 ${geoClassName}`}>
           Loading Form...
         </h2>
@@ -851,20 +849,20 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
 
   // JSX for Mint & Redeem section (to be copied from page.tsx)
   return (
-    <div className="bg-neutral-800 p-4 shadow-custom-dark">
-      <div className="w-full max-w-xl mx-auto">
+    <div className="px-6 py-2">
+      <div className="w-full max-w-xl mx-auto flex flex-col">
         {/* Tabs row above the form, left-aligned with form content */}
-        <div className="flex border-b border-[#333] mb-6">
+        <div className="flex border-b border-zinc-800 mb-1">
           <button
             onClick={() => {
               setSelectedType("LONG");
               setIsFlipped(false);
             }}
             className={clsx(
-              `px-6 py-2 text-lg font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
+              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
               selectedType === "LONG"
                 ? "border-[#4A7C59] text-[#4A7C59]"
-                : "border-transparent text-[#F5F5F5]/70 hover:text-[#F5F5F5]"
+                : "border-transparent text-zinc-400 hover:text-white"
             )}
           >
             PEGGED
@@ -875,10 +873,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               setIsFlipped(true);
             }}
             className={clsx(
-              `px-6 py-2 text-lg font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
+              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
               selectedType === "STEAMED"
                 ? "border-[#4A7C59] text-[#4A7C59]"
-                : "border-transparent text-[#F5F5F5]/70 hover:text-[#F5F5F5]"
+                : "border-transparent text-zinc-400 hover:text-white"
             )}
           >
             LEVERAGE
@@ -886,362 +884,327 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         </div>
         <div className="relative [perspective:1000px] w-full">
           <div
-            className="relative [transform-style:preserve-3d] transition-transform duration-500 h-[600px]"
+            className="relative grid [transform-style:preserve-3d] transition-transform duration-500 w-full"
             style={{
               transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
             }}
           >
             {/* Front Side (PEGGED) */}
-            <div className="absolute inset-0 bg-[#0A0A0A]/90 before:absolute before:inset-0 before:bg-black/90 shadow-[0_0_15px_rgba(74,124,89,0.1)] [backface-visibility:hidden] transform-gpu">
+            <div className="col-start-1 row-start-1 bg-transparent [backface-visibility:hidden] transform-gpu">
               <div
-                className={`relative z-10 h-full transition-opacity duration-50 delay-[145ms] ${
+                className={`relative z-10 transition-opacity duration-50 delay-[145ms] ${
                   selectedType === "LONG" ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <div className="p-6">
-                  <div className="text-center mb-6">
+                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
+                  <div className="text-center mb-2">
                     <h1
                       className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
                     >
                       zheUSD
                     </h1>
                   </div>
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                    <div className="space-y-6 relative">
-                      <div className="relative h-[360px]">
-                        {" "}
-                        {/* Input Boxes Container */}
-                        {/* First Token Input (wstETH) */}
-                        <div
-                          className={`absolute w-full space-y-2 transition-all duration-200 ${
-                            isCollateralAtTop
-                              ? "translate-y-0"
-                              : "translate-y-[calc(260%+2rem)]"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm text-[#F5F5F5]/80">
-                              From
-                            </label>
-                            <span className="text-sm text-[#F5F5F5]/60">
-                              Balance:{" "}
-                              {formatBalance(
-                                collateralBalance?.[0]?.result as
-                                  | bigint
-                                  | undefined
-                              )}{" "}
-                              wstETH
-                            </span>
-                          </div>
-                          <div className="flex-1 relative">
-                            <input
-                              type="text"
-                              value={
-                                isCollateralAtTop ? inputAmount : outputAmount
-                              }
-                              onChange={
-                                isCollateralAtTop
-                                  ? handleInputAmountChange
-                                  : undefined
-                              }
-                              placeholder="0.0"
-                              className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
-                              readOnly={!isCollateralAtTop}
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
-                              <div className="flex items-center gap-2">
-                                {isCollateralAtTop && (
-                                  <button
-                                    type="button"
-                                    onClick={handleMaxClick}
-                                    className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                  >
-                                    MAX
-                                  </button>
-                                )}
-                                <span className="text-[#F5F5F5]/70">
-                                  wstETH
-                                </span>
-                              </div>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div className="flex flex-col space-y-4">
+                      {/* First Token Input (wstETH) */}
+                      <div
+                        className={`space-y-2 ${
+                          isCollateralAtTop ? "order-1" : "order-3"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm text-zinc-400">From</label>
+                          <span className="text-sm text-zinc-500">
+                            Balance:{" "}
+                            {formatBalance(
+                              collateralBalance?.[0]?.result as
+                                | bigint
+                                | undefined
+                            )}{" "}
+                            wstETH
+                          </span>
+                        </div>
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={
+                              isCollateralAtTop ? inputAmount : outputAmount
+                            }
+                            onChange={
+                              isCollateralAtTop
+                                ? handleInputAmountChange
+                                : undefined
+                            }
+                            placeholder="0.0"
+                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
+                            readOnly={!isCollateralAtTop}
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
+                            <div className="flex items-center gap-2">
                               {isCollateralAtTop && (
                                 <button
-                                  onClick={() =>
-                                    window.open(
-                                      "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-                                      "_blank"
-                                    )
-                                  }
-                                  className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
+                                  type="button"
+                                  onClick={handleMaxClick}
+                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
                                 >
-                                  Get wstETH
+                                  MAX
                                 </button>
                               )}
+                              <span className="text-[#F5F5F5]/70">wstETH</span>
                             </div>
-                          </div>
-                          {/* Collateral Needed: Move below input, style like Balance unless shakeCollateralNeeded */}
-                          {isCollateralAtTop && selectedType === "LONG" && (
-                            <div
-                              className={
-                                shakeCollateralNeeded
-                                  ? "text-sm text-red-500 font-semibold mt-1"
-                                  : "text-sm text-[#F5F5F5]/60 mt-1"
-                              }
-                            >
-                              Collateral Needed:{" "}
-                              {!inputAmount || parseFloat(inputAmount) === 0
-                                ? "-"
-                                : Array.isArray(mintPeggedDryRunResult) &&
-                                  mintPeggedDryRunResult.length > 1 &&
-                                  typeof mintPeggedDryRunResult[1] === "bigint"
-                                ? formatMinimal(mintPeggedDryRunResult[1])
-                                : "-"}
-                            </div>
-                          )}
-                        </div>
-                        {/* Swap Direction and Fee */}
-                        <div className="absolute top-[160px] left-0 right-0 flex items-center w-full">
-                          {/* Left: Fee */}
-                          <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
-                            {!isCollateralAtTop && ( // Fee display for redeeming
-                              <>
-                                <span className="text-[#F5F5F5]/70">Fee:</span>
-                                <span className="text-[#4A7C59]">
-                                  {selectedType === "STEAMED" &&
-                                  Array.isArray(redeemLeveragedDryRunResult) &&
-                                  redeemLeveragedDryRunResult.length > 0 &&
-                                  typeof redeemLeveragedDryRunResult[0] ===
-                                    "bigint"
-                                    ? formatFeeRatio(
-                                        redeemLeveragedDryRunResult[0] as bigint
-                                      )
-                                    : selectedType === "LONG"
-                                    ? formatFeeRatio(redeemFeeResult)
-                                    : "-"}
-                                </span>
-                              </>
-                            )}
-                            {isCollateralAtTop && ( // Fee display for minting (PEGGED or LEVERAGED)
-                              <>
-                                <span className="text-[#F5F5F5]/70">Fee:</span>
-                                <span className="text-[#4A7C59]">
-                                  {selectedType === "LONG"
-                                    ? formatFeeRatio(mintFeeResult) // Pegged mint fee
-                                    : selectedType === "STEAMED" && // Leveraged mint fee
-                                      Array.isArray(
-                                        mintLeveragedDryRunResult
-                                      ) &&
-                                      mintLeveragedDryRunResult.length > 0 &&
-                                      typeof mintLeveragedDryRunResult[0] ===
-                                        "bigint"
-                                    ? formatFeeRatio(
-                                        mintLeveragedDryRunResult[0] as bigint
-                                      )
-                                    : "-"}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          {/* Center: Mint/Arrows/Redeem */}
-                          <div className="flex-grow flex items-center justify-center gap-x-4">
-                            <span
-                              className={`text-sm font-medium transition-colors duration-200 ${
-                                isCollateralAtTop
-                                  ? "text-[#4A7C59]"
-                                  : "text-[#F5F5F5]/40"
-                              }`}
-                            >
-                              Mint
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsCollateralAtTop(!isCollateralAtTop)
-                              }
-                              className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                                }`}
+                            {isCollateralAtTop && (
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+                                    "_blank"
+                                  )
+                                }
+                                className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
                               >
-                                <path
-                                  d="M12 4V20M19 13L12 20L5 13"
-                                  stroke="#F5F5F5"
-                                  strokeOpacity={
-                                    isCollateralAtTop ? "1" : "0.3"
-                                  }
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                                }`}
-                              >
-                                <path
-                                  d="M12 20V4M5 11L12 4L19 11"
-                                  stroke="#F5F5F5"
-                                  strokeOpacity={
-                                    !isCollateralAtTop ? "1" : "0.3"
-                                  }
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                            <span
-                              className={`text-sm font-medium transition-colors duration-200 ${
-                                !isCollateralAtTop
-                                  ? "text-[#4A7C59]"
-                                  : "text-[#F5F5F5]/40"
-                              }`}
-                            >
-                              Redeem
-                            </span>
-                          </div>
-                          {/* Right: Spacer, same width as left */}
-                          <div className="min-w-[80px]"></div>
-                        </div>
-                        {/* Second Token Input (zheUSD) */}
-                        <div
-                          className={`absolute w-full space-y-2 transition-all duration-200 ${
-                            isCollateralAtTop
-                              ? "translate-y-[calc(260%+2rem)]"
-                              : "translate-y-0"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm text-[#F5F5F5]/80">
-                              To
-                            </label>
-                            <span className="text-sm text-[#F5F5F5]/60">
-                              Balance:{" "}
-                              {formatBalance(
-                                peggedBalance?.[0]?.result as bigint | undefined
-                              )}{" "}
-                              zheUSD
-                            </span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={
-                                isCollateralAtTop ? outputAmount : inputAmount
-                              }
-                              onChange={
-                                isCollateralAtTop
-                                  ? handleOutputAmountChange
-                                  : handleInputAmountChange
-                              }
-                              placeholder="0.0"
-                              className="w-full p-4 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              readOnly={isCollateralAtTop}
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              {!isCollateralAtTop &&
-                                selectedType === "LONG" && (
-                                  <button
-                                    type="button"
-                                    onClick={handleMaxClick}
-                                    className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                  >
-                                    MAX
-                                  </button>
-                                )}
-                              <span className="text-[#F5F5F5]/70">zheUSD</span>
-                            </div>
-                          </div>
-                          {!isCollateralAtTop &&
-                            selectedType === "LONG" &&
-                            redeemPeggedDryRunError && (
-                              <div className="text-sm text-red-500 font-semibold mt-1">
-                                Invalid amount or not enough balance
-                              </div>
+                                Get wstETH
+                              </button>
                             )}
+                          </div>
                         </div>
-                      </div>
-                      {/* Transaction Details Panel & Submit Button */}
-                      <div className="relative [perspective:1000px]">
-                        {!isConnected ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Connect Wallet
-                          </button>
-                        ) : isPending && pendingStep === "approval" ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Waiting for approval transaction...
-                          </button>
-                        ) : isPending && pendingStep === "mintOrRedeem" ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Waiting for mint/redeem transaction...
-                          </button>
-                        ) : (
+                        {isCollateralAtTop && selectedType === "LONG" && (
                           <div
-                            className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
-                            style={{
-                              transformOrigin: "center center",
-                              transform: isCollateralAtTop
-                                ? "rotateX(0deg)"
-                                : "rotateX(180deg)",
-                            }}
+                            className={
+                              shakeCollateralNeeded
+                                ? "text-sm text-red-500 font-semibold mt-1"
+                                : "text-sm text-[#F5F5F5]/60 mt-1"
+                            }
                           >
-                            <button
-                              onClick={handleSubmit}
-                              disabled={
-                                !inputAmount || parseFloat(inputAmount) <= 0
-                              }
-                              className={`w-full p-4 text-center text-2xl bg-[#4A7C59] hover:bg-[#5A8C69] text-white absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-[0_0_20px_rgba(74,124,89,0.2)] disabled:bg-[#1F3529] disabled:text-[#4A7C59] disabled:cursor-not-allowed ${geoClassName}`}
-                            >
-                              <span className={geoClassName}>
-                                {(() => {
-                                  if (
-                                    !inputAmount ||
-                                    parseFloat(inputAmount) <= 0
-                                  )
-                                    return "Enter Amount";
-                                  return isCollateralAtTop ? "MINT" : "REDEEM";
-                                })()}
-                              </span>
-                            </button>
-                            <button
-                              onClick={handleSubmit}
-                              disabled={
-                                !inputAmount || parseFloat(inputAmount) <= 0
-                              }
-                              className={`w-full p-4 text-center text-2xl bg-[#4A7C59] hover:bg-[#5A8C69] text-white absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-[#1F3529] disabled:text-[#4A7C59] disabled:cursor-not-allowed ${geoClassName}`}
-                            >
-                              <span className={geoClassName}>
-                                {(() => {
-                                  if (
-                                    !inputAmount ||
-                                    parseFloat(inputAmount) <= 0
-                                  )
-                                    return "Enter Amount";
-                                  return isCollateralAtTop ? "MINT" : "REDEEM";
-                                })()}
-                              </span>
-                            </button>
+                            Collateral Needed:{" "}
+                            {!inputAmount || parseFloat(inputAmount) === 0
+                              ? "-"
+                              : Array.isArray(mintPeggedDryRunResult) &&
+                                mintPeggedDryRunResult.length > 1 &&
+                                typeof mintPeggedDryRunResult[1] === "bigint"
+                              ? formatMinimal(mintPeggedDryRunResult[1])
+                              : "-"}
                           </div>
                         )}
                       </div>
+
+                      {/* Swap Direction and Fee */}
+                      <div className="flex items-center w-full order-2">
+                        {/* Left: Fee */}
+                        <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
+                          {!isCollateralAtTop && ( // Fee display for redeeming
+                            <>
+                              <span className="text-zinc-400">Fee:</span>
+                              <span className="text-[#4A7C59]">
+                                {selectedType === "LONG"
+                                  ? formatFeeRatio(redeemFeeResult)
+                                  : "-"}
+                              </span>
+                            </>
+                          )}
+                          {isCollateralAtTop && ( // Fee display for minting
+                            <>
+                              <span className="text-zinc-400">Fee:</span>
+                              <span className="text-[#4A7C59]">
+                                {selectedType === "LONG"
+                                  ? formatFeeRatio(mintFeeResult)
+                                  : "-"}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {/* Center: Mint/Arrows/Redeem */}
+                        <div className="flex-grow flex items-center justify-center gap-x-4">
+                          <span
+                            className={`text-sm font-medium transition-colors duration-200 ${
+                              isCollateralAtTop
+                                ? "text-[#4A7C59]"
+                                : "text-[#F5F5F5]/40"
+                            }`}
+                          >
+                            Mint
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsCollateralAtTop(!isCollateralAtTop)
+                            }
+                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
+                              }`}
+                            >
+                              <path
+                                d="M12 4V20M19 13L12 20L5 13"
+                                stroke="#F5F5F5"
+                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
+                              }`}
+                            >
+                              <path
+                                d="M12 20V4M5 11L12 4L19 11"
+                                stroke="#F5F5F5"
+                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <span
+                            className={`text-sm font-medium transition-colors duration-200 ${
+                              !isCollateralAtTop
+                                ? "text-[#4A7C59]"
+                                : "text-[#F5F5F5]/40"
+                            }`}
+                          >
+                            Redeem
+                          </span>
+                        </div>
+                        {/* Right: Spacer, same width as left */}
+                        <div className="min-w-[80px]"></div>
+                      </div>
+
+                      {/* Second Token Input (zheUSD) */}
+                      <div
+                        className={`space-y-2 ${
+                          isCollateralAtTop ? "order-3" : "order-1"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm text-zinc-400">To</label>
+                          <span className="text-sm text-zinc-500">
+                            Balance:{" "}
+                            {formatBalance(
+                              peggedBalance?.[0]?.result as bigint | undefined
+                            )}{" "}
+                            zheUSD
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={
+                              isCollateralAtTop ? outputAmount : inputAmount
+                            }
+                            onChange={
+                              isCollateralAtTop
+                                ? handleOutputAmountChange
+                                : handleInputAmountChange
+                            }
+                            placeholder="0.0"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            readOnly={isCollateralAtTop}
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                            {!isCollateralAtTop && selectedType === "LONG" && (
+                              <button
+                                type="button"
+                                onClick={handleMaxClick}
+                                className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                              >
+                                MAX
+                              </button>
+                            )}
+                            <span className="text-[#F5F5F5]/70">zheUSD</span>
+                          </div>
+                        </div>
+                        {!isCollateralAtTop &&
+                          selectedType === "LONG" &&
+                          redeemPeggedDryRunError && (
+                            <div className="text-sm text-red-500 font-semibold mt-1">
+                              Invalid amount or not enough balance
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <div>
+                      {!isConnected ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                        >
+                          Connect Wallet
+                        </button>
+                      ) : isPending && pendingStep === "approval" ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                        >
+                          Waiting for approval transaction...
+                        </button>
+                      ) : isPending && pendingStep === "mintOrRedeem" ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                        >
+                          Waiting for mint/redeem transaction...
+                        </button>
+                      ) : (
+                        <div
+                          className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
+                          style={{
+                            transformOrigin: "center center",
+                            transform: isCollateralAtTop
+                              ? "rotateX(0deg)"
+                              : "rotateX(180deg)",
+                          }}
+                        >
+                          <button
+                            onClick={handleSubmit}
+                            disabled={
+                              !inputAmount || parseFloat(inputAmount) <= 0
+                            }
+                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
+                          >
+                            <span className={geoClassName}>
+                              {(() => {
+                                if (
+                                  !inputAmount ||
+                                  parseFloat(inputAmount) <= 0
+                                )
+                                  return "Enter Amount";
+                                return isCollateralAtTop ? "MINT" : "REDEEM";
+                              })()}
+                            </span>
+                          </button>
+                          <button
+                            onClick={handleSubmit}
+                            disabled={
+                              !inputAmount || parseFloat(inputAmount) <= 0
+                            }
+                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
+                          >
+                            <span className={geoClassName}>
+                              {(() => {
+                                if (
+                                  !inputAmount ||
+                                  parseFloat(inputAmount) <= 0
+                                )
+                                  return "Enter Amount";
+                                return isCollateralAtTop ? "MINT" : "REDEEM";
+                              })()}
+                            </span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </form>
                 </div>
@@ -1249,345 +1212,323 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             </div>
 
             {/* Back Side (LEVERAGE) */}
-            <div className="absolute inset-0 bg-[#0A0A0A]/90 before:absolute before:inset-0 before:bg-black/90 shadow-[0_0_15px_rgba(74,124,89,0.1)] [backface-visibility:hidden] [transform:rotateY(180deg)] transform-gpu">
+            <div className="col-start-1 row-start-1 bg-transparent [backface-visibility:hidden] [transform:rotateY(180deg)] transform-gpu">
               <div
-                className={`relative z-10 h-full transition-opacity duration-50 delay-[145ms] ${
+                className={`relative z-10 transition-opacity duration-50 delay-[145ms] ${
                   selectedType === "STEAMED" ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <div className="p-6">
-                  <div className="text-center mb-4">
+                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
+                  <div className="text-center mb-2">
                     <h1
                       className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
                     >
                       steamedETH {/* Dynamic for selected leveraged token */}
                     </h1>
-                    <div className="text-[#F5F5F5]/50 text-sm -mt-1">
+                    <div className="text-zinc-400 text-sm -mt-1">
                       <span className="block text-[10px] mb-0.5">Leverage</span>
                       {formatLeverageRatio(leverageRatioResult)}
                     </div>
                   </div>
-                  <form onSubmit={handleSubmit} className="space-y-8 mt-2">
-                    <div className="space-y-6 relative">
-                      <div className="relative h-[360px]">
-                        {" "}
-                        {/* Input Boxes Container */}
-                        {/* First Token Input (wstETH) */}
-                        <div
-                          className={`absolute w-full space-y-2 transition-all duration-200 ${
-                            isCollateralAtTop
-                              ? "translate-y-0"
-                              : "translate-y-[calc(260%+2rem)]"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm text-[#F5F5F5]/80">
-                              From
-                            </label>
-                            <span className="text-sm text-[#F5F5F5]/60">
-                              Balance:{" "}
-                              {formatBalance(
-                                collateralBalance?.[0]?.result as
-                                  | bigint
-                                  | undefined
-                              )}{" "}
-                              wstETH
-                            </span>
-                          </div>
-                          <div className="flex-1 relative">
-                            <input
-                              type="text"
-                              value={
-                                isCollateralAtTop ? inputAmount : outputAmount
-                              }
-                              onChange={
-                                isCollateralAtTop
-                                  ? handleInputAmountChange
-                                  : undefined
-                              }
-                              placeholder="0.0"
-                              className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
-                              readOnly={!isCollateralAtTop}
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
-                              <div className="flex items-center gap-2">
-                                {isCollateralAtTop && (
-                                  <button
-                                    type="button"
-                                    onClick={handleMaxClick}
-                                    className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                  >
-                                    MAX
-                                  </button>
-                                )}
-                                <span className="text-[#F5F5F5]/70">
-                                  wstETH
-                                </span>
-                              </div>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div className="flex flex-col space-y-4">
+                      {/* First Token Input (wstETH) */}
+                      <div
+                        className={`space-y-2 ${
+                          isCollateralAtTop ? "order-1" : "order-3"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm text-zinc-400">From</label>
+                          <span className="text-sm text-zinc-500">
+                            Balance:{" "}
+                            {formatBalance(
+                              collateralBalance?.[0]?.result as
+                                | bigint
+                                | undefined
+                            )}{" "}
+                            wstETH
+                          </span>
+                        </div>
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={
+                              isCollateralAtTop ? inputAmount : outputAmount
+                            }
+                            onChange={
+                              isCollateralAtTop
+                                ? handleInputAmountChange
+                                : undefined
+                            }
+                            placeholder="0.0"
+                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
+                            readOnly={!isCollateralAtTop}
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
+                            <div className="flex items-center gap-2">
                               {isCollateralAtTop && (
                                 <button
-                                  onClick={() =>
-                                    window.open(
-                                      "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-                                      "_blank"
-                                    )
-                                  }
-                                  className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
+                                  type="button"
+                                  onClick={handleMaxClick}
+                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
                                 >
-                                  Get wstETH
+                                  MAX
                                 </button>
                               )}
+                              <span className="text-[#F5F5F5]/70">wstETH</span>
                             </div>
-                          </div>
-                        </div>
-                        {/* Swap Direction and Fee - LEVERAGE */}
-                        <div className="absolute top-[160px] left-0 right-0 flex items-center w-full">
-                          {/* Left: Fee */}
-                          <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
-                            {!isCollateralAtTop && ( // Fee display for redeeming
-                              <>
-                                <span className="text-[#F5F5F5]/70">Fee:</span>
-                                <span className="text-[#4A7C59]">
-                                  {selectedType === "STEAMED" &&
-                                  Array.isArray(redeemLeveragedDryRunResult) &&
-                                  redeemLeveragedDryRunResult.length > 0 &&
-                                  typeof redeemLeveragedDryRunResult[0] ===
-                                    "bigint"
-                                    ? formatFeeRatio(
-                                        redeemLeveragedDryRunResult[0] as bigint
-                                      )
-                                    : selectedType === "LONG"
-                                    ? formatFeeRatio(redeemFeeResult)
-                                    : "-"}
-                                </span>
-                              </>
-                            )}
-                            {isCollateralAtTop && ( // Fee display for minting (PEGGED or LEVERAGED)
-                              <>
-                                <span className="text-[#F5F5F5]/70">Fee:</span>
-                                <span className="text-[#4A7C59]">
-                                  {selectedType === "LONG"
-                                    ? formatFeeRatio(mintFeeResult) // Pegged mint fee
-                                    : selectedType === "STEAMED" && // Leveraged mint fee
-                                      Array.isArray(
-                                        mintLeveragedDryRunResult
-                                      ) &&
-                                      mintLeveragedDryRunResult.length > 0 &&
-                                      typeof mintLeveragedDryRunResult[0] ===
-                                        "bigint"
-                                    ? formatFeeRatio(
-                                        mintLeveragedDryRunResult[0] as bigint
-                                      )
-                                    : "-"}
-                                </span>
-                              </>
+                            {isCollateralAtTop && (
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+                                    "_blank"
+                                  )
+                                }
+                                className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
+                              >
+                                Get wstETH
+                              </button>
                             )}
                           </div>
-                          {/* Center: Mint/Arrows/Redeem */}
-                          <div className="flex-grow flex items-center justify-center gap-x-4">
-                            <span
-                              className={`text-sm font-medium transition-colors duration-200 ${
-                                isCollateralAtTop
-                                  ? "text-[#4A7C59]"
-                                  : "text-[#F5F5F5]/40"
+                        </div>
+                      </div>
+
+                      {/* Swap Direction and Fee - LEVERAGE */}
+                      <div className="flex items-center w-full order-2">
+                        {/* Left: Fee */}
+                        <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
+                          {!isCollateralAtTop && ( // Fee display for redeeming
+                            <>
+                              <span className="text-zinc-400">Fee:</span>
+                              <span className="text-[#4A7C59]">
+                                {selectedType === "STEAMED" &&
+                                Array.isArray(redeemLeveragedDryRunResult) &&
+                                redeemLeveragedDryRunResult.length > 0 &&
+                                typeof redeemLeveragedDryRunResult[0] ===
+                                  "bigint"
+                                  ? formatFeeRatio(
+                                      redeemLeveragedDryRunResult[0] as bigint
+                                    )
+                                  : "-"}
+                              </span>
+                            </>
+                          )}
+                          {isCollateralAtTop && ( // Fee display for minting
+                            <>
+                              <span className="text-zinc-400">Fee:</span>
+                              <span className="text-[#4A7C59]">
+                                {selectedType === "STEAMED" &&
+                                Array.isArray(mintLeveragedDryRunResult) &&
+                                mintLeveragedDryRunResult.length > 0 &&
+                                typeof mintLeveragedDryRunResult[0] === "bigint"
+                                  ? formatFeeRatio(
+                                      mintLeveragedDryRunResult[0] as bigint
+                                    )
+                                  : "-"}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {/* Center: Mint/Arrows/Redeem */}
+                        <div className="flex-grow flex items-center justify-center gap-x-4">
+                          <span
+                            className={`text-sm font-medium transition-colors duration-200 ${
+                              isCollateralAtTop
+                                ? "text-[#4A7C59]"
+                                : "text-[#F5F5F5]/40"
+                            }`}
+                          >
+                            Mint
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsCollateralAtTop(!isCollateralAtTop)
+                            }
+                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
                               }`}
                             >
-                              Mint
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsCollateralAtTop(!isCollateralAtTop)
-                              }
-                              className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                                }`}
-                              >
-                                <path
-                                  d="M12 4V20M19 13L12 20L5 13"
-                                  stroke="#F5F5F5"
-                                  strokeOpacity={
-                                    isCollateralAtTop ? "1" : "0.3"
-                                  }
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                                }`}
-                              >
-                                <path
-                                  d="M12 20V4M5 11L12 4L19 11"
-                                  stroke="#F5F5F5"
-                                  strokeOpacity={
-                                    !isCollateralAtTop ? "1" : "0.3"
-                                  }
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                            <span
-                              className={`text-sm font-medium transition-colors duration-200 ${
-                                !isCollateralAtTop
-                                  ? "text-[#4A7C59]"
-                                  : "text-[#F5F5F5]/40"
+                              <path
+                                d="M12 4V20M19 13L12 20L5 13"
+                                stroke="#F5F5F5"
+                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
                               }`}
                             >
-                              Redeem
+                              <path
+                                d="M12 20V4M5 11L12 4L19 11"
+                                stroke="#F5F5F5"
+                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <span
+                            className={`text-sm font-medium transition-colors duration-200 ${
+                              !isCollateralAtTop
+                                ? "text-[#4A7C59]"
+                                : "text-[#F5F5F5]/40"
+                            }`}
+                          >
+                            Redeem
+                          </span>
+                        </div>
+                        {/* Right: Spacer, same width as left */}
+                        <div className="min-w-[80px]"></div>
+                      </div>
+
+                      {/* Second Token Input (steamedETH) */}
+                      <div
+                        className={`space-y-2 ${
+                          isCollateralAtTop ? "order-3" : "order-1"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm text-zinc-400">To</label>
+                          <span className="text-sm text-zinc-500">
+                            Balance:{" "}
+                            {formatBalance(
+                              leveragedBalance?.[0]?.result as
+                                | bigint
+                                | undefined
+                            )}{" "}
+                            steamedETH {/* Dynamic */}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={
+                              isCollateralAtTop ? outputAmount : inputAmount
+                            }
+                            onChange={
+                              isCollateralAtTop
+                                ? handleOutputAmountChange
+                                : handleInputAmountChange
+                            }
+                            placeholder="0.0"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            readOnly={isCollateralAtTop}
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                            {!isCollateralAtTop &&
+                              selectedType === "STEAMED" && (
+                                <button
+                                  type="button"
+                                  onClick={handleMaxClick}
+                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                                >
+                                  MAX
+                                </button>
+                              )}
+                            <span className="text-[#F5F5F5]/70">
+                              steamedETH
                             </span>
                           </div>
-                          {/* Right: Spacer, same width as left */}
-                          <div className="min-w-[80px]"></div>
                         </div>
-                        {/* Second Token Input (steamedETH) */}
-                        <div
-                          className={`absolute w-full space-y-2 transition-all duration-200 ${
-                            isCollateralAtTop
-                              ? "translate-y-[calc(260%+2rem)]"
-                              : "translate-y-0"
-                          }`}
+                        {!isCollateralAtTop &&
+                          selectedType === "STEAMED" &&
+                          redeemLeveragedDryRunError && (
+                            <div className="text-sm text-red-500 font-semibold mt-1">
+                              Invalid amount or not enough balance
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {/* Submit Button for LEVERAGE */}
+                    <div>
+                      {!isConnected ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
                         >
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm text-[#F5F5F5]/80">
-                              To
-                            </label>
-                            <span className="text-sm text-[#F5F5F5]/60">
-                              Balance:{" "}
-                              {formatBalance(
-                                leveragedBalance?.[0]?.result as
-                                  | bigint
-                                  | undefined
-                              )}{" "}
-                              steamedETH {/* Dynamic */}
+                          Connect Wallet
+                        </button>
+                      ) : isPending && pendingStep === "approval" ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                        >
+                          Waiting for approval transaction...
+                        </button>
+                      ) : isPending && pendingStep === "mintOrRedeem" ? (
+                        <button
+                          type="submit"
+                          disabled
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                        >
+                          Waiting for mint/redeem transaction...
+                        </button>
+                      ) : (
+                        <div
+                          className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
+                          style={{
+                            transformOrigin: "center center",
+                            transform: isCollateralAtTop
+                              ? "rotateX(0deg)"
+                              : "rotateX(180deg)",
+                          }}
+                        >
+                          <button
+                            onClick={handleSubmit}
+                            disabled={
+                              !inputAmount || parseFloat(inputAmount) <= 0
+                            }
+                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
+                          >
+                            <span className={geoClassName}>
+                              {(() => {
+                                if (
+                                  !inputAmount ||
+                                  parseFloat(inputAmount) <= 0
+                                )
+                                  return "Enter Amount";
+                                return isCollateralAtTop ? "MINT" : "REDEEM";
+                              })()}
                             </span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={
-                                isCollateralAtTop ? outputAmount : inputAmount
-                              }
-                              onChange={
-                                isCollateralAtTop
-                                  ? handleOutputAmountChange
-                                  : handleInputAmountChange
-                              }
-                              placeholder="0.0"
-                              className="w-full p-4 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              readOnly={isCollateralAtTop}
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              {!isCollateralAtTop &&
-                                selectedType === "STEAMED" && (
-                                  <button
-                                    type="button"
-                                    onClick={handleMaxClick}
-                                    className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                  >
-                                    MAX
-                                  </button>
-                                )}
-                              <span className="text-[#F5F5F5]/70">
-                                steamedETH
-                              </span>
-                            </div>
-                          </div>
-                          {!isCollateralAtTop &&
-                            selectedType === "STEAMED" &&
-                            redeemLeveragedDryRunError && (
-                              <div className="text-sm text-red-500 font-semibold mt-1">
-                                Invalid amount or not enough balance
-                              </div>
-                            )}
+                          </button>
+                          <button
+                            onClick={handleSubmit}
+                            disabled={
+                              !inputAmount || parseFloat(inputAmount) <= 0
+                            }
+                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
+                          >
+                            <span className={geoClassName}>
+                              {(() => {
+                                if (
+                                  !inputAmount ||
+                                  parseFloat(inputAmount) <= 0
+                                )
+                                  return "Enter Amount";
+                                return isCollateralAtTop ? "MINT" : "REDEEM";
+                              })()}
+                            </span>
+                          </button>
                         </div>
-                      </div>
-                      {/* Submit Button for LEVERAGE */}
-                      <div className="relative [perspective:1000px]">
-                        {!isConnected ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Connect Wallet
-                          </button>
-                        ) : isPending && pendingStep === "approval" ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Waiting for approval transaction...
-                          </button>
-                        ) : isPending && pendingStep === "mintOrRedeem" ? (
-                          <button
-                            type="submit"
-                            disabled
-                            className={`w-full p-4 text-center text-2xl bg-[#1F3529] text-[#4A7C59] cursor-not-allowed ${geoClassName}`}
-                          >
-                            Waiting for mint/redeem transaction...
-                          </button>
-                        ) : (
-                          <div
-                            className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
-                            style={{
-                              transformOrigin: "center center",
-                              transform: isCollateralAtTop
-                                ? "rotateX(0deg)"
-                                : "rotateX(180deg)",
-                            }}
-                          >
-                            <button
-                              onClick={handleSubmit}
-                              disabled={
-                                !inputAmount || parseFloat(inputAmount) <= 0
-                              }
-                              className={`w-full p-4 text-center text-2xl bg-[#4A7C59] hover:bg-[#5A8C69] text-white absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-[0_0_20px_rgba(74,124,89,0.2)] disabled:bg-[#1F3529] disabled:text-[#4A7C59] disabled:cursor-not-allowed ${geoClassName}`}
-                            >
-                              <span className={geoClassName}>
-                                {(() => {
-                                  if (
-                                    !inputAmount ||
-                                    parseFloat(inputAmount) <= 0
-                                  )
-                                    return "Enter Amount";
-                                  return isCollateralAtTop ? "MINT" : "REDEEM";
-                                })()}
-                              </span>
-                            </button>
-                            <button
-                              onClick={handleSubmit}
-                              disabled={
-                                !inputAmount || parseFloat(inputAmount) <= 0
-                              }
-                              className={`w-full p-4 text-center text-2xl bg-[#4A7C59] hover:bg-[#5A8C69] text-white absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-[#1F3529] disabled:text-[#4A7C59] disabled:cursor-not-allowed ${geoClassName}`}
-                            >
-                              <span className={geoClassName}>
-                                {(() => {
-                                  if (
-                                    !inputAmount ||
-                                    parseFloat(inputAmount) <= 0
-                                  )
-                                    return "Enter Amount";
-                                  return isCollateralAtTop ? "MINT" : "REDEEM";
-                                })()}
-                              </span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </form>
                 </div>

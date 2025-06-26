@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Geo } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
@@ -218,9 +218,40 @@ export default function App() {
   const { chain } = useNetwork();
   const [selectedMarket, setSelectedMarket] = useState<string>("steth-usd");
   const [showPopup, setShowPopup] = useState(false);
+  const formCardRef = useRef<HTMLDivElement>(null);
+  const chartCardRef = useRef<HTMLDivElement>(null);
 
   // Effect hooks
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    const formEl = formCardRef.current;
+    const chartEl = chartCardRef.current;
+
+    if (!formEl || !chartEl || !mounted) return;
+
+    const setHeights = () => {
+      if (window.innerWidth >= 1024) {
+        // Tailwind's lg breakpoint
+        const formHeight = formEl.offsetHeight;
+        chartEl.style.height = `${formHeight}px`;
+      } else {
+        chartEl.style.height = "auto";
+      }
+    };
+
+    const observer = new ResizeObserver(setHeights);
+    observer.observe(formEl);
+
+    window.addEventListener("resize", setHeights);
+
+    setHeights(); // Set initial height
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", setHeights);
+    };
+  }, [mounted]);
 
   // Get the default market
   const currentMarket = useMemo(
@@ -255,39 +286,12 @@ export default function App() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* Steam Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Large base squares */}
-        <div className="absolute top-[15%] left-[20%] w-[600px] h-[400px] bg-[#4A7C59]/[0.06]"></div>
-        <div className="absolute top-[25%] right-[15%] w-[500px] h-[450px] bg-[#4A7C59]/[0.05]"></div>
-        <div className="absolute top-[20%] left-[35%] w-[400px] h-[300px] bg-[#4A7C59]/[0.07]"></div>
+      <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
+        {/* Navigation */}
+        <Navigation />
 
-        {/* Medium squares - Layer 1 */}
-        <div className="absolute top-[22%] left-[10%] w-[300px] h-[250px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
-        <div className="absolute top-[28%] right-[25%] w-[280px] h-[320px] bg-[#4A7C59]/[0.045] animate-float-2"></div>
-        <div className="absolute top-[35%] left-[40%] w-[350px] h-[280px] bg-[#4A7C59]/[0.055] animate-float-3"></div>
-
-        {/* Medium squares - Layer 2 */}
-        <div className="absolute top-[30%] left-[28%] w-[250px] h-[200px] bg-[#4A7C59]/[0.065] animate-float-4"></div>
-        <div className="absolute top-[25%] right-[30%] w-[220px] h-[180px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
-        <div className="absolute top-[40%] left-[15%] w-[280px] h-[240px] bg-[#4A7C59]/[0.06] animate-float-2"></div>
-
-        {/* Small pixel squares */}
-        <div className="absolute top-[20%] left-[45%] w-[120px] h-[120px] bg-[#4A7C59]/[0.075] animate-steam-1"></div>
-        <div className="absolute top-[35%] right-[40%] w-[150px] h-[150px] bg-[#4A7C59]/[0.07] animate-steam-2"></div>
-        <div className="absolute top-[30%] left-[25%] w-[100px] h-[100px] bg-[#4A7C59]/[0.08] animate-steam-3"></div>
-        <div className="absolute top-[25%] right-[20%] w-[80px] h-[80px] bg-[#4A7C59]/[0.065] animate-steam-1"></div>
-        <div className="absolute top-[45%] left-[30%] w-[90px] h-[90px] bg-[#4A7C59]/[0.075] animate-steam-2"></div>
-        <div className="absolute top-[38%] right-[35%] w-[110px] h-[110px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
-      </div>
-
-      {/* Navigation */}
-      <Navigation />
-
-      {/* Main Content */}
-      <main className="container mx-auto px-6 pt-28 pb-20 relative z-10">
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-4">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
             MINT & REDEEM
           </h1>
@@ -297,20 +301,20 @@ export default function App() {
         </div>
 
         {/* Market Selector */}
-        <div className="max-w-7xl mx-auto mb-8">
+        <div className="max-w-7xl mx-auto mb-4">
           <div className="flex items-center">
             <div className="flex-1"></div>
             <div className="flex items-center gap-4 w-[200px] justify-end relative">
               <label className="text-[#F5F5F5]/70">Market</label>
               <button
                 onClick={handleMarketClick}
-                className="px-4 py-2 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 hover:border-[#4A7C59] hover:bg-[#2A2A2A] outline-none transition-all text-left w-[120px]"
+                className="px-4 py-2 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 hover:border-[#4A7C59] hover:bg-[#2A2A2A] outline-none transition-all text-left w-[120px] shadow-md font-medium"
               >
                 {currentMarket.name}
               </button>
               {showPopup && (
                 <div
-                  className={`absolute top-full right-0 mt-2 px-4 py-2 bg-[#4A7C59] text-white shadow-lg whitespace-nowrap z-50 ${geo.className} animate-fade-out`}
+                  className={`absolute top-full right-0 mt-2 px-4 py-2 bg-[#4A7C59] text-white shadow-xl border border-zinc-600/30 whitespace-nowrap z-50 ${geo.className} animate-fade-out backdrop-blur-sm`}
                 >
                   New markets coming soon!
                 </div>
@@ -320,7 +324,7 @@ export default function App() {
         </div>
 
         {/* System Health with uniform spacing */}
-        <div className="mb-8">
+        <div className="mb-2">
           {mounted && currentMarket && (
             <SystemHealthComponent
               marketId={selectedMarket}
@@ -329,10 +333,13 @@ export default function App() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch min-h-[700px]">
-          <div className="h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
+          <div>
             {mounted && currentMarket ? (
-              <div className="bg-[#0A0A0A] p-0 shadow-custom-dark h-full">
+              <div
+                ref={formCardRef}
+                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full"
+              >
                 <MintRedeemForm
                   geoClassName={geo.className}
                   currentMarket={currentMarket}
@@ -341,22 +348,25 @@ export default function App() {
                 />
               </div>
             ) : (
-              <div className="bg-[#0A0A0A] p-6 shadow-custom-dark h-full">
-                <h2 className={`text-2xl text-[#F5F5F5] mb-4 ${geo.className}`}>
+              <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
+                <h2 className={`text-2xl text-white mb-4 ${geo.className}`}>
                   Loading Form...
                 </h2>
               </div>
             )}
           </div>
-          <div className="h-full">
+          <div>
             {mounted && currentMarket ? (
-              <div className="bg-[#0A0A0A] p-6 shadow-custom-dark h-full flex flex-col">
+              <div
+                ref={chartCardRef}
+                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full flex flex-col"
+              >
                 <div className="flex-1 min-h-0">
                   <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />
                 </div>
               </div>
             ) : (
-              <div className="bg-[#0A0A0A] p-6 shadow-custom-dark text-center h-full">
+              <div className="bg-[rgba(28,28,28,0.8)] backdrop-blur-md border border-zinc-800 p-6 text-center h-full">
                 Loading Price Chart...
               </div>
             )}
