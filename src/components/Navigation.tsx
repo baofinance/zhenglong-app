@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Geo } from "next/font/google";
-import ConnectButton from "./ConnectButton";
+import { ConnectWallet } from "@/components/Wallet";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -71,7 +71,7 @@ export default function Navigation() {
           </div>
 
           {/* Right side: Connect Button */}
-          <ConnectButton />
+          <ConnectWallet />
         </div>
       </div>
     </nav>
