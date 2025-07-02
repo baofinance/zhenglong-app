@@ -2,9 +2,21 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Geo } from "next/font/google";
-import { useAccount, useContractReads, useContractWrite } from "wagmi";
+import {
+  useAccount,
+  useContractReads,
+  useWriteContract,
+  usePublicClient,
+} from "wagmi";
 import { parseEther } from "viem";
-import { markets } from "../../config/contracts";
+import {
+  markets,
+  getGenesisStatus,
+  getPrimaryRewardToken,
+  isGenesisActive,
+  getGenesisPhaseInfo,
+  type GenesisStatus,
+} from "../../config/contracts";
 import ConnectButton from "../../components/ConnectButton";
 import Link from "next/link";
 import Image from "next/image";
@@ -152,10 +164,10 @@ interface MarketState {
   activeTab: "deposit" | "withdraw" | "rewards";
 }
 
-interface ContractReadResult<T> {
-  result?: T;
+interface ContractReadResult<T = any> {
   error?: Error;
-  status: "success" | "error" | "loading";
+  result?: T;
+  status: "success" | "failure";
 }
 
 interface TotalRewards {
@@ -201,6 +213,7 @@ function useCountdown(endDate: string) {
 
 export default function Genesis() {
   const { address, isConnected } = useAccount();
+  const [mounted, setMounted] = useState(false);
   const [marketStates, setMarketStates] = useState<Record<string, MarketState>>(
     () => {
       // Initialize market states with default values
@@ -216,40 +229,35 @@ export default function Genesis() {
     }
   );
   const [isPending, setIsPending] = useState(false);
+  const [pendingStep, setPendingStep] = useState<"approval" | "deposit" | null>(
+    null
+  );
+
+  const publicClient = usePublicClient();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   type MarketWrites = {
-    deposit: ReturnType<typeof useContractWrite>;
-    withdraw: ReturnType<typeof useContractWrite>;
-    claim: ReturnType<typeof useContractWrite>;
+    approve: ReturnType<typeof useWriteContract>;
+    deposit: ReturnType<typeof useWriteContract>;
+    withdraw: ReturnType<typeof useWriteContract>;
+    claim: ReturnType<typeof useWriteContract>;
   };
 
   type ContractWrites = {
-    [key: string]: MarketWrites;
+    [marketId: string]: MarketWrites;
   };
 
   // Custom hook for market contract writes
   function useMarketContractWrites(marketId: string): MarketWrites {
-    const market = markets[marketId];
+    const approve = useWriteContract();
+    const deposit = useWriteContract();
+    const withdraw = useWriteContract();
+    const claim = useWriteContract();
 
-    const deposit = useContractWrite({
-      address: market.addresses.genesis as `0x${string}`,
-      abi: genesisABI,
-      functionName: "deposit",
-    });
-
-    const withdraw = useContractWrite({
-      address: market.addresses.genesis as `0x${string}`,
-      abi: genesisABI,
-      functionName: "withdraw",
-    });
-
-    const claim = useContractWrite({
-      address: market.addresses.genesis as `0x${string}`,
-      abi: genesisABI,
-      functionName: "claim",
-    });
-
-    return { deposit, withdraw, claim };
+    return { approve, deposit, withdraw, claim };
   }
 
   // Get genesis contract state for all markets
@@ -259,11 +267,6 @@ export default function Genesis() {
         address: market.addresses.genesis as `0x${string}`,
         abi: genesisABI,
         functionName: "genesisIsEnded",
-      },
-      {
-        address: market.addresses.genesis as `0x${string}`,
-        abi: genesisABI,
-        functionName: "totalDeposits",
       },
       {
         address: market.addresses.genesis as `0x${string}`,
@@ -287,36 +290,37 @@ export default function Genesis() {
           ]
         : []),
     ]),
-    watch: true,
-  }) as { data: ContractReadResult<any>[] };
+    query: { enabled: true },
+  });
 
   // Create individual hooks for each market
-  const btcMarketWrites = useMarketContractWrites("steth-usd");
-  const ethMarketWrites = useMarketContractWrites("steth-usd");
+  const ethMarketWrites = useMarketContractWrites("eth-usd");
 
   // Combine all contract writes
   const contractWrites: ContractWrites = useMemo(
     () => ({
-      "steth-usd": btcMarketWrites,
+      "eth-usd": ethMarketWrites,
     }),
-    [btcMarketWrites]
+    [ethMarketWrites]
   );
 
   // Initialize countdowns for each market
-  const stethUsdCountdown = useCountdown(markets["steth-usd"].genesis.endDate);
+  const ethUsdCountdown = useCountdown(markets["eth-usd"].genesis.endDate);
 
-  // Group markets by status
+  // Group markets by status using hybrid on-chain + config system
   const { activeMarkets, completedMarkets } = useMemo(() => {
     const active: string[] = [];
     const completed: string[] = [];
 
     Object.entries(markets).forEach(([id, market], index) => {
       const dataOffset = index * (address ? 5 : 3);
-      const isEnded =
-        allMarketsData?.[dataOffset]?.result === true ||
-        (id === "steth-usd" && stethUsdCountdown.isEnded);
+      const onChainGenesisEnded = allMarketsData?.[dataOffset]?.result === true;
+      const genesisStatus = getGenesisStatus(market, onChainGenesisEnded);
 
-      if (isEnded) {
+      if (
+        genesisStatus.onChainStatus === "completed" ||
+        genesisStatus.onChainStatus === "closed"
+      ) {
         completed.push(id);
       } else {
         active.push(id);
@@ -324,15 +328,21 @@ export default function Genesis() {
     });
 
     return { activeMarkets: active, completedMarkets: completed };
-  }, [address, allMarketsData, stethUsdCountdown]);
+  }, [address, allMarketsData]);
 
-  // Get token info for all markets
+  // Get token info for all markets, including total collateral in Genesis contract
   const { data: allTokenData } = useContractReads({
     contracts: Object.entries(markets).flatMap(([id, market]) => [
       {
         address: market.addresses.collateralToken as `0x${string}`,
         abi: erc20ABI,
         functionName: "symbol",
+      },
+      {
+        address: market.addresses.collateralToken as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "balanceOf",
+        args: [market.addresses.genesis as `0x${string}`],
       },
       ...(address
         ? [
@@ -351,12 +361,14 @@ export default function Genesis() {
           ]
         : []),
     ]),
-    watch: true,
-  }) as { data: ContractReadResult<any>[] };
+    query: { enabled: true },
+  });
 
   const formatEther = (value: bigint | undefined) => {
     if (!value) return "0";
-    return (Number(value) / 1e18).toFixed(4);
+    const num = Number(value) / 1e18;
+    if (num > 0 && num < 0.0001) return "<0.0001";
+    return num.toFixed(4);
   };
 
   const handleMaxDeposit = (marketId: string) => {
@@ -391,18 +403,61 @@ export default function Genesis() {
     }
   };
 
+  const handleApprove = async (marketId: string) => {
+    if (!isConnected || !marketStates[marketId]?.depositAmount || !address)
+      return;
+
+    const amount = parseEther(marketStates[marketId].depositAmount);
+    if (amount <= 0) return;
+
+    try {
+      setIsPending(true);
+      setPendingStep("approval");
+      const approveTx = await contractWrites[marketId].approve.writeContract({
+        address: markets[marketId].addresses.collateralToken as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "approve",
+        args: [
+          (typeof markets[marketId].addresses.genesis === "string" &&
+          markets[marketId].addresses.genesis.length > 0
+            ? markets[marketId].addresses.genesis
+            : "0x0000000000000000000000000000000000000000") as `0x${string}`,
+          amount,
+        ],
+      });
+
+      // After a successful approval, allowance should update automatically shortly
+    } catch (e) {
+      console.error("Approval failed", e);
+    } finally {
+      setIsPending(false);
+      setPendingStep(null);
+    }
+  };
+
   const handleDeposit = async (marketId: string) => {
     if (!isConnected || !marketStates[marketId]?.depositAmount || !address)
       return;
 
     try {
       setIsPending(true);
+      setPendingStep("deposit");
       const amount = parseEther(marketStates[marketId].depositAmount);
-      const write = contractWrites[marketId].deposit;
+      const { deposit } = contractWrites[marketId];
 
-      await write.writeAsync?.({
-        args: [amount, address as `0x${string}`],
+      const hash = await deposit.writeContract({
+        address: markets[marketId].addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "deposit",
+        args: [
+          amount,
+          typeof (address ?? "") === "string" && (address ?? "").length > 0
+            ? address ?? ""
+            : ("0x0000000000000000000000000000000000000000" as `0x${string}`),
+        ],
       });
+
+      await publicClient?.waitForTransactionReceipt({ hash });
 
       // Reset form
       setMarketStates((prev) => ({
@@ -413,6 +468,7 @@ export default function Genesis() {
       console.error("Deposit failed:", error);
     } finally {
       setIsPending(false);
+      setPendingStep(null);
     }
   };
 
@@ -425,9 +481,19 @@ export default function Genesis() {
       const amount = parseEther(marketStates[marketId].withdrawAmount);
       const write = contractWrites[marketId].withdraw;
 
-      await write.writeAsync?.({
-        args: [address as `0x${string}`, amount],
+      const hashW = await write.writeContract({
+        address: markets[marketId].addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "withdraw",
+        args: [
+          typeof (address ?? "") === "string" && (address ?? "").length > 0
+            ? address ?? ""
+            : ("0x0000000000000000000000000000000000000000" as `0x${string}`),
+          amount,
+        ],
       });
+
+      await publicClient?.waitForTransactionReceipt({ hash: hashW });
 
       // Reset form
       setMarketStates((prev) => ({
@@ -448,7 +514,10 @@ export default function Genesis() {
       setIsPending(true);
       const write = contractWrites[marketId].claim;
 
-      await write.writeAsync?.({
+      await write.writeContract({
+        address: markets[marketId].addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "claim",
         args: [address as `0x${string}`],
       });
     } catch (error: any) {
@@ -481,6 +550,22 @@ export default function Genesis() {
     }));
   };
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative">
+        <Navigation />
+        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
+          <div className="text-center">
+            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
+              GENESIS
+            </h1>
+            <p className="text-[#F5F5F5]/60 text-lg mt-4">Loading...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative">
       {/* Steam Background */}
@@ -509,692 +594,598 @@ export default function Genesis() {
         <div className="absolute top-[95%] left-[95%] w-[30px] h-[30px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
       </div>
 
-      {/* Navigation */}
       <Navigation />
 
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+      <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
             GENESIS
           </h1>
-          <p className="text-[#F5F5F5]/60 text-sm mt-2 max-w-xl mx-auto">
-            Earn rewards for seeding liquidity into new markets. Seeding
-            liquidity will give back pegged and leveraged tokens at the end of
-            the genesis period resulting in the same net exposure as the
-            collateral you deposit.
+          <p className="text-[#F5F5F5]/60 text-lg mt-4">
+            Seed liquidity and earn rewards. Receive pegged and leveraged tokens
+            with the same net exposure as your collateral.
           </p>
         </div>
 
-        {/* Markets List */}
-        <div className="max-w-5xl mx-auto space-y-8">
-          {/* Active Markets */}
-          <div className="space-y-4">
-            <h2 className={`text-2xl text-[#4A7C59] ${geo.className}`}>
-              Active Markets
-            </h2>
-            {activeMarkets.length === 0 ? (
-              <div className="bg-black p-8 text-center text-[#F5F5F5]/50 border-none">
-                No active markets available
-              </div>
-            ) : (
-              activeMarkets.map((marketId) => {
+        {/* Active Markets */}
+        <div className="mb-8">
+          <h2 className={`text-2xl text-[#4A7C59] mb-6 ${geo.className}`}>
+            Active Markets
+          </h2>
+          {activeMarkets.length === 0 ? (
+            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-8 text-center text-[#F5F5F5]/50">
+              No active markets available
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activeMarkets.map((marketId) => {
                 const market = markets[marketId];
                 const marketIndex = Object.keys(markets).indexOf(marketId);
                 const dataOffset = marketIndex * (address ? 5 : 3);
                 const tokenDataOffset = marketIndex * (address ? 3 : 1);
 
-                const totalDeposits = allMarketsData?.[dataOffset + 1]?.result;
-                const totalRewards = allMarketsData?.[dataOffset + 2]?.result;
-                const userBalance = allMarketsData?.[dataOffset + 3]?.result;
+                const totalRewards = allMarketsData?.[dataOffset + 1]?.result;
+                const userBalance = allMarketsData?.[dataOffset + 2]?.result;
+                const walletBalance = address
+                  ? allTokenData?.[tokenDataOffset + 1]?.result
+                  : undefined;
                 const claimableAmounts =
-                  allMarketsData?.[dataOffset + 4]?.result;
+                  allMarketsData?.[dataOffset + 3]?.result;
                 const collateralSymbol =
                   allTokenData?.[tokenDataOffset]?.result;
+
+                const onChainGenesisEnded =
+                  allMarketsData?.[dataOffset]?.result === true;
+                const genesisStatus = getGenesisStatus(
+                  market,
+                  onChainGenesisEnded
+                );
+                const phaseInfo = getGenesisPhaseInfo(genesisStatus.phase);
+                const phaseStyles = {
+                  scheduled: "text-blue-400 bg-blue-400/10",
+                  live: "text-green-400 bg-green-400/10",
+                  closed: "text-yellow-400 bg-yellow-400/10",
+                  completed: "text-purple-400 bg-purple-400/10",
+                };
+
+                const totalDeposits =
+                  allTokenData?.[tokenDataOffset + 1]?.result;
+
+                // Calculate the user's share of rewards
+                const userShare = (() => {
+                  const user =
+                    typeof userBalance === "bigint"
+                      ? userBalance
+                      : BigInt(userBalance || 0);
+                  const total =
+                    typeof totalDeposits === "bigint"
+                      ? totalDeposits
+                      : typeof totalDeposits === "string" &&
+                        totalDeposits.length > 0
+                      ? BigInt(totalDeposits)
+                      : BigInt(0);
+                  const totalRewards = Number(market.rewardToken.amount);
+                  if (total > 0n && user > 0n) {
+                    // Calculate share as a float, then round to nearest integer for display
+                    const share = (Number(user) / Number(total)) * totalRewards;
+                    return Math.floor(share).toLocaleString();
+                  }
+                  return "0";
+                })();
 
                 return (
                   <div
                     key={marketId}
-                    className="bg-[#1A1A1A] p-4 relative z-20"
+                    className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors"
                   >
-                    <div className="absolute inset-0 bg-[#1A1A1A] z-10"></div>
-                    <div className="relative z-20">
-                      {/* Market Header */}
-                      <button
-                        onClick={() => toggleMarket(marketId)}
-                        className="w-full p-6 flex items-center justify-between hover:bg-[#1A1A1A] transition-colors"
-                      >
-                        <div className="flex-shrink-0 w-56">
-                          <h3
-                            className={`text-lg font-medium ${geo.className}`}
+                    {/* Collapsed View / Header */}
+                    <button
+                      onClick={() => toggleMarket(marketId)}
+                      className="w-full p-6 flex items-center justify-between hover:bg-[#1A1A1A]/50 transition-colors"
+                    >
+                      {/* Left side: Market Name, Status, End Date inline */}
+                      <div className="flex-shrink-0 w-1/3 text-left flex items-center gap-4">
+                        <Image
+                          src={market.chain.logo}
+                          alt={market.chain.name}
+                          width={24}
+                          height={24}
+                          className="flex-shrink-0"
+                        />
+                        <h3 className={`text-2xl font-medium ${geo.className}`}>
+                          {market.name}
+                        </h3>
+                        <span
+                          className={`text-sm inline-block px-3 py-1 border border-green-400 font-bold ${
+                            geo.className
+                          } ${phaseStyles[genesisStatus.phase]}`}
+                        >
+                          {phaseInfo.title}
+                        </span>
+                        <span className="text-xs text-[#F5F5F5]/50 whitespace-nowrap">
+                          Ends:{" "}
+                          {new Date(
+                            market.genesis.endDate
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {/* Right side: Key Stats */}
+                      <div className="grid grid-cols-3 gap-8 flex-1 max-w-2xl text-center">
+                        <div>
+                          <div className="text-xs text-[#F5F5F5]/50 mb-1">
+                            Total Deposits
+                          </div>
+                          <div
+                            className={`text-xl font-medium ${geo.className}`}
                           >
-                            {market.description}
-                          </h3>
-                          <p className="text-sm text-[#F5F5F5]/50 mt-1">
-                            Ends in {stethUsdCountdown.text}
-                          </p>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-end items-start gap-2">
-                            {/* Deposit Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Deposit
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  wstETH
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Pegged Token Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Pegged Token
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  zheUSD
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Leveraged Token Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Leveraged Token
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  steamedETH
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Total Deposits Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Total Deposits
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                  {formatEther(totalDeposits as bigint)}{" "}
-                                  {collateralSymbol as string}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Total Rewards Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Total Rewards
-                                </p>
-                                <div className="space-y-0.5">
-                                  <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                    {formatEther(
-                                      (totalRewards as TotalRewards)
-                                        ?.peggedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.pegged.symbol}
-                                  </p>
-                                  <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                    {formatEther(
-                                      (totalRewards as TotalRewards)
-                                        ?.leveragedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.leveraged.symbol}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
+                            {formatEther(
+                              typeof totalDeposits === "bigint"
+                                ? totalDeposits
+                                : typeof totalDeposits === "string" &&
+                                  totalDeposits !== undefined &&
+                                  (totalDeposits as string).length > 0
+                                ? BigInt(totalDeposits as string)
+                                : undefined
+                            )}{" "}
+                            {collateralSymbol}
                           </div>
                         </div>
-                      </button>
+                        <div>
+                          <div className="text-xs text-[#F5F5F5]/50 mb-1">
+                            Total Rewards
+                          </div>
+                          <div
+                            className={`text-xl font-medium ${geo.className}`}
+                          >
+                            {Number(market.rewardToken.amount).toLocaleString()}{" "}
+                            {market.rewardToken.symbol}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-[#F5F5F5]/50 mb-1">
+                            Token Split
+                          </div>
+                          <div
+                            className={`text-xl font-medium ${geo.className}`}
+                          >
+                            {market.genesis.tokenDistribution.pegged.percentage}
+                            % /{" "}
+                            {
+                              market.genesis.tokenDistribution.leveraged
+                                .percentage
+                            }
+                            %
+                          </div>
+                        </div>
+                      </div>
 
-                      {/* Expanded View */}
-                      {marketStates[marketId].isExpanded && (
-                        <div className="mt-4 p-6 border-t border-[#4A7C59]/20">
-                          {/* User Info */}
-                          {isConnected ? (
-                            <div className="mb-6 grid grid-cols-2 gap-4">
-                              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                                <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                  Your Balance
-                                </p>
-                                <p className="text-lg font-medium text-[#4A7C59]">
-                                  {formatEther(userBalance as bigint)}{" "}
-                                  {collateralSymbol}
-                                </p>
-                              </div>
-                              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                                <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                  Claimable Rewards
-                                </p>
-                                <div className="space-y-1">
-                                  <p className="text-lg font-medium text-[#4A7C59]">
-                                    {formatEther(
-                                      (claimableAmounts as any)?.peggedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.pegged.symbol}
-                                  </p>
-                                  <p className="text-lg font-medium text-[#4A7C59]">
-                                    {formatEther(
-                                      (claimableAmounts as any)?.leveragedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.leveraged.symbol}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mb-6">
-                              <ConnectButton />
-                            </div>
-                          )}
+                      {/* Expand Arrow */}
+                      <div className="w-6 h-6 flex-shrink-0 ml-4">
+                        <svg
+                          className={`w-6 h-6 text-[#4A7C59] transition-transform ${
+                            marketStates[marketId].isExpanded
+                              ? "rotate-180"
+                              : ""
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                    </button>
 
-                          {/* Tabs */}
-                          <div className="flex space-x-4 mb-6">
-                            <button
-                              onClick={() => setActiveTab(marketId, "deposit")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "deposit"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Deposit
-                            </button>
-                            <button
-                              onClick={() => setActiveTab(marketId, "withdraw")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "withdraw"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Withdraw
-                            </button>
-                            <button
-                              onClick={() => setActiveTab(marketId, "rewards")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "rewards"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Rewards
-                            </button>
+                    {/* Expanded Content */}
+                    {marketStates[marketId].isExpanded && (
+                      <div className="border-t border-[#4A7C59]/20 px-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          {/* Left Column: Genesis Info */}
+                          <div className="md:col-span-1 space-y-2 flex flex-col h-full">
+                            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 px-4 py-4 flex-1">
+                              <h4
+                                className={`font-bold text-[#F5F5F5]/70 mb-3 text-xl uppercase tracking-wider ${geo.className}`}
+                              >
+                                Genesis Details
+                              </h4>
+                              <p className="text-sm text-[#F5F5F5]/50 mb-3">
+                                {market.genesis.description}
+                              </p>
+                              <p className="text-sm text-[#F5F5F5]/50">
+                                Participants in Genesis will earn{" "}
+                                <b className={`${geo.className} text-2xl`}>
+                                  {Number(
+                                    market.rewardToken.amount
+                                  ).toLocaleString()}{" "}
+                                  {market.rewardToken.symbol}
+                                </b>{" "}
+                                as rewards, distributed pro-rata to all
+                                deposits.
+                              </p>
+                            </div>
+                            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 px-4 py-4">
+                              <h4
+                                className={`font-bold text-[#F5F5F5]/70 mb-3 text-xl uppercase tracking-wider ${geo.className}`}
+                              >
+                                Schedule
+                              </h4>
+                              <p className="text-sm text-[#F5F5F5]/50 mb-2">
+                                Start Date:{" "}
+                                <span className={`${geo.className} text-xl`}>
+                                  {new Date(
+                                    market.genesis.startDate
+                                  ).toLocaleString()}
+                                </span>
+                              </p>
+                              <p className="text-sm text-[#F5F5F5]/50">
+                                End Date:{" "}
+                                <span className={`${geo.className} text-xl`}>
+                                  {new Date(
+                                    market.genesis.endDate
+                                  ).toLocaleString()}
+                                </span>
+                              </p>
+                            </div>
                           </div>
 
-                          {/* Tab Content */}
-                          <div className="bg-black p-6 border border-[#4A7C59]/20">
-                            {marketStates[marketId].activeTab === "deposit" && (
-                              <div className="space-y-4">
-                                <div className="flex items-center space-x-4">
-                                  <input
-                                    type="text"
-                                    value={marketStates[marketId].depositAmount}
-                                    onChange={(e) =>
-                                      setMarketStates((prev) => ({
-                                        ...prev,
-                                        [marketId]: {
-                                          ...prev[marketId],
-                                          depositAmount: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder="0.0"
-                                    className="flex-1 bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
-                                  />
-                                  <button
-                                    onClick={() => handleMaxDeposit(marketId)}
-                                    className="px-4 py-2 text-sm bg-[#4A7C59]/10 text-[#4A7C59] hover:bg-[#4A7C59]/20 border border-[#4A7C59]/20"
+                          {/* Right Column: User Stats & Actions */}
+                          <div className="md:col-span-2 space-y-2 flex flex-col h-full">
+                            {/* User Info */}
+                            {isConnected ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 px-4 py-4 text-center">
+                                  <p className="text-[10px] text-[#F5F5F5]/50 mb-1 uppercase tracking-wider">
+                                    Your Deposits
+                                  </p>
+                                  <p
+                                    className={`text-2xl font-bold text-[#4A7C59] ${geo.className}`}
                                   >
-                                    MAX
-                                  </button>
+                                    {formatEther(userBalance as bigint)}{" "}
+                                    {collateralSymbol}
+                                  </p>
                                 </div>
-                                <button
-                                  onClick={() => handleDeposit(marketId)}
-                                  disabled={
-                                    !isConnected ||
-                                    isPending ||
-                                    !marketStates[marketId].depositAmount
-                                  }
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Deposit"}
-                                </button>
-                              </div>
-                            )}
-
-                            {marketStates[marketId].activeTab ===
-                              "withdraw" && (
-                              <div className="space-y-4">
-                                <div className="flex items-center space-x-4">
-                                  <input
-                                    type="text"
-                                    value={
-                                      marketStates[marketId].withdrawAmount
-                                    }
-                                    onChange={(e) =>
-                                      setMarketStates((prev) => ({
-                                        ...prev,
-                                        [marketId]: {
-                                          ...prev[marketId],
-                                          withdrawAmount: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder="0.0"
-                                    className="flex-1 bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
-                                  />
-                                  <button
-                                    onClick={() => handleMaxWithdraw(marketId)}
-                                    className="px-4 py-2 text-sm bg-[#4A7C59]/10 text-[#4A7C59] hover:bg-[#4A7C59]/20 border border-[#4A7C59]/20"
+                                <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 px-4 py-4 text-center">
+                                  <p className="text-[10px] text-[#F5F5F5]/50 mb-1 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    Your Share of Rewards
+                                    <span
+                                      className="inline-block align-middle cursor-pointer text-[#4A7C59] font-bold"
+                                      title="Your share can change based on deposits and withdrawals up until genesis is closed."
+                                      style={{
+                                        border: "1px solid #4A7C59",
+                                        borderRadius: "50%",
+                                        width: "14px",
+                                        height: "14px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "10px",
+                                        marginLeft: "4px",
+                                      }}
+                                    >
+                                      i
+                                    </span>
+                                  </p>
+                                  <p
+                                    className={`text-2xl font-bold text-[#4A7C59] ${geo.className}`}
                                   >
-                                    MAX
-                                  </button>
+                                    {userShare} {market.rewardToken.symbol}
+                                  </p>
                                 </div>
-                                <button
-                                  onClick={() => handleWithdraw(marketId)}
-                                  disabled={
-                                    !isConnected ||
-                                    isPending ||
-                                    !marketStates[marketId].withdrawAmount
-                                  }
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Withdraw"}
-                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <ConnectButton />
                               </div>
                             )}
 
-                            {marketStates[marketId].activeTab === "rewards" && (
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                      Pegged Token Rewards
-                                    </p>
-                                    <p className="text-lg font-medium text-[#4A7C59]">
-                                      {formatEther(
-                                        (claimableAmounts as any)?.peggedAmount
-                                      )}{" "}
-                                      {market.genesis.rewards.pegged.symbol}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                      Leveraged Token Rewards
-                                    </p>
-                                    <p className="text-lg font-medium text-[#4A7C59]">
-                                      {formatEther(
-                                        (claimableAmounts as any)
-                                          ?.leveragedAmount
-                                      )}{" "}
-                                      {market.genesis.rewards.leveraged.symbol}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => handleClaim(marketId)}
-                                  disabled={!isConnected || isPending}
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Claim Rewards"}
-                                </button>
+                            {/* Action Tabs and Forms */}
+                            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 flex-1 flex flex-col">
+                              {/* Tabs */}
+                              <div className="flex border-b border-[#4A7C59]/20">
+                                {(() => {
+                                  const marketIndex =
+                                    Object.keys(markets).indexOf(marketId);
+                                  const dataOffset =
+                                    marketIndex * (address ? 5 : 3);
+                                  const onChainGenesisEnded =
+                                    allMarketsData?.[dataOffset]?.result ===
+                                    true;
+                                  const genesisStatus = getGenesisStatus(
+                                    market,
+                                    onChainGenesisEnded
+                                  );
+
+                                  const availableTabs = [];
+                                  if (genesisStatus.canDeposit)
+                                    availableTabs.push("deposit");
+                                  if (genesisStatus.canWithdraw)
+                                    availableTabs.push("withdraw");
+                                  if (genesisStatus.canClaim)
+                                    availableTabs.push("rewards");
+
+                                  return availableTabs.map((tab) => (
+                                    <button
+                                      key={tab}
+                                      onClick={() =>
+                                        setActiveTab(marketId, tab as any)
+                                      }
+                                      className={`flex-1 px-4 py-3 text-sm font-medium capitalize transition-colors ${
+                                        marketStates[marketId].activeTab === tab
+                                          ? "text-[#4A7C59] border-b-2 border-[#4A7C59]"
+                                          : "text-[#F5F5F5]/50 hover:text-[#F5F5F5]"
+                                      }`}
+                                    >
+                                      {tab}
+                                    </button>
+                                  ));
+                                })()}
                               </div>
-                            )}
+
+                              {/* Tab Content */}
+                              <div className="p-6 flex-1">
+                                {marketStates[marketId].activeTab ===
+                                  "deposit" &&
+                                  (() => {
+                                    const marketIndex =
+                                      Object.keys(markets).indexOf(marketId);
+                                    const tokenDataOffset =
+                                      marketIndex * (address ? 3 : 1);
+                                    const allowance = allTokenData?.[
+                                      tokenDataOffset + 2
+                                    ]?.result as bigint | undefined;
+                                    const depositAmountBN = marketStates[
+                                      marketId
+                                    ].depositAmount
+                                      ? parseEther(
+                                          marketStates[marketId].depositAmount
+                                        )
+                                      : BigInt(0);
+                                    const needsApproval =
+                                      depositAmountBN > 0 &&
+                                      (!allowance ||
+                                        allowance < depositAmountBN);
+
+                                    return (
+                                      <div className="space-y-2">
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <label className="text-sm text-zinc-400">
+                                              From
+                                            </label>
+                                            <span className="text-xs text-zinc-500">
+                                              Balance:{" "}
+                                              {formatEther(
+                                                walletBalance as bigint
+                                              )}{" "}
+                                              {collateralSymbol}
+                                            </span>
+                                          </div>
+                                          <div className="relative">
+                                            <input
+                                              type="number"
+                                              value={
+                                                marketStates[marketId]
+                                                  .depositAmount
+                                              }
+                                              onChange={(e) =>
+                                                setMarketStates((prev) => ({
+                                                  ...prev,
+                                                  [marketId]: {
+                                                    ...prev[marketId],
+                                                    depositAmount:
+                                                      e.target.value,
+                                                  },
+                                                }))
+                                              }
+                                              placeholder="0.0"
+                                              className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleMaxDeposit(marketId)
+                                                }
+                                                className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                                              >
+                                                MAX
+                                              </button>
+                                              <span className="text-[#F5F5F5]/70">
+                                                {collateralSymbol}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <button
+                                            onClick={() =>
+                                              window.open(
+                                                `https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=${market.addresses.collateralToken}`,
+                                                "_blank"
+                                              )
+                                            }
+                                            className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-2 block"
+                                          >
+                                            Get {collateralSymbol}
+                                          </button>
+                                        </div>
+                                        <button
+                                          onClick={() =>
+                                            needsApproval
+                                              ? handleApprove(marketId)
+                                              : handleDeposit(marketId)
+                                          }
+                                          disabled={
+                                            !isConnected ||
+                                            isPending ||
+                                            !marketStates[marketId]
+                                              .depositAmount ||
+                                            !(() => {
+                                              const marketIndex =
+                                                Object.keys(markets).indexOf(
+                                                  marketId
+                                                );
+                                              const dataOffset =
+                                                marketIndex * (address ? 5 : 3);
+                                              const onChainGenesisEnded =
+                                                allMarketsData?.[dataOffset]
+                                                  ?.result === true;
+                                              const genesisStatus =
+                                                getGenesisStatus(
+                                                  market,
+                                                  onChainGenesisEnded
+                                                );
+                                              return genesisStatus.canDeposit;
+                                            })()
+                                          }
+                                          className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors"
+                                        >
+                                          {isPending
+                                            ? pendingStep === "approval"
+                                              ? "Approving..."
+                                              : "Depositing..."
+                                            : needsApproval
+                                            ? "Approve"
+                                            : "Deposit"}
+                                        </button>
+                                      </div>
+                                    );
+                                  })()}
+
+                                {marketStates[marketId].activeTab ===
+                                  "withdraw" && (
+                                  <div className="space-y-2">
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-sm text-zinc-400">
+                                          Withdraw
+                                        </label>
+                                        <span className="text-xs text-zinc-500">
+                                          Balance:{" "}
+                                          {formatEther(userBalance as bigint)}{" "}
+                                          {collateralSymbol}
+                                        </span>
+                                      </div>
+                                      <div className="relative">
+                                        <input
+                                          type="number"
+                                          value={
+                                            marketStates[marketId]
+                                              .withdrawAmount
+                                          }
+                                          onChange={(e) =>
+                                            setMarketStates((prev) => ({
+                                              ...prev,
+                                              [marketId]: {
+                                                ...prev[marketId],
+                                                withdrawAmount: e.target.value,
+                                              },
+                                            }))
+                                          }
+                                          placeholder="0.0"
+                                          className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleMaxWithdraw(marketId)
+                                            }
+                                            className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                                          >
+                                            MAX
+                                          </button>
+                                          <span className="text-[#F5F5F5]/70">
+                                            {collateralSymbol}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleWithdraw(marketId)}
+                                      disabled={
+                                        !isConnected ||
+                                        isPending ||
+                                        !marketStates[marketId].withdrawAmount
+                                      }
+                                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors"
+                                    >
+                                      {isPending ? "Pending..." : "Withdraw"}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {marketStates[marketId].activeTab ===
+                                  "rewards" && (
+                                  <div className="space-y-2">
+                                    <div>
+                                      <p className="text-sm text-[#F5F5F5]/50 mb-1">
+                                        STEAM Rewards
+                                      </p>
+                                      <p
+                                        className={`text-2xl font-medium text-[#4A7C59] ${geo.className}`}
+                                      >
+                                        {formatEther(
+                                          (claimableAmounts as any)
+                                            ?.leveragedAmount
+                                        )}{" "}
+                                        {market.rewardToken.symbol}
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleClaim(marketId)}
+                                      disabled={!isConnected || isPending}
+                                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors"
+                                    >
+                                      {isPending
+                                        ? "Pending..."
+                                        : "Claim Rewards"}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
+        </div>
 
-          {/* Completed Markets */}
-          <div className="space-y-4">
-            <h2 className={`text-2xl text-[#4A7C59] ${geo.className}`}>
-              Completed Markets
-            </h2>
-            {completedMarkets.length === 0 ? (
-              <div className="bg-[#1A1A1A] p-8 text-center text-[#F5F5F5]/50">
-                No completed markets available
-              </div>
-            ) : (
-              completedMarkets.map((marketId) => {
-                const market = markets[marketId];
-                const marketIndex = Object.keys(markets).indexOf(marketId);
-                const dataOffset = marketIndex * (address ? 5 : 3);
-                const tokenDataOffset = marketIndex * (address ? 3 : 1);
-
-                const totalDeposits = allMarketsData?.[dataOffset + 1]?.result;
-                const totalRewards = allMarketsData?.[dataOffset + 2]?.result;
-                const userBalance = allMarketsData?.[dataOffset + 3]?.result;
-                const claimableAmounts =
-                  allMarketsData?.[dataOffset + 4]?.result;
-                const collateralSymbol =
-                  allTokenData?.[tokenDataOffset]?.result;
-
+        {/* Completed Markets */}
+        <div className="mb-8">
+          <h2 className={`text-2xl text-[#4A7C59] mb-6 ${geo.className}`}>
+            Completed Markets
+          </h2>
+          {completedMarkets.length === 0 ? (
+            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-8 text-center text-[#F5F5F5]/50">
+              No completed markets available
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Similar structure as active markets but for completed ones */}
+              {completedMarkets.map((marketId) => {
+                // ... same structure as active markets but without deposit/withdraw options
                 return (
                   <div
                     key={marketId}
-                    className="bg-[#1A1A1A] p-4 relative z-20"
+                    className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20"
                   >
-                    <div className="absolute inset-0 bg-[#1A1A1A] z-10"></div>
-                    <div className="relative z-20">
-                      {/* Market Header */}
-                      <button
-                        onClick={() => toggleMarket(marketId)}
-                        className="w-full p-6 flex items-center justify-between hover:bg-[#1A1A1A] transition-colors"
-                      >
-                        <div className="flex-shrink-0 w-56">
-                          <h3
-                            className={`text-lg font-medium ${geo.className}`}
-                          >
-                            {market.description}
-                          </h3>
-                          <p className="text-sm text-[#F5F5F5]/50 mt-1">
-                            Ends in {stethUsdCountdown.text}
-                          </p>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-end items-start gap-2">
-                            {/* Deposit Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Deposit
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  wstETH
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Pegged Token Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Pegged Token
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  zheUSD
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Leveraged Token Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Leveraged Token
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59]">
-                                  steamedETH
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Total Deposits Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Total Deposits
-                                </p>
-                                <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                  {formatEther(totalDeposits as bigint)}{" "}
-                                  {collateralSymbol as string}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Total Rewards Box */}
-                            <div className="w-36 bg-black p-2 border border-[#4A7C59]/20 relative z-20">
-                              <div className="absolute inset-0 bg-black z-10"></div>
-                              <div className="relative z-20">
-                                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
-                                  Total Rewards
-                                </p>
-                                <div className="space-y-0.5">
-                                  <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                    {formatEther(
-                                      (totalRewards as TotalRewards)
-                                        ?.peggedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.pegged.symbol}
-                                  </p>
-                                  <p className="text-sm font-medium text-[#4A7C59] truncate">
-                                    {formatEther(
-                                      (totalRewards as TotalRewards)
-                                        ?.leveragedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.leveraged.symbol}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Expanded View */}
-                      {marketStates[marketId].isExpanded && (
-                        <div className="mt-4 p-6 border-t border-[#4A7C59]/20">
-                          {/* User Info */}
-                          {isConnected ? (
-                            <div className="mb-6 grid grid-cols-2 gap-4">
-                              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                                <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                  Your Balance
-                                </p>
-                                <p className="text-lg font-medium text-[#4A7C59]">
-                                  {formatEther(userBalance as bigint)}{" "}
-                                  {collateralSymbol}
-                                </p>
-                              </div>
-                              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                                <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                  Claimable Rewards
-                                </p>
-                                <div className="space-y-1">
-                                  <p className="text-lg font-medium text-[#4A7C59]">
-                                    {formatEther(
-                                      (claimableAmounts as any)?.peggedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.pegged.symbol}
-                                  </p>
-                                  <p className="text-lg font-medium text-[#4A7C59]">
-                                    {formatEther(
-                                      (claimableAmounts as any)?.leveragedAmount
-                                    )}{" "}
-                                    {market.genesis.rewards.leveraged.symbol}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mb-6">
-                              <ConnectButton />
-                            </div>
-                          )}
-
-                          {/* Tabs */}
-                          <div className="flex space-x-4 mb-6">
-                            <button
-                              onClick={() => setActiveTab(marketId, "deposit")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "deposit"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Deposit
-                            </button>
-                            <button
-                              onClick={() => setActiveTab(marketId, "withdraw")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "withdraw"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Withdraw
-                            </button>
-                            <button
-                              onClick={() => setActiveTab(marketId, "rewards")}
-                              className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
-                                marketStates[marketId].activeTab === "rewards"
-                                  ? "bg-[#4A7C59] text-white"
-                                  : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
-                              }`}
-                            >
-                              Rewards
-                            </button>
-                          </div>
-
-                          {/* Tab Content */}
-                          <div className="bg-black p-6 border border-[#4A7C59]/20">
-                            {marketStates[marketId].activeTab === "deposit" && (
-                              <div className="space-y-4">
-                                <div className="flex items-center space-x-4">
-                                  <input
-                                    type="text"
-                                    value={marketStates[marketId].depositAmount}
-                                    onChange={(e) =>
-                                      setMarketStates((prev) => ({
-                                        ...prev,
-                                        [marketId]: {
-                                          ...prev[marketId],
-                                          depositAmount: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder="0.0"
-                                    className="flex-1 bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
-                                  />
-                                  <button
-                                    onClick={() => handleMaxDeposit(marketId)}
-                                    className="px-4 py-2 text-sm bg-[#4A7C59]/10 text-[#4A7C59] hover:bg-[#4A7C59]/20 border border-[#4A7C59]/20"
-                                  >
-                                    MAX
-                                  </button>
-                                </div>
-                                <button
-                                  onClick={() => handleDeposit(marketId)}
-                                  disabled={
-                                    !isConnected ||
-                                    isPending ||
-                                    !marketStates[marketId].depositAmount
-                                  }
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Deposit"}
-                                </button>
-                              </div>
-                            )}
-
-                            {marketStates[marketId].activeTab ===
-                              "withdraw" && (
-                              <div className="space-y-4">
-                                <div className="flex items-center space-x-4">
-                                  <input
-                                    type="text"
-                                    value={
-                                      marketStates[marketId].withdrawAmount
-                                    }
-                                    onChange={(e) =>
-                                      setMarketStates((prev) => ({
-                                        ...prev,
-                                        [marketId]: {
-                                          ...prev[marketId],
-                                          withdrawAmount: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder="0.0"
-                                    className="flex-1 bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
-                                  />
-                                  <button
-                                    onClick={() => handleMaxWithdraw(marketId)}
-                                    className="px-4 py-2 text-sm bg-[#4A7C59]/10 text-[#4A7C59] hover:bg-[#4A7C59]/20 border border-[#4A7C59]/20"
-                                  >
-                                    MAX
-                                  </button>
-                                </div>
-                                <button
-                                  onClick={() => handleWithdraw(marketId)}
-                                  disabled={
-                                    !isConnected ||
-                                    isPending ||
-                                    !marketStates[marketId].withdrawAmount
-                                  }
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Withdraw"}
-                                </button>
-                              </div>
-                            )}
-
-                            {marketStates[marketId].activeTab === "rewards" && (
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                      Pegged Token Rewards
-                                    </p>
-                                    <p className="text-lg font-medium text-[#4A7C59]">
-                                      {formatEther(
-                                        (claimableAmounts as any)?.peggedAmount
-                                      )}{" "}
-                                      {market.genesis.rewards.pegged.symbol}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-[#F5F5F5]/50 mb-1">
-                                      Leveraged Token Rewards
-                                    </p>
-                                    <p className="text-lg font-medium text-[#4A7C59]">
-                                      {formatEther(
-                                        (claimableAmounts as any)
-                                          ?.leveragedAmount
-                                      )}{" "}
-                                      {market.genesis.rewards.leveraged.symbol}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => handleClaim(marketId)}
-                                  disabled={!isConnected || isPending}
-                                  className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
-                                >
-                                  {isPending ? "Pending..." : "Claim Rewards"}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {/* Completed market content */}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </main>
     </div>

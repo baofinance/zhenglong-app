@@ -1,92 +1,116 @@
-export interface ContractAddresses {
-  collateralToken: string;
-  underlyingCollateralToken?: string;
-  feeReceiver: string;
-  genesis: string;
-  leveragedToken: string;
-  minter: string;
-  owner: string;
-  peggedToken: string;
-  priceOracle: string;
-  stabilityPoolCollateral: string;
-  stabilityPoolLeveraged: string;
-  reservePool: string;
-  rebalancePoolCollateral: string;
-  rebalancePoolLeveraged: string;
-  collateralPrice: string;
-}
+// Import market configuration from the unified markets config
+export {
+  marketsConfig as markets,
+  marketConfig,
+  contractAddresses,
+  getGenesisStatus,
+  getPrimaryRewardToken,
+  isGenesisActive,
+  getGenesisPhaseInfo,
+  type MarketInfo as MarketConfig,
+  type ContractAddresses,
+  type GenesisConfig,
+  type GenesisStatus,
+} from "./markets";
 
-export interface MarketConfig {
-  id: string;
-  name: string;
-  description: string;
-  addresses: ContractAddresses;
-  genesis: {
-    startDate: string; // ISO date string
-    endDate: string; // ISO date string
-    rewards: {
-      pegged: {
-        symbol: string;
-        amount: string; // Amount in ether units
-      };
-      leveraged: {
-        symbol: string;
-        amount: string; // Amount in ether units
-      };
-    };
-    collateralRatio: number;
-    leverageRatio: number;
-  };
-}
+// Legacy CONTRACTS constant for backward compatibility
+export const CONTRACTS = {
+  MINTER: "0x5f9dD176ea5282d392225ceC5c2E7A24d5d02672",
+  PEGGED_TOKEN: "0x07d15D57a3b0457677885C16E2bdF8653FC4e38b",
+  LEVERAGED_TOKEN: "0xddCF8c63f36eb83b72BAf6dA3AA799f9A08caa9A",
+  GENESIS: "0x3f75c48fceefAb5A28649e360288a4a29262bea6",
+  STABILITY_POOL_MANAGER: "0x84F36aeF81aBf1E34bcA9e470fE15e12697CB7Fd",
+  STABILITY_POOL_COLLATERAL: "0x319554eF50998660776CF0EF924073e5c416b890",
+  STABILITY_POOL_PEGGED: "0xf5C468f11D73c183619faac4cDeB6272b6C390Bb",
+  PRICE_ORACLE: "0x8Bb877fa0bbD7ea09f7aCd70eDF79dFf5b8a54dD",
+  TOKEN_DISTRIBUTOR: "0x8fF6E100EB12Ec17Bf1D0ac53431715ebB845E5D",
+  RESERVE_POOL: "0x6c9a2f9A94770336403E69e9eA5D88C97EF3b78A",
+  CONFIG: "0x74ef79CFC735A10436eF9D4808547df0Ce38f788",
+  WSTETH: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+  STETH: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+  CHAIN_ID: 31337,
+  RPC_URL: "http://127.0.0.1:8545",
+} as const;
 
-export type Markets = {
-  [key: string]: MarketConfig;
-};
-
-export const markets: Markets = {
-  "steth-usd": {
-    id: "steth-usd",
-    name: "stETH/USD",
-    description: "Lido Staked ETH / US Dollar",
-    addresses: {
-      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
-      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
-      genesis: "0xb53249FEBB6562Abf19BD728d6775c09d2ae0438",
-      leveragedToken: "0xC6c0E14c02C2dBd4f116230f01D03836620167B9",
-      minter: "0xAD44f37213E7b7f08Ac9A984993429Dac957Ec62",
-      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0xD0725945859175dabd070855bC3F1c37a3aF605F",
-      priceOracle: "0x6dB83DF31b4402Cbd0D113481c3B1F114321d0ca",
-      stabilityPoolCollateral: "0xEeED66583c579F3eEDF7270AE204419fE3fF09f5",
-      stabilityPoolLeveraged: "0x733697D06E9AbC1C45d1a1c75D18910d43133a6F",
-      reservePool: "0x96e74d78A9EC0dB11C8c9fF2FD93bC98D8895B5A",
-      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
-      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
-      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
-    },
-    genesis: {
-      startDate: "2024-03-21T00:00:00Z",
-      endDate: "2024-03-22T20:15:00Z",
-      rewards: {
-        pegged: {
-          symbol: "zheUSD",
-          amount: "1000000", // 1 million zheUSD
-        },
-        leveraged: {
-          symbol: "steamedETH",
-          amount: "1000000", // 1 million STEAM
-        },
+// Contract ABIs
+export const GENESIS_ABI = [
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
       },
-      collateralRatio: 1.0,
-      leverageRatio: 1.0,
-    },
+    ],
+    stateMutability: "view",
+    type: "function",
   },
-};
+  {
+    inputs: [],
+    name: "endGenesis",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "newOwner",
+        type: "address",
+      },
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "genesisIsEnded",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
-// For backward compatibility and convenience
-export const marketConfig = markets["steth-usd"];
-export const contractAddresses = markets["steth-usd"].addresses;
+export const ERC20_ABI = [
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 export const minterABI = [
   {
@@ -148,7 +172,7 @@ export const minterABI = [
   },
 ] as const;
 
-// Add price history types
+// Price history types
 export interface PriceDataPoint {
   timestamp: number;
   price: number;

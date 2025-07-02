@@ -392,7 +392,7 @@ function SystemHealth({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
       {/* Total Collateral Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Total Collateral
         </div>
         <div
@@ -413,7 +413,7 @@ function SystemHealth({
       </div>
       {/* Pegged Tokens Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Pegged Tokens
         </div>
         <div
@@ -429,7 +429,7 @@ function SystemHealth({
       </div>
       {/* Leveraged Tokens Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Leveraged Tokens
         </div>
         <div
@@ -454,7 +454,7 @@ function SystemHealth({
       </div>
       {/* Collateral Ratio Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Collateral Ratio
         </div>
         <div
@@ -470,7 +470,7 @@ function SystemHealth({
       </div>
       {/* Price Oracle Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Price Oracle
         </div>
         <div

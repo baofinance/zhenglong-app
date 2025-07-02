@@ -15,6 +15,8 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
+import { getMarketById, type MarketInfo } from "../config/markets";
+import GenesisOverlay from "./GenesisOverlay";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -249,13 +251,6 @@ const formatLeverageRatio = (value: bigint | undefined) => {
   if (value > BigInt("1" + "0".repeat(30))) return "-"; // Basic overflow check
   return (Number(value) / 1e18).toFixed(2) + "x";
 };
-const formatFeeRatio = (value: bigint | undefined) => {
-  if (!value) return "-";
-  const ratio = Number(value) / 1e18;
-  return ratio > 0
-    ? `+${(ratio * 100).toFixed(2)}%`
-    : `${(ratio * 100).toFixed(2)}%`;
-};
 const formatBalance = (balance: bigint | undefined) => {
   if (!balance) return "-";
   try {
@@ -263,6 +258,20 @@ const formatBalance = (balance: bigint | undefined) => {
   } catch {
     return "-";
   }
+};
+// Format fee ratio as percentage
+const formatFeeRatio = (value: bigint | undefined) => {
+  if (!value) return "-";
+  const ratio = Number(value) / 1e18;
+  return ratio > 0
+    ? `+${(ratio * 100).toFixed(2)}%`
+    : `${(ratio * 100).toFixed(2)}%`;
+};
+// Format a fee (positive) or discount (negative) amount in wrapped collateral units
+const formatFeeToken = (value: bigint | number | undefined) => {
+  if (value === undefined) return "-";
+  const bi = typeof value === "bigint" ? value : BigInt(value);
+  return `${formatMinimal(bi)} wstETH`;
 };
 
 type Market = {
@@ -284,6 +293,7 @@ interface MintRedeemFormProps {
   currentMarket: Market;
   isConnected: boolean;
   userAddress: string | undefined;
+  marketInfo?: MarketInfo;
   // publicClient: any; // Not passing publicClient, component will get its own
 }
 
@@ -292,6 +302,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   currentMarket,
   isConnected,
   userAddress,
+  marketInfo,
 }) => {
   const [mounted, setMounted] = useState(false);
   const chainId = useChainId();
@@ -313,6 +324,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const [selectedToken, setSelectedToken] = useState<string>(
     tokens[selectedType][0]
   );
+
+  // Get market info from prop or fallback to config lookup
+  const marketInfoData = marketInfo || getMarketById(currentMarket.id);
+
+  // Check if market is in genesis status
+  const isGenesisActive = marketInfoData?.status === "genesis";
 
   // Wagmi hooks (useContractRead, useContractReads, useContractWrite)
   // These will use currentMarket.addresses directly
@@ -483,6 +500,69 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     },
   });
 
+  // Calculate fee ratio for leveraged tokens (index 0 from dry run)
+  const dryRunFeeRatio = useMemo(() => {
+    if (!inputAmount || parseFloat(inputAmount) === 0) return undefined;
+    if (
+      isCollateralAtTop &&
+      selectedType === "STEAMED" &&
+      Array.isArray(mintLeveragedDryRunResult)
+    ) {
+      return mintLeveragedDryRunResult[0] as bigint;
+    }
+    if (
+      !isCollateralAtTop &&
+      selectedType === "STEAMED" &&
+      Array.isArray(redeemLeveragedDryRunResult)
+    ) {
+      return redeemLeveragedDryRunResult[0] as bigint;
+    }
+    return undefined;
+  }, [
+    inputAmount,
+    isCollateralAtTop,
+    selectedType,
+    mintLeveragedDryRunResult,
+    redeemLeveragedDryRunResult,
+  ]);
+
+  // Calculate fee or discount (absolute wrapped collateral amount) based on dry-run results
+  const dryRunFee = useMemo(() => {
+    if (!inputAmount || parseFloat(inputAmount) === 0) return undefined;
+    if (isCollateralAtTop) {
+      if (selectedType === "LONG" && Array.isArray(mintPeggedDryRunResult)) {
+        return mintPeggedDryRunResult[1] as bigint;
+      }
+      if (
+        selectedType === "STEAMED" &&
+        Array.isArray(mintLeveragedDryRunResult)
+      ) {
+        return mintLeveragedDryRunResult[1] as bigint;
+      }
+    } else {
+      if (selectedType === "LONG" && Array.isArray(redeemPeggedDryRunResult)) {
+        const fee = redeemPeggedDryRunResult[1] as bigint;
+        const discount = redeemPeggedDryRunResult[2] as bigint;
+        return fee > discount ? fee - discount : discount - fee;
+      }
+      if (
+        selectedType === "STEAMED" &&
+        Array.isArray(redeemLeveragedDryRunResult)
+      ) {
+        return redeemLeveragedDryRunResult[1] as bigint;
+      }
+    }
+    return undefined;
+  }, [
+    inputAmount,
+    isCollateralAtTop,
+    selectedType,
+    mintPeggedDryRunResult,
+    mintLeveragedDryRunResult,
+    redeemPeggedDryRunResult,
+    redeemLeveragedDryRunResult,
+  ]);
+
   useEffect(() => {
     if (
       isCollateralAtTop &&
@@ -493,7 +573,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     ) {
       try {
         const parsedInputAmount = parseEther(inputAmount);
-        const collateralNeededFromDryRun = mintPeggedDryRunResult[1] as bigint;
+        const collateralNeededFromDryRun = mintPeggedDryRunResult[2] as bigint; // collateralTaken
         if (
           typeof collateralNeededFromDryRun === "bigint" &&
           collateralNeededFromDryRun < parsedInputAmount
@@ -550,7 +630,21 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         Array.isArray(mintPeggedDryRunResult) &&
         mintPeggedDryRunResult.length > 2
       ) {
-        const peggedMinted = mintPeggedDryRunResult[2] as bigint;
+        // Debug logging for dry run results
+        console.log("🔍 Mint Pegged Dry Run Results:", {
+          inputAmount,
+          inputAmountWei: inputAmount
+            ? parseEther(inputAmount).toString()
+            : "0",
+          incentiveRatio: mintPeggedDryRunResult[0]?.toString(),
+          fee: formatEther(mintPeggedDryRunResult[1] as bigint),
+          collateralTaken: formatEther(mintPeggedDryRunResult[2] as bigint),
+          peggedMinted: formatEther(mintPeggedDryRunResult[3] as bigint),
+          price: mintPeggedDryRunResult[4]?.toString(),
+          rate: mintPeggedDryRunResult[5]?.toString(),
+        });
+
+        const peggedMinted = mintPeggedDryRunResult[3] as bigint; // peggedMinted
         if (typeof peggedMinted === "bigint")
           setOutputAmount(formatEther(peggedMinted));
         else setOutputAmount("");
@@ -559,7 +653,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         Array.isArray(mintLeveragedDryRunResult) &&
         mintLeveragedDryRunResult.length > 2
       ) {
-        const leveragedMinted = mintLeveragedDryRunResult[2] as bigint;
+        const leveragedMinted = mintLeveragedDryRunResult[4] as bigint;
         if (typeof leveragedMinted === "bigint")
           setOutputAmount(formatEther(leveragedMinted));
         else setOutputAmount("");
@@ -579,7 +673,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         Array.isArray(redeemPeggedDryRunResult) &&
         redeemPeggedDryRunResult.length > 2
       ) {
-        const collateralReturned = redeemPeggedDryRunResult[2] as bigint;
+        const collateralReturned = redeemPeggedDryRunResult[4] as bigint;
         if (typeof collateralReturned === "bigint")
           setOutputAmount(formatEther(collateralReturned));
         else setOutputAmount("");
@@ -588,7 +682,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         Array.isArray(redeemLeveragedDryRunResult) &&
         redeemLeveragedDryRunResult.length > 2
       ) {
-        const collateralReturned = redeemLeveragedDryRunResult[2] as bigint;
+        const collateralReturned = redeemLeveragedDryRunResult[3] as bigint;
         if (typeof collateralReturned === "bigint")
           setOutputAmount(formatEther(collateralReturned));
         else setOutputAmount("");
@@ -722,9 +816,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           if (
             Array.isArray(mintPeggedDryRunResult) &&
             mintPeggedDryRunResult.length > 2 &&
-            typeof mintPeggedDryRunResult[2] === "bigint"
+            typeof mintPeggedDryRunResult[3] === "bigint"
           ) {
-            minPeggedOut = mintPeggedDryRunResult[2] as bigint;
+            minPeggedOut = mintPeggedDryRunResult[3] as bigint; // peggedMinted
           }
           await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
@@ -739,9 +833,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             // Prefer dry run result if available
             Array.isArray(mintLeveragedDryRunResult) &&
             mintLeveragedDryRunResult.length > 2 &&
-            typeof mintLeveragedDryRunResult[2] === "bigint"
+            typeof mintLeveragedDryRunResult[4] === "bigint"
           ) {
-            minLeveragedOut = mintLeveragedDryRunResult[2] as bigint;
+            minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
           } else if (outputAmount && parseFloat(outputAmount) > 0) {
             // Fallback to calculated outputAmount
             try {
@@ -765,10 +859,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           let minCollateralOut = parsedAmount;
           if (
             Array.isArray(redeemPeggedDryRunResult) &&
-            redeemPeggedDryRunResult.length > 2 &&
-            typeof redeemPeggedDryRunResult[2] === "bigint"
+            redeemPeggedDryRunResult.length > 4 &&
+            typeof redeemPeggedDryRunResult[4] === "bigint"
           ) {
-            minCollateralOut = redeemPeggedDryRunResult[2] as bigint;
+            minCollateralOut = redeemPeggedDryRunResult[4] as bigint;
           }
           await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
@@ -784,10 +878,10 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           let minCollateralOut = parsedAmount;
           if (
             Array.isArray(redeemLeveragedDryRunResult) &&
-            redeemLeveragedDryRunResult.length > 2 &&
-            typeof redeemLeveragedDryRunResult[2] === "bigint"
+            redeemLeveragedDryRunResult.length > 3 &&
+            typeof redeemLeveragedDryRunResult[3] === "bigint"
           ) {
-            minCollateralOut = redeemLeveragedDryRunResult[2] as bigint;
+            minCollateralOut = redeemLeveragedDryRunResult[3] as bigint;
           }
           await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
@@ -846,10 +940,15 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
 
   // JSX for Mint & Redeem section (to be copied from page.tsx)
   return (
-    <div className="px-6 py-2">
+    <GenesisOverlay
+      marketName={marketInfoData?.title || currentMarket.name}
+      className="px-6 py-2"
+      isActive={isGenesisActive}
+      geoClassName={geoClassName}
+    >
       <div className="w-full max-w-xl mx-auto flex flex-col">
         {/* Tabs row above the form, left-aligned with form content */}
-        <div className="flex border-b border-zinc-800 mb-1">
+        <div className="flex border-b border-zinc-800 mb-4">
           <button
             onClick={() => {
               setSelectedType("LONG");
@@ -893,16 +992,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   selectedType === "LONG" ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
-                  <div className="text-center mb-2">
-                    <h1
-                      className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
-                    >
-                      zheUSD
-                    </h1>
-                  </div>
+                <div className="pt-6 pb-1 px-6 flex flex-col gap-2 min-h-[480px]">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="flex flex-col space-y-4">
+                    <div className="flex flex-col space-y-6">
                       {/* First Token Input (wstETH) */}
                       <div
                         className={`space-y-2 ${
@@ -933,7 +1025,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 : undefined
                             }
                             placeholder="0.0"
-                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner"
                             readOnly={!isCollateralAtTop}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -976,9 +1068,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             {!inputAmount || parseFloat(inputAmount) === 0
                               ? "-"
                               : Array.isArray(mintPeggedDryRunResult) &&
-                                mintPeggedDryRunResult.length > 1 &&
-                                typeof mintPeggedDryRunResult[1] === "bigint"
-                              ? formatMinimal(mintPeggedDryRunResult[1])
+                                mintPeggedDryRunResult.length > 2 &&
+                                typeof mintPeggedDryRunResult[2] === "bigint"
+                              ? formatMinimal(mintPeggedDryRunResult[2]) // collateralTaken
                               : "-"}
                           </div>
                         )}
@@ -988,26 +1080,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                       <div className="flex items-center w-full order-2">
                         {/* Left: Fee */}
                         <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
-                          {!isCollateralAtTop && ( // Fee display for redeeming
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "LONG"
-                                  ? formatFeeRatio(redeemFeeResult)
-                                  : "-"}
-                              </span>
-                            </>
-                          )}
-                          {isCollateralAtTop && ( // Fee display for minting
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "LONG"
-                                  ? formatFeeRatio(mintFeeResult)
-                                  : "-"}
-                              </span>
-                            </>
-                          )}
+                          <span className="text-zinc-400">Fee:</span>
+                          <span className="text-[#4A7C59]">
+                            {selectedType === "LONG"
+                              ? formatFeeToken(dryRunFee)
+                              : "-"}
+                          </span>
                         </div>
                         {/* Center: Mint/Arrows/Redeem */}
                         <div className="flex-grow flex items-center justify-center gap-x-4">
@@ -1087,7 +1165,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             {formatBalance(
                               peggedBalance?.[0]?.result as bigint | undefined
                             )}{" "}
-                            zheUSD
+                            {marketInfoData?.peggedToken.name || "zheUSD"}
                           </span>
                         </div>
                         <div className="relative">
@@ -1102,7 +1180,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 : handleInputAmountChange
                             }
                             placeholder="0.0"
-                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             readOnly={isCollateralAtTop}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -1115,7 +1193,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 MAX
                               </button>
                             )}
-                            <span className="text-[#F5F5F5]/70">zheUSD</span>
+                            <span className="text-[#F5F5F5]/70">
+                              {marketInfoData?.peggedToken.name || "zheUSD"}
+                            </span>
                           </div>
                         </div>
                         {!isCollateralAtTop &&
@@ -1215,20 +1295,9 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   selectedType === "STEAMED" ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
-                  <div className="text-center mb-2">
-                    <h1
-                      className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
-                    >
-                      steamedETH {/* Dynamic for selected leveraged token */}
-                    </h1>
-                    <div className="text-zinc-400 text-sm -mt-1">
-                      <span className="block text-[10px] mb-0.5">Leverage</span>
-                      {formatLeverageRatio(leverageRatioResult)}
-                    </div>
-                  </div>
+                <div className="pt-6 pb-1 px-6 flex flex-col gap-2 min-h-[480px]">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="flex flex-col space-y-4">
+                    <div className="flex flex-col space-y-6">
                       {/* First Token Input (wstETH) */}
                       <div
                         className={`space-y-2 ${
@@ -1259,7 +1328,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 : undefined
                             }
                             placeholder="0.0"
-                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner"
                             readOnly={!isCollateralAtTop}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -1290,6 +1359,24 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             )}
                           </div>
                         </div>
+                        {isCollateralAtTop && selectedType === "STEAMED" && (
+                          <div
+                            className={
+                              shakeCollateralNeeded
+                                ? "text-sm text-red-500 font-semibold mt-1"
+                                : "text-sm text-[#F5F5F5]/60 mt-1"
+                            }
+                          >
+                            Collateral Needed:{" "}
+                            {!inputAmount || parseFloat(inputAmount) === 0
+                              ? "-"
+                              : Array.isArray(mintLeveragedDryRunResult) &&
+                                mintLeveragedDryRunResult.length > 2 &&
+                                typeof mintLeveragedDryRunResult[2] === "bigint"
+                              ? formatMinimal(mintLeveragedDryRunResult[2]) // collateralTaken
+                              : "-"}
+                          </div>
+                        )}
                       </div>
 
                       {/* Swap Direction and Fee - LEVERAGE */}
@@ -1300,14 +1387,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             <>
                               <span className="text-zinc-400">Fee:</span>
                               <span className="text-[#4A7C59]">
-                                {selectedType === "STEAMED" &&
-                                Array.isArray(redeemLeveragedDryRunResult) &&
-                                redeemLeveragedDryRunResult.length > 0 &&
-                                typeof redeemLeveragedDryRunResult[0] ===
-                                  "bigint"
-                                  ? formatFeeRatio(
-                                      redeemLeveragedDryRunResult[0] as bigint
-                                    )
+                                {selectedType === "STEAMED" && dryRunFeeRatio
+                                  ? `${formatFeeRatio(
+                                      dryRunFeeRatio
+                                    )} (${formatFeeToken(dryRunFee)})`
+                                  : selectedType === "STEAMED"
+                                  ? formatFeeToken(dryRunFee)
                                   : "-"}
                               </span>
                             </>
@@ -1316,13 +1401,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             <>
                               <span className="text-zinc-400">Fee:</span>
                               <span className="text-[#4A7C59]">
-                                {selectedType === "STEAMED" &&
-                                Array.isArray(mintLeveragedDryRunResult) &&
-                                mintLeveragedDryRunResult.length > 0 &&
-                                typeof mintLeveragedDryRunResult[0] === "bigint"
-                                  ? formatFeeRatio(
-                                      mintLeveragedDryRunResult[0] as bigint
-                                    )
+                                {selectedType === "STEAMED" && dryRunFeeRatio
+                                  ? `${formatFeeRatio(
+                                      dryRunFeeRatio
+                                    )} (${formatFeeToken(dryRunFee)})`
+                                  : selectedType === "STEAMED"
+                                  ? formatFeeToken(dryRunFee)
                                   : "-"}
                               </span>
                             </>
@@ -1408,7 +1492,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 | bigint
                                 | undefined
                             )}{" "}
-                            steamedETH {/* Dynamic */}
+                            {marketInfoData?.leveragedToken.name ||
+                              "steamedETH"}
                           </span>
                         </div>
                         <div className="relative">
@@ -1423,7 +1508,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 : handleInputAmountChange
                             }
                             placeholder="0.0"
-                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full p-4 bg-[#0F0F0F] text-white border border-zinc-700/50 focus:border-[#4A7C59] focus:ring-1 focus:ring-[#4A7C59]/50 outline-none transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             readOnly={isCollateralAtTop}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -1438,7 +1523,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                 </button>
                               )}
                             <span className="text-[#F5F5F5]/70">
-                              steamedETH
+                              {marketInfoData?.leveragedToken.name ||
+                                "steamedETH"}
                             </span>
                           </div>
                         </div>
@@ -1576,7 +1662,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </GenesisOverlay>
   );
 };
 

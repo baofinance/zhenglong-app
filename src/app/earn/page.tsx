@@ -319,7 +319,7 @@ function useClaimRewards(marketId: string, pool: "collateral" | "leveraged") {
 
 export default function Earn() {
   const { isConnected, address } = useAccount();
-  const [selectedMarket, setSelectedMarket] = useState(markets["steth-usd"].id);
+  const [selectedMarket, setSelectedMarket] = useState(markets["eth-usd"].id);
   const [poolStates, setPoolStates] = useState<
     Record<string, { collateral: PoolState; leveraged: PoolState }>
   >({});
@@ -416,7 +416,7 @@ export default function Earn() {
   }
 
   // Create individual hooks for each market
-  const marketId = "steth-usd";
+  const marketId = "eth-usd";
   const marketWrites = useMarketContractWrites(marketId);
 
   // Combine all contract writes
