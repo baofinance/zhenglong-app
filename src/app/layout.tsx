@@ -44,11 +44,7 @@ export default function RootLayout({
           <div className="absolute top-[30%] left-[25%] w-[100px] h-[100px] bg-[#4A7C59]/[0.04] animate-steam-3"></div>
         </div>
         <div className="relative z-10">
-          <Web3Provider>
-            <AddressesProvider>
-              <ContractWriteProvider>{children}</ContractWriteProvider>
-            </AddressesProvider>
-          </Web3Provider>
+          <Web3Provider>{children}</Web3Provider>
         </div>
       </body>
     </html>
