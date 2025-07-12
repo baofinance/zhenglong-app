@@ -7,8 +7,13 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        "grey-darkest": "#0c0c0c",
+        "grey-darker": "#1c1c1c",
+        "grey-light": "#606368",
+      },
       fontFamily: {
-        sans: ["Space Grotesk", "sans-serif"],
+        sans: ["Helvetica", "Arial", "sans-serif"],
         geo: ["Geo", "sans-serif"],
       },
       keyframes: {
