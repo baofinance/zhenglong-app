@@ -43,50 +43,140 @@ export type Markets = {
   [key: string]: MarketConfig;
 };
 
+// ============================================================================
+// Market Configurations
+// When adding new markets, add them to this object following the same structure
+// Make sure to:
+// 1. Use a descriptive key that reflects the market pair (e.g. "steth-usd")
+// 2. Include all required contract addresses
+// 3. Set appropriate genesis parameters
+// 4. Update any dependent configurations
+// ============================================================================
+
 export const markets: Markets = {
-  "steth-usd": {
-    id: "steth-usd",
-    name: "stETH/USD",
-    description: "Lido Staked ETH / US Dollar",
+  zheeth: {
+    id: "zheeth",
+    name: "zheETH",
+    description: "zheETH",
     addresses: {
-      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+      collateralToken: "0x0000000000000000000000000000000000000005",
       underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
       feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
-      genesis: "0xb53249FEBB6562Abf19BD728d6775c09d2ae0438",
-      leveragedToken: "0xC6c0E14c02C2dBd4f116230f01D03836620167B9",
-      minter: "0xAD44f37213E7b7f08Ac9A984993429Dac957Ec62",
+      genesis: "0x0000000000000000000000000000000000000003",
+      leveragedToken: "0x0000000000000000000000000000000000000007",
+      minter: "0x0000000000000000000000000000000000000004",
       owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0xD0725945859175dabd070855bC3F1c37a3aF605F",
-      priceOracle: "0x6dB83DF31b4402Cbd0D113481c3B1F114321d0ca",
-      stabilityPoolCollateral: "0xEeED66583c579F3eEDF7270AE204419fE3fF09f5",
-      stabilityPoolLeveraged: "0x733697D06E9AbC1C45d1a1c75D18910d43133a6F",
-      reservePool: "0x96e74d78A9EC0dB11C8c9fF2FD93bC98D8895B5A",
+      peggedToken: "0x0000000000000000000000000000000000000006",
+      priceOracle: "0x0000000000000000000000000000000000000008",
+      stabilityPoolCollateral: "0x000000000000000000000000000000000000000a",
+      stabilityPoolLeveraged: "0x000000000000000000000000000000000000000b",
+      reservePool: "0x0000000000000000000000000000000000000009",
       rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
       rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
       collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
     },
     genesis: {
       startDate: "2024-03-21T00:00:00Z",
-      endDate: "2024-03-22T20:15:00Z",
+      endDate: "2024-09-01T00:00:00Z",
       rewards: {
         pegged: {
-          symbol: "zheUSD",
-          amount: "1000000", // 1 million zheUSD
+          symbol: "fxSAVE",
+          amount: "1000000", // 1 million fxSAVE
         },
         leveraged: {
-          symbol: "steamedETH",
-          amount: "1000000", // 1 million STEAM
+          symbol: "steamedUSD/ETH",
+          amount: "1000000", // 1 million steamedUSD/ETH
         },
       },
       collateralRatio: 1.0,
-      leverageRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "zhebtc-fxsave": {
+    id: "zhebtc-fxsave",
+    name: "zheBTC (fxSAVE collateral)",
+    description: "zheBTC (fxSAVE collateral)",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000015",
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
+      genesis: "0x0000000000000000000000000000000000000013",
+      leveragedToken: "0x0000000000000000000000000000000000000017",
+      minter: "0x0000000000000000000000000000000000000014",
+      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
+      peggedToken: "0x0000000000000000000000000000000000000016",
+      priceOracle: "0x0000000000000000000000000000000000000018",
+      stabilityPoolCollateral: "0x000000000000000000000000000000000000001a",
+      stabilityPoolLeveraged: "0x000000000000000000000000000000000000001b",
+      reservePool: "0x0000000000000000000000000000000000000019",
+      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
+      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
+      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
+    },
+    genesis: {
+      startDate: "2024-03-21T00:00:00Z",
+      endDate: "2024-09-01T00:00:00Z",
+      rewards: {
+        pegged: {
+          symbol: "fxSAVE",
+          amount: "1000000", // 1 million fxSAVE
+        },
+        leveraged: {
+          symbol: "steamedUSD/BTC",
+          amount: "1000000", // 1 million steamedUSD/BTC
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "zhebtc-wsteth": {
+    id: "zhebtc-wsteth",
+    name: "zheBTC (wstETH collateral)",
+    description: "zheBTC (wstETH collateral)",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000025",
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
+      genesis: "0x0000000000000000000000000000000000000023",
+      leveragedToken: "0x0000000000000000000000000000000000000027",
+      minter: "0x0000000000000000000000000000000000000024",
+      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
+      peggedToken: "0x0000000000000000000000000000000000000026",
+      priceOracle: "0x0000000000000000000000000000000000000028",
+      stabilityPoolCollateral: "0x000000000000000000000000000000000000002a",
+      stabilityPoolLeveraged: "0x000000000000000000000000000000000000002b",
+      reservePool: "0x0000000000000000000000000000000000000029",
+      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
+      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
+      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
+    },
+    genesis: {
+      startDate: "2024-03-21T00:00:00Z",
+      endDate: "2024-09-01T00:00:00Z",
+      rewards: {
+        pegged: {
+          symbol: "wstETH",
+          amount: "1000000", // 1 million wstETH
+        },
+        leveraged: {
+          symbol: "steamedETH/BTC",
+          amount: "1000000", // 1 million steamedETH/BTC
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
     },
   },
 };
 
 // For backward compatibility and convenience
-export const marketConfig = markets["steth-usd"];
-export const contractAddresses = markets["steth-usd"].addresses;
+export const marketConfig = markets["zheeth"];
+export const contractAddresses = markets["zheeth"].addresses;
+
+// ============================================================================
+// Contract ABIs and Types
+// ============================================================================
 
 export const minterABI = [
   {
@@ -148,7 +238,7 @@ export const minterABI = [
   },
 ] as const;
 
-// Add price history types
+// Price history types
 export interface PriceDataPoint {
   timestamp: number;
   price: number;

@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useAccount, useContractReads, useContractWrite } from "wagmi";
+import { useState, useMemo } from "react";
+import { useAccount, useContractReads, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
 import { usePools } from "@/hooks/usePools";
 import Navigation from "@/components/Navigation";
 import { Geo } from "next/font/google";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+import TokenIcon from "@/components/TokenIcon";
+import TimeRangeSelector from "@/components/TimeRangeSelector";
+
+const RechartsChart = dynamic(() => import("@/components/RechartsChart"), {
+  ssr: false,
+});
 
 const geo = Geo({
   subsets: ["latin"],
@@ -120,6 +127,96 @@ const erc20ABI = [
   },
 ] as const;
 
+const minterABI = [
+  {
+    inputs: [],
+    name: "peggedTokenPrice",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+// Etherscan Link helper
+interface EtherscanLinkProps {
+  label: string;
+  address?: string;
+}
+
+function EtherscanLink({ label, address }: EtherscanLinkProps) {
+  if (!address) return null;
+
+  const etherscanBaseUrl = "https://etherscan.io/address/";
+  return (
+    <div className="flex justify-between items-center text-sm py-3 border-b border-white/10 last:border-b-0">
+      <span className="text-[#F5F5F5]/70">{label}</span>
+      <a
+        href={`${etherscanBaseUrl}${address}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono text-white hover:underline flex items-center gap-1"
+      >
+        {`${address.slice(0, 6)}...${address.slice(-4)}`}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-3 w-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+          />
+        </svg>
+      </a>
+    </div>
+  );
+}
+
+// Contract Info section
+function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
+  if (!pool || !market) {
+    return (
+      <div className="lg:col-span-1 bg-[#1A1A1A] p-6">
+        <h2 className="text-xl font-bold text-white mb-4">Contract Info</h2>
+        <p className="text-sm text-[#F5F5F5]/70">
+          Pool information not available.
+        </p>
+      </div>
+    );
+  }
+
+  const assetAddress =
+    pool.poolType === "collateral"
+      ? market.addresses.collateralToken
+      : market.addresses.peggedToken;
+
+  return (
+    <div className="lg:col-span-1 bg-[#1A1A1A] p-6">
+      <h2 className="text-xl font-bold text-white mb-4">Contract Info</h2>
+      <div className="space-y-2">
+        <EtherscanLink label={pool.name} address={pool.address} />
+        <EtherscanLink
+          label={`Deposit Token (${pool.tokenSymbol})`}
+          address={assetAddress}
+        />
+        <EtherscanLink
+          label={`Collateral (${market.collateralSymbol})`}
+          address={market.addresses.collateralToken}
+        />
+        <EtherscanLink
+          label={`Pegged Token (${market.peggedSymbol})`}
+          address={market.addresses.peggedToken}
+        />
+        <EtherscanLink label="Minter" address={market.addresses.minter} />
+      </div>
+    </div>
+  );
+}
+
 type PoolAction = "deposit" | "withdraw" | "rewards";
 
 // Tab Button Component
@@ -168,7 +265,7 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-black text-white p-3 border border-[#4A7C59]/20 focus:border-[#4A7C59] focus:outline-none"
+        className="flex-1 bg-grey-darkest text-white p-3 border border-[#4A7C59]/20 focus:border-[#4A7C59] focus:outline-none"
       />
       {maxButton && (
         <button
@@ -220,7 +317,7 @@ function BalanceDisplay({ label, value, token }: BalanceDisplayProps) {
   return (
     <div className="flex justify-between items-center mb-2">
       <p className="text-sm text-[#F5F5F5]/50">{label}</p>
-      <p className="text-sm text-[#F5F5F5]">
+      <p className="text-sm text-[#F5F5F5] font-mono">
         {value} {token}
       </p>
     </div>
@@ -364,13 +461,13 @@ function RewardsTab({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-[#F5F5F5]/50 mb-1">Claimable Rewards</p>
-          <p className="text-lg font-medium text-white">
+          <p className="text-lg font-medium text-white font-mono">
             {formatAmount(rewardsData?.[0]?.result)} STEAM
           </p>
         </div>
         <div>
           <p className="text-sm text-[#F5F5F5]/50 mb-1">Boost Ratio</p>
-          <p className="text-lg font-medium text-white">
+          <p className="text-lg font-medium text-white font-mono">
             {formatRatio(poolData?.[2]?.result)}
           </p>
         </div>
@@ -440,7 +537,7 @@ function ActionTabs({
   formatRatio,
 }: ActionTabsProps) {
   return (
-    <div className="bg-[#1A1A1A] p-6">
+    <div className="bg-[#1A1A1A] px-8 py-6">
       {/* Tab Navigation */}
       <div className="flex mb-6">
         <TabButton
@@ -464,7 +561,7 @@ function ActionTabs({
       </div>
 
       {/* Tab Content */}
-      <div className="p-4 bg-black">
+      <div>
         {activeTab === "deposit" && (
           <DepositTab
             depositAmount={depositAmount}
@@ -513,6 +610,57 @@ function ActionTabs({
   );
 }
 
+// Chart and Description Component
+interface PoolInfoProps {
+  description: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tvlHistory: any[]; // Replace with actual type
+  formatTimestamp: (timestamp: number) => string;
+  formatTooltipTimestamp: (timestamp: number) => string;
+  pool: any;
+  market: any;
+  selectedTimeRange: any;
+  setSelectedTimeRange: any;
+}
+
+function PoolInfo({
+  description,
+  tvlHistory,
+  formatTimestamp,
+  formatTooltipTimestamp,
+  pool,
+  market,
+  selectedTimeRange,
+  setSelectedTimeRange,
+}: PoolInfoProps & {
+  pool: any;
+  market: any;
+  selectedTimeRange: any;
+  setSelectedTimeRange: any;
+}) {
+  return (
+    <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <ContractInfoSection pool={pool} market={market} />
+      <div className="lg:col-span-2 bg-[#1A1A1A] p-6 h-[400px]">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white">Historical APR</h2>
+          <TimeRangeSelector
+            selectedRange={selectedTimeRange}
+            onSelectRange={setSelectedTimeRange}
+          />
+        </div>
+        <RechartsChart
+          data={tvlHistory}
+          formatTimestamp={formatTimestamp}
+          formatTooltipTimestamp={formatTooltipTimestamp}
+          dataKey="apr"
+          unit="%"
+        />
+      </div>
+    </div>
+  );
+}
+
 interface PoolClientProps {
   marketId: string;
   poolType: "collateral" | "leveraged";
@@ -520,15 +668,30 @@ interface PoolClientProps {
 
 export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   const { isConnected, address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
   const [activeTab, setActiveTab] = useState<PoolAction>("deposit");
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
-  const { getPoolsByMarket } = usePools();
+  const [isDepositLoading, setIsDepositLoading] = useState(false);
+  const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
+  const [isClaimLoading, setIsClaimLoading] = useState(false);
+  const [isApproveLoading, setIsApproveLoading] = useState(false);
+  const [selectedTimeRange, setSelectedTimeRange] = useState("1M");
+  const { getPoolsByMarket, getMarketByPool } = usePools();
 
   const pools = getPoolsByMarket(marketId);
   const pool = pools.find((p) => p.poolType === poolType);
+  const market = getMarketByPool(
+    pool?.address ?? "0x0000000000000000000000000000000000000000"
+  );
+
+  const assetAddress =
+    pool && market
+      ? pool.poolType === "collateral"
+        ? market.addresses.collateralToken
+        : market.addresses.peggedToken
+      : undefined;
 
   const poolAddress = pool?.address;
   const tokenSymbol = pool?.tokenSymbol;
@@ -589,10 +752,10 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   // Get token balance
   const { data: tokenBalance } = useContractReads({
-    contracts: pool?.address
+    contracts: assetAddress
       ? [
           {
-            address: pool?.address as `0x${string}`,
+            address: assetAddress as `0x${string}`,
             abi: erc20ABI,
             functionName: "balanceOf",
             args: [address ?? "0x0"],
@@ -604,10 +767,10 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   // Get allowance
   const { data: allowance } = useContractReads({
     contracts:
-      pool?.address && poolAddress
+      assetAddress && poolAddress
         ? [
             {
-              address: pool?.address as `0x${string}`,
+              address: assetAddress as `0x${string}`,
               abi: erc20ABI,
               functionName: "allowance",
               args: [address ?? "0x0", poolAddress as `0x${string}`],
@@ -616,30 +779,75 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         : [],
   });
 
-  // Contract writes
-  const { write: deposit, isLoading: isDepositLoading } = useContractWrite({
-    address: poolAddress as `0x${string}`,
-    abi: stabilityPoolABI,
-    functionName: "deposit",
+  // Get price data
+  const { data: priceData } = useContractReads({
+    contracts: market
+      ? [
+          {
+            address: market.addresses.minter as `0x${string}`,
+            abi: minterABI,
+            functionName: "peggedTokenPrice",
+          },
+        ]
+      : [],
   });
 
-  const { write: withdraw, isLoading: isWithdrawLoading } = useContractWrite({
-    address: poolAddress as `0x${string}`,
-    abi: stabilityPoolABI,
-    functionName: "withdraw",
-  });
+  // MOCK APR HISTORY DATA
+  const generateMockAPRData = () => {
+    const data = [];
+    let value = 12; // Start with a 12% APR
+    const now = Date.now();
+    for (let i = 30; i >= 0; i--) {
+      value += (Math.random() - 0.5) * 1.5; // smaller fluctuations
+      if (value < 5) value = 5; // min APR
+      if (value > 25) value = 25; // max APR
+      data.push({
+        timestamp: Math.floor(now / 1000) - i * 24 * 60 * 60,
+        apr: value,
+        // The following are for type compliance with PriceDataPoint
+        price: value,
+        type: "oracle" as const,
+        tokenAmount: 0n,
+        collateralAmount: 0n,
+      });
+    }
+    return data;
+  };
+  const mockAPRHistory = generateMockAPRData();
 
-  const { write: claimRewards, isLoading: isClaimLoading } = useContractWrite({
-    address: poolAddress as `0x${string}`,
-    abi: rewardsABI,
-    functionName: "claimRewards",
-  });
+  const filteredAPRHistory = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    let startTime = 0;
 
-  const { write: approve, isLoading: isApproveLoading } = useContractWrite({
-    address: pool?.address as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-  });
+    switch (selectedTimeRange) {
+      case "24H":
+        startTime = now - 24 * 60 * 60;
+        break;
+      case "7D":
+        startTime = now - 7 * 24 * 60 * 60;
+        break;
+      case "1M":
+        startTime = now - 30 * 24 * 60 * 60;
+        break;
+      case "1Y":
+        startTime = now - 365 * 24 * 60 * 60;
+        break;
+      case "ALL":
+      default:
+        return mockAPRHistory;
+    }
+
+    return mockAPRHistory.filter((d) => d.timestamp >= startTime);
+  }, [mockAPRHistory, selectedTimeRange]);
+
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  const formatTooltipTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  };
 
   // Format helpers
   const formatAmount = (value: bigint | undefined) => {
@@ -665,19 +873,32 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   // Handlers
   const handleDeposit = async () => {
-    if (!isConnected || !address || !depositAmount) return;
+    if (!isConnected || !address || !depositAmount || !poolAddress || !pool)
+      return;
 
     try {
       setError(null);
-      setIsPending(true);
-
       const amount = parseEther(depositAmount);
-      if (!allowance?.[0]?.result || allowance[0].result < amount) {
-        await approve({
+
+      if (
+        assetAddress &&
+        (!allowance?.[0]?.result || allowance[0].result < amount)
+      ) {
+        setIsApproveLoading(true);
+        await writeContractAsync({
+          address: assetAddress as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "approve",
           args: [poolAddress as `0x${string}`, amount],
         });
+        setIsApproveLoading(false);
       }
-      await deposit({
+
+      setIsDepositLoading(true);
+      await writeContractAsync({
+        address: poolAddress as `0x${string}`,
+        abi: stabilityPoolABI,
+        functionName: "deposit",
         args: [amount, address as `0x${string}`, amount],
       });
       setDepositAmount("");
@@ -685,17 +906,21 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       console.error("Deposit failed:", error);
       setError(error.message || "Deposit failed");
     } finally {
-      setIsPending(false);
+      setIsDepositLoading(false);
+      setIsApproveLoading(false);
     }
   };
 
   const handleWithdraw = async () => {
-    if (!isConnected || !address || !withdrawAmount) return;
+    if (!isConnected || !address || !withdrawAmount || !poolAddress) return;
     try {
       setError(null);
-      setIsPending(true);
+      setIsWithdrawLoading(true);
       const amount = parseEther(withdrawAmount);
-      await withdraw({
+      await writeContractAsync({
+        address: poolAddress as `0x${string}`,
+        abi: stabilityPoolABI,
+        functionName: "withdraw",
         args: [amount, address as `0x${string}`],
       });
       setWithdrawAmount("");
@@ -703,21 +928,25 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       console.error("Withdraw failed:", error);
       setError(error.message || "Withdraw failed");
     } finally {
-      setIsPending(false);
+      setIsWithdrawLoading(false);
     }
   };
 
   const handleClaimRewards = async () => {
-    if (!isConnected || !address) return;
+    if (!isConnected || !address || !poolAddress) return;
     try {
       setError(null);
-      setIsPending(true);
-      await claimRewards();
+      setIsClaimLoading(true);
+      await writeContractAsync({
+        address: poolAddress as `0x${string}`,
+        abi: rewardsABI,
+        functionName: "claimRewards",
+      });
     } catch (error: any) {
       console.error("Claim rewards failed:", error);
       setError(error.message || "Claim rewards failed");
     } finally {
-      setIsPending(false);
+      setIsClaimLoading(false);
     }
   };
 
@@ -742,6 +971,10 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       : undefined
   );
 
+  const tvl = poolData?.[0]?.result;
+  const price = priceData?.[0]?.result;
+  const tvlUSD = tvl && price ? (Number(tvl) * Number(price)) / 1e36 : 0;
+
   if (!pool) {
     return (
       <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
@@ -758,62 +991,99 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
       <Navigation />
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
-        <div className="text-center mb-12">
+      <main className="container mx-auto px-8 sm:px-10 pt-32 pb-20 relative z-10">
+        <div className="mb-4">
           <Link
             href="/earn"
-            className="inline-flex items-center gap-2 text-white hover:text-white/80 transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-white hover:text-white/80 transition-colors"
           >
             <svg
-              className="w-4 h-4"
+              className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
+                strokeWidth="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
             </svg>
             Back to Earn
           </Link>
-          <h1 className={`text-4xl text-white font-bold`}>{pool.name}</h1>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <Image
-              src={pool.chainIcon}
-              alt={pool.chain}
-              width={20}
-              height={20}
-              className="rounded-full"
-            />
-            <p className="text-[#F5F5F5]/60 text-sm">{pool.chain}</p>
+        </div>
+        <div className="text-center mb-12">
+          <div className="flex justify-center items-center gap-6">
+            <div className="flex items-center">
+              {pool.assetIcons
+                .slice()
+                .reverse()
+                .map((icon: string, index: number) => (
+                  <TokenIcon
+                    key={index}
+                    src={icon}
+                    alt="token icon"
+                    width={40}
+                    height={40}
+                    className={`rounded-full border-2 border-black ${
+                      index > 0 ? "-ml-4" : ""
+                    }`}
+                  />
+                ))}
+            </div>
+            <h1 className={`text-4xl text-white font-bold`}>{pool.name}</h1>
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 backdrop-blur-sm">
+              <Image
+                src={pool.chainIcon}
+                alt={pool.chain}
+                width={20}
+                height={20}
+                className="rounded-full"
+              />
+              <p className="text-sm text-[#F5F5F5]/60">{pool.chain}</p>
+            </div>
+            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-[#F5F5F5]/60 backdrop-blur-sm">
+              {pool.poolType === "collateral"
+                ? "Stability Pool"
+                : "Leveraged Pool"}
+            </div>
           </div>
         </div>
         {/* Pool Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2">Total Value Locked</p>
-            <p className="text-2xl font-bold text-white">
-              ${formatAmount(poolData?.[0]?.result)}
+            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
+              Total Value Locked
+            </p>
+            <p className="text-2xl font-bold text-white font-mono">
+              ${tvlUSD.toFixed(2)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2">Your Deposit</p>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
+              Your Deposit
+            </p>
+            <p className="text-2xl font-bold text-white font-mono">
               {formatAmount(poolData?.[1]?.result)} {tokenSymbol}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2">APR</p>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
+              APR
+            </p>
+            <p className="text-2xl font-bold text-white font-mono">
               {baseAPR} + {boostAPR}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2">Boost Ratio</p>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
+              Boost Ratio
+            </p>
+            <p className="text-2xl font-bold text-white font-mono">
               {formatRatio(poolData?.[2]?.result)}
             </p>
           </div>
@@ -843,6 +1113,17 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
           handleMaxWithdraw={handleMaxWithdraw}
           formatAmount={formatAmount}
           formatRatio={formatRatio}
+        />
+        {/* Pool Info Section */}
+        <PoolInfo
+          description={pool.description}
+          tvlHistory={filteredAPRHistory}
+          formatTimestamp={formatTimestamp}
+          formatTooltipTimestamp={formatTooltipTimestamp}
+          pool={pool}
+          market={market}
+          selectedTimeRange={selectedTimeRange}
+          setSelectedTimeRange={setSelectedTimeRange}
         />
       </main>
     </div>
