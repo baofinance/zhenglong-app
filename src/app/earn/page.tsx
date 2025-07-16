@@ -1,12 +1,12 @@
 "use client";
 
-import { useAccount, useContractReads } from "wagmi";
 import { usePools } from "@/hooks/usePools";
 import Navigation from "@/components/Navigation";
 import { useMemo, useState } from "react";
 import CustomFilterDropdown from "@/components/CustomFilterDropdown";
 import Image from "next/image";
 import TokenIcon from "@/components/TokenIcon";
+import { usePoolData } from "@/hooks/usePoolData";
 
 // Pool configuration
 const POOL_TYPES = {
@@ -22,102 +22,20 @@ const POOL_TYPES = {
   },
 } as const;
 
-// ABIs
-const stabilityPoolABI = [
-  {
-    inputs: [],
-    name: "totalAssetSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "assetBalanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const rewardsABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getClaimableRewards",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const aprABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getAPRBreakdown",
-    outputs: [
-      { name: "collateralTokenAPR", type: "uint256" },
-      { name: "steamTokenAPR", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const minterABI = [
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
 // Pool Row Component
 interface PoolRowProps {
   pool: any;
-  poolIndex: number;
-  poolsData: any;
-  rewardsData: any;
-  aprBreakdownData: any;
-  pricesData: any;
   formatAmount: (value: bigint | undefined) => string;
-  formatAPRBreakdown: (breakdown: any) => { collateral: string; steam: string };
+  formatAPRBreakdown: (breakdown: { collateral: number; steam: number }) => {
+    collateral: string;
+    steam: string;
+  };
 }
 
-function PoolRow({
-  pool,
-  poolIndex,
-  poolsData,
-  rewardsData,
-  aprBreakdownData,
-  pricesData,
-  formatAmount,
-  formatAPRBreakdown,
-}: PoolRowProps) {
-  const aprBreakdown = aprBreakdownData?.[poolIndex]?.result;
+function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
   const { collateral: baseAPR, steam: boostAPR } = formatAPRBreakdown(
-    aprBreakdown
-      ? {
-          collateralTokenAPR: aprBreakdown[0],
-          steamTokenAPR: aprBreakdown[1],
-        }
-      : undefined
+    pool.aprBreakdown
   );
-
-  const tvl = poolsData?.[poolIndex]?.result;
-  const price = pricesData?.[poolIndex]?.result;
-  const tvlUSD = tvl && price ? (Number(tvl) * Number(price)) / 1e36 : 0;
 
   return (
     <tr
@@ -167,9 +85,9 @@ function PoolRow({
               </div>
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[#A3A3A3] backdrop-blur-sm">
                 {pool.type}{" "}
-                {pool.leverage && (
+                {pool.leverageRatio && (
                   <span className="font-bold text-white ml-1">
-                    • {pool.leverage}×
+                    • {(Number(pool.leverageRatio) / 1e18).toFixed(0)}×
                   </span>
                 )}
               </div>
@@ -181,16 +99,17 @@ function PoolRow({
         {baseAPR} + {boostAPR}
       </td>
       <td className="py-4 px-6 text-right font-mono">
-        {formatAmount(rewardsData?.[poolIndex]?.result)}
+        {formatAmount(pool.rewards)}
       </td>
-      <td className="py-4 px-6 text-right font-mono">${tvlUSD.toFixed(2)}</td>
+      <td className="py-4 px-6 text-right font-mono">
+        ${pool.tvlUSD.toFixed(2)}
+      </td>
     </tr>
   );
 }
 
 export default function Earn() {
-  const { address } = useAccount();
-  const { getAllPools, getMarketByPool } = usePools();
+  const { getAllPools } = usePools();
   const allPools = getAllPools();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -216,72 +135,18 @@ export default function Earn() {
       );
   }, [allPools, searchTerm, filterType]);
 
+  const { poolData: poolsWithData } = usePoolData(filteredPools);
+
   const groupedPools = useMemo(() => {
-    const groups: Record<string, typeof filteredPools> = {};
-    for (const pool of filteredPools) {
+    const groups: Record<string, typeof poolsWithData> = {};
+    for (const pool of poolsWithData) {
       if (!groups[pool.groupName]) {
         groups[pool.groupName] = [];
       }
       groups[pool.groupName].push(pool);
     }
     return Object.entries(groups);
-  }, [filteredPools]);
-
-  const contracts = useMemo(
-    () =>
-      filteredPools.map((pool) => ({
-        address: pool.address,
-        abi: stabilityPoolABI,
-        functionName: "totalAssetSupply",
-      })),
-    [filteredPools]
-  );
-
-  const rewardsContracts = useMemo(
-    () =>
-      filteredPools.map((pool) => ({
-        address: pool.address,
-        abi: rewardsABI,
-        functionName: "getClaimableRewards",
-        args: [address ?? "0x0"],
-      })),
-    [filteredPools, address]
-  );
-
-  const aprContracts = useMemo(
-    () =>
-      filteredPools.map((pool) => ({
-        address: pool.address,
-        abi: aprABI,
-        functionName: "getAPRBreakdown",
-        args: [address ?? "0x0000000000000000000000000000000000000000"],
-      })),
-    [filteredPools, address]
-  );
-
-  const priceContracts = useMemo(
-    () =>
-      filteredPools.map((pool) => {
-        const market = getMarketByPool(pool.address);
-        return {
-          address: market?.addresses.minter as `0x${string}`,
-          abi: minterABI,
-          functionName: "peggedTokenPrice",
-        };
-      }),
-    [filteredPools, getMarketByPool]
-  );
-
-  const { data: poolsData } = useContractReads({ contracts });
-  const { data: rewardsData } = useContractReads({
-    contracts: rewardsContracts,
-  });
-  const { data: aprBreakdownData } = useContractReads({
-    contracts: aprContracts,
-  });
-  const { data: pricesData } = useContractReads({
-    contracts: priceContracts,
-  });
+  }, [poolsWithData]);
 
   // Format helpers
   const formatAmount = (value: bigint | undefined) => {
@@ -289,14 +154,14 @@ export default function Earn() {
     return (Number(value) / 1e18).toFixed(4);
   };
 
-  const formatAPRBreakdown = (
-    breakdown: { collateralTokenAPR: bigint; steamTokenAPR: bigint } | undefined
-  ) => {
-    if (!breakdown) return { collateral: "0%", steam: "0%" };
+  const formatAPRBreakdown = (breakdown: {
+    collateral: number;
+    steam: number;
+  }) => {
+    if (!breakdown) return { collateral: "0.00%", steam: "0.00%" };
     return {
-      collateral:
-        ((Number(breakdown.collateralTokenAPR) / 1e18) * 100).toFixed(2) + "%",
-      steam: ((Number(breakdown.steamTokenAPR) / 1e18) * 100).toFixed(2) + "%",
+      collateral: breakdown.collateral.toFixed(2) + "%",
+      steam: breakdown.steam.toFixed(2) + "%",
     };
   };
 
@@ -357,19 +222,11 @@ export default function Earn() {
                   </thead>
                   <tbody>
                     {poolsInGroup.map((pool) => {
-                      const poolIndex = filteredPools.findIndex(
-                        (p) => p.id === pool.id
-                      );
-                      if (poolIndex === -1) return null;
+                      if (pool.tvl === undefined) return null; // or a loading skeleton
                       return (
                         <PoolRow
                           key={pool.id}
                           pool={pool}
-                          poolIndex={poolIndex}
-                          poolsData={poolsData}
-                          rewardsData={rewardsData}
-                          aprBreakdownData={aprBreakdownData}
-                          pricesData={pricesData}
                           formatAmount={formatAmount}
                           formatAPRBreakdown={formatAPRBreakdown}
                         />

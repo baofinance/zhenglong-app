@@ -11,6 +11,10 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import TokenIcon from "@/components/TokenIcon";
 import TimeRangeSelector from "@/components/TimeRangeSelector";
+import { usePoolData } from "@/hooks/usePoolData";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { rewardsABI } from "@/abis/rewards";
+import { erc20ABI } from "@/abis/erc20";
 
 const RechartsChart = dynamic(() => import("@/components/RechartsChart"), {
   ssr: false,
@@ -21,121 +25,6 @@ const geo = Geo({
   weight: "400",
   display: "swap",
 });
-
-const stabilityPoolABI = [
-  {
-    inputs: [],
-    name: "totalAssetSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "assetBalanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getBoostRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "amount", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minAmount", type: "uint256" },
-    ],
-    name: "deposit",
-    outputs: [{ type: "uint256", name: "amountDeposited" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "amount", type: "uint256" },
-      { name: "receiver", type: "address" },
-    ],
-    name: "withdraw",
-    outputs: [{ type: "uint256", name: "amountWithdrawn" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const rewardsABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getClaimableRewards",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "claimRewards",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const aprABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getAPRBreakdown",
-    outputs: [
-      { name: "collateralTokenAPR", type: "uint256" },
-      { name: "steamTokenAPR", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const minterABI = [
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // Etherscan Link helper
 interface EtherscanLinkProps {
@@ -384,7 +273,7 @@ function DepositTab({
 interface WithdrawTabProps {
   withdrawAmount: string;
   setWithdrawAmount: (value: string) => void;
-  poolData: any;
+  poolWithData: any;
   tokenSymbol: string;
   error: string | null;
   isConnected: boolean;
@@ -397,7 +286,7 @@ interface WithdrawTabProps {
 function WithdrawTab({
   withdrawAmount,
   setWithdrawAmount,
-  poolData,
+  poolWithData,
   tokenSymbol,
   error,
   isConnected,
@@ -410,7 +299,7 @@ function WithdrawTab({
     <div className="space-y-4">
       <BalanceDisplay
         label="Pool Balance"
-        value={formatAmount(poolData?.[1]?.result)}
+        value={formatAmount(poolWithData?.userDeposit)}
         token={tokenSymbol}
       />
       <InputField
@@ -436,46 +325,34 @@ function WithdrawTab({
 
 // Rewards Tab Component
 interface RewardsTabProps {
-  rewardsData: any;
-  poolData: any;
+  poolWithData: any;
   error: string | null;
   isConnected: boolean;
   isClaimLoading: boolean;
   handleClaimRewards: () => void;
   formatAmount: (value: bigint | undefined) => string;
-  formatRatio: (value: bigint | undefined) => string;
 }
 
 function RewardsTab({
-  rewardsData,
-  poolData,
+  poolWithData,
   error,
   isConnected,
   isClaimLoading,
   handleClaimRewards,
   formatAmount,
-  formatRatio,
 }: RewardsTabProps) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-[#F5F5F5]/50 mb-1">Claimable Rewards</p>
-          <p className="text-lg font-medium text-white font-mono">
-            {formatAmount(rewardsData?.[0]?.result)} STEAM
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-[#F5F5F5]/50 mb-1">Boost Ratio</p>
-          <p className="text-lg font-medium text-white font-mono">
-            {formatRatio(poolData?.[2]?.result)}
-          </p>
-        </div>
+      <div>
+        <p className="text-sm text-[#F5F5F5]/50 mb-1">Claimable Rewards</p>
+        <p className="text-lg font-medium text-white font-mono">
+          {formatAmount(poolWithData?.rewards)} STEAM
+        </p>
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
       <ActionButton
         onClick={handleClaimRewards}
-        disabled={!isConnected || !rewardsData?.[0]?.result}
+        disabled={!isConnected || !poolWithData?.rewards}
         isLoading={isClaimLoading}
       >
         Claim Rewards
@@ -493,8 +370,7 @@ interface ActionTabsProps {
   withdrawAmount: string;
   setWithdrawAmount: (value: string) => void;
   tokenBalance: any;
-  poolData: any;
-  rewardsData: any;
+  poolWithData: any;
   tokenSymbol: string;
   error: string | null;
   isConnected: boolean;
@@ -508,7 +384,6 @@ interface ActionTabsProps {
   handleMaxDeposit: () => void;
   handleMaxWithdraw: () => void;
   formatAmount: (value: bigint | undefined) => string;
-  formatRatio: (value: bigint | undefined) => string;
 }
 
 function ActionTabs({
@@ -519,8 +394,7 @@ function ActionTabs({
   withdrawAmount,
   setWithdrawAmount,
   tokenBalance,
-  poolData,
-  rewardsData,
+  poolWithData,
   tokenSymbol,
   error,
   isConnected,
@@ -534,7 +408,6 @@ function ActionTabs({
   handleMaxDeposit,
   handleMaxWithdraw,
   formatAmount,
-  formatRatio,
 }: ActionTabsProps) {
   return (
     <div className="bg-[#1A1A1A] px-8 py-6">
@@ -582,7 +455,7 @@ function ActionTabs({
           <WithdrawTab
             withdrawAmount={withdrawAmount}
             setWithdrawAmount={setWithdrawAmount}
-            poolData={poolData}
+            poolWithData={poolWithData}
             tokenSymbol={tokenSymbol}
             error={error}
             isConnected={isConnected}
@@ -595,14 +468,12 @@ function ActionTabs({
 
         {activeTab === "rewards" && (
           <RewardsTab
-            rewardsData={rewardsData}
-            poolData={poolData}
+            poolWithData={poolWithData}
             error={error}
             isConnected={isConnected}
             isClaimLoading={isClaimLoading}
             handleClaimRewards={handleClaimRewards}
             formatAmount={formatAmount}
-            formatRatio={formatRatio}
           />
         )}
       </div>
@@ -612,50 +483,35 @@ function ActionTabs({
 
 // Chart and Description Component
 interface PoolInfoProps {
-  description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tvlHistory: any[]; // Replace with actual type
-  formatTimestamp: (timestamp: number) => string;
-  formatTooltipTimestamp: (timestamp: number) => string;
   pool: any;
   market: any;
-  selectedTimeRange: any;
-  setSelectedTimeRange: any;
+  baseAPR: string;
+  boostAPR: string;
 }
 
-function PoolInfo({
-  description,
-  tvlHistory,
-  formatTimestamp,
-  formatTooltipTimestamp,
-  pool,
-  market,
-  selectedTimeRange,
-  setSelectedTimeRange,
-}: PoolInfoProps & {
-  pool: any;
-  market: any;
-  selectedTimeRange: any;
-  setSelectedTimeRange: any;
-}) {
+function PoolInfo({ pool, market, baseAPR, boostAPR }: PoolInfoProps) {
+  const totalAPR =
+    (parseFloat(baseAPR) + parseFloat(boostAPR)).toFixed(2) + "%";
+
   return (
     <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
       <ContractInfoSection pool={pool} market={market} />
-      <div className="lg:col-span-2 bg-[#1A1A1A] p-6 h-[400px]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">Historical APR</h2>
-          <TimeRangeSelector
-            selectedRange={selectedTimeRange}
-            onSelectRange={setSelectedTimeRange}
-          />
+      <div className="lg:col-span-2 bg-[#1A1A1A] p-6">
+        <h2 className="text-xl font-bold text-white mb-4">APR Breakdown</h2>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-[#F5F5F5]/70">Base APR</span>
+            <span className="font-mono text-white">{baseAPR}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-[#F5F5F5]/70">STEAM Boost APR</span>
+            <span className="font-mono text-white">{boostAPR}</span>
+          </div>
+          <div className="flex justify-between items-center text-base font-bold border-t border-white/10 pt-3 mt-3">
+            <span className="text-white">Total APR</span>
+            <span className="font-mono text-white">{totalAPR}</span>
+          </div>
         </div>
-        <RechartsChart
-          data={tvlHistory}
-          formatTimestamp={formatTimestamp}
-          formatTooltipTimestamp={formatTooltipTimestamp}
-          dataKey="apr"
-          unit="%"
-        />
       </div>
     </div>
   );
@@ -677,11 +533,14 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [isClaimLoading, setIsClaimLoading] = useState(false);
   const [isApproveLoading, setIsApproveLoading] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState("1M");
   const { getPoolsByMarket, getMarketByPool } = usePools();
 
   const pools = getPoolsByMarket(marketId);
   const pool = pools.find((p) => p.poolType === poolType);
+
+  const { poolData } = usePoolData(pool ? [pool] : []);
+  const poolWithData = poolData?.[0];
+
   const market = getMarketByPool(
     pool?.address ?? "0x0000000000000000000000000000000000000000"
   );
@@ -696,59 +555,6 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   const poolAddress = pool?.address;
   const tokenSymbol = pool?.tokenSymbol;
   const poolName = pool?.name;
-
-  // Get pool data
-  const { data: poolData } = useContractReads({
-    contracts: poolAddress
-      ? [
-          {
-            address: poolAddress as `0x${string}`,
-            abi: stabilityPoolABI,
-            functionName: "totalAssetSupply",
-          },
-          {
-            address: poolAddress as `0x${string}`,
-            abi: stabilityPoolABI,
-            functionName: "assetBalanceOf",
-            args: [address ?? "0x0"],
-          },
-          {
-            address: poolAddress as `0x${string}`,
-            abi: stabilityPoolABI,
-            functionName: "getBoostRatio",
-            args: [address ?? "0x0"],
-          },
-        ]
-      : [],
-  });
-
-  // Get rewards data
-  const { data: rewardsData } = useContractReads({
-    contracts: poolAddress
-      ? [
-          {
-            address: poolAddress as `0x${string}`,
-            abi: rewardsABI,
-            functionName: "getClaimableRewards",
-            args: [address ?? "0x0"],
-          },
-        ]
-      : [],
-  });
-
-  // Get APR data
-  const { data: aprData } = useContractReads({
-    contracts: poolAddress
-      ? [
-          {
-            address: poolAddress as `0x${string}`,
-            abi: aprABI,
-            functionName: "getAPRBreakdown",
-            args: [address ?? "0x0"],
-          },
-        ]
-      : [],
-  });
 
   // Get token balance
   const { data: tokenBalance } = useContractReads({
@@ -779,95 +585,20 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         : [],
   });
 
-  // Get price data
-  const { data: priceData } = useContractReads({
-    contracts: market
-      ? [
-          {
-            address: market.addresses.minter as `0x${string}`,
-            abi: minterABI,
-            functionName: "peggedTokenPrice",
-          },
-        ]
-      : [],
-  });
-
-  // MOCK APR HISTORY DATA
-  const generateMockAPRData = () => {
-    const data = [];
-    let value = 12; // Start with a 12% APR
-    const now = Date.now();
-    for (let i = 30; i >= 0; i--) {
-      value += (Math.random() - 0.5) * 1.5; // smaller fluctuations
-      if (value < 5) value = 5; // min APR
-      if (value > 25) value = 25; // max APR
-      data.push({
-        timestamp: Math.floor(now / 1000) - i * 24 * 60 * 60,
-        apr: value,
-        // The following are for type compliance with PriceDataPoint
-        price: value,
-        type: "oracle" as const,
-        tokenAmount: 0n,
-        collateralAmount: 0n,
-      });
-    }
-    return data;
-  };
-  const mockAPRHistory = generateMockAPRData();
-
-  const filteredAPRHistory = useMemo(() => {
-    const now = Math.floor(Date.now() / 1000);
-    let startTime = 0;
-
-    switch (selectedTimeRange) {
-      case "24H":
-        startTime = now - 24 * 60 * 60;
-        break;
-      case "7D":
-        startTime = now - 7 * 24 * 60 * 60;
-        break;
-      case "1M":
-        startTime = now - 30 * 24 * 60 * 60;
-        break;
-      case "1Y":
-        startTime = now - 365 * 24 * 60 * 60;
-        break;
-      case "ALL":
-      default:
-        return mockAPRHistory;
-    }
-
-    return mockAPRHistory.filter((d) => d.timestamp >= startTime);
-  }, [mockAPRHistory, selectedTimeRange]);
-
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString();
-  };
-
-  const formatTooltipTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-  };
-
   // Format helpers
   const formatAmount = (value: bigint | undefined) => {
     if (!value) return "0.00";
     return (Number(value) / 1e18).toFixed(4);
   };
 
-  const formatRatio = (value: bigint | undefined) => {
-    if (!value) return "0%";
-    return ((Number(value) / 1e18) * 100).toFixed(2) + "%";
-  };
-
-  const formatAPRBreakdown = (
-    breakdown: { collateralTokenAPR: bigint; steamTokenAPR: bigint } | undefined
-  ) => {
-    if (!breakdown) return { collateral: "0%", steam: "0%" };
+  const formatAPRBreakdown = (breakdown: {
+    collateral: number;
+    steam: number;
+  }) => {
+    if (!breakdown) return { collateral: "0.00%", steam: "0.00%" };
     return {
-      collateral:
-        ((Number(breakdown.collateralTokenAPR) / 1e18) * 100).toFixed(2) + "%",
-      steam: ((Number(breakdown.steamTokenAPR) / 1e18) * 100).toFixed(2) + "%",
+      collateral: breakdown.collateral.toFixed(2) + "%",
+      steam: breakdown.steam.toFixed(2) + "%",
     };
   };
 
@@ -899,7 +630,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         address: poolAddress as `0x${string}`,
         abi: stabilityPoolABI,
         functionName: "deposit",
-        args: [amount, address as `0x${string}`, amount],
+        args: [amount, address as `0x${string}`, 0n],
       });
       setDepositAmount("");
     } catch (error: any) {
@@ -921,7 +652,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         address: poolAddress as `0x${string}`,
         abi: stabilityPoolABI,
         functionName: "withdraw",
-        args: [amount, address as `0x${string}`],
+        args: [amount, address as `0x${string}`, 0n],
       });
       setWithdrawAmount("");
     } catch (error: any) {
@@ -957,23 +688,16 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   };
 
   const handleMaxWithdraw = () => {
-    if (poolData?.[1]?.result) {
-      setWithdrawAmount(formatAmount(poolData[1].result));
+    if (poolWithData?.userDeposit) {
+      setWithdrawAmount(formatAmount(poolWithData.userDeposit));
     }
   };
 
   const { collateral: baseAPR, steam: boostAPR } = formatAPRBreakdown(
-    aprData?.[0]?.result
-      ? {
-          collateralTokenAPR: aprData[0].result[0],
-          steamTokenAPR: aprData[0].result[1],
-        }
-      : undefined
+    poolWithData?.aprBreakdown
   );
 
-  const tvl = poolData?.[0]?.result;
-  const price = priceData?.[0]?.result;
-  const tvlUSD = tvl && price ? (Number(tvl) * Number(price)) / 1e36 : 0;
+  const tvlUSD = poolWithData?.tvlUSD ?? 0;
 
   if (!pool) {
     return (
@@ -1054,7 +778,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
           </div>
         </div>
         {/* Pool Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="text-center">
             <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
               Total Value Locked
@@ -1068,7 +792,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               Your Deposit
             </p>
             <p className="text-2xl font-bold text-white font-mono">
-              {formatAmount(poolData?.[1]?.result)} {tokenSymbol}
+              {formatAmount(poolWithData?.userDeposit)} {tokenSymbol}
             </p>
           </div>
           <div className="text-center">
@@ -1077,14 +801,6 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             </p>
             <p className="text-2xl font-bold text-white font-mono">
               {baseAPR} + {boostAPR}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
-              Boost Ratio
-            </p>
-            <p className="text-2xl font-bold text-white font-mono">
-              {formatRatio(poolData?.[2]?.result)}
             </p>
           </div>
         </div>
@@ -1097,8 +813,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
           withdrawAmount={withdrawAmount}
           setWithdrawAmount={setWithdrawAmount}
           tokenBalance={tokenBalance}
-          poolData={poolData}
-          rewardsData={rewardsData}
+          poolWithData={poolWithData}
           tokenSymbol={tokenSymbol || ""}
           error={error}
           isConnected={isConnected}
@@ -1112,18 +827,13 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
           handleMaxDeposit={handleMaxDeposit}
           handleMaxWithdraw={handleMaxWithdraw}
           formatAmount={formatAmount}
-          formatRatio={formatRatio}
         />
         {/* Pool Info Section */}
         <PoolInfo
-          description={pool.description}
-          tvlHistory={filteredAPRHistory}
-          formatTimestamp={formatTimestamp}
-          formatTooltipTimestamp={formatTooltipTimestamp}
           pool={pool}
           market={market}
-          selectedTimeRange={selectedTimeRange}
-          setSelectedTimeRange={setSelectedTimeRange}
+          baseAPR={baseAPR}
+          boostAPR={boostAPR}
         />
       </main>
     </div>

@@ -1,4 +1,5 @@
 import { markets } from "./contracts";
+import { arbitrum, mainnet } from "viem/chains";
 
 // TODO: URGENT - Update steamedUSD and BTC icons once final token assets are available
 // Current icons are placeholders:
@@ -14,7 +15,6 @@ export interface Pool {
   assetIcons: string[];
   address: `0x${string}`;
   type: "Collateral" | "Leveraged";
-  leverage?: number;
   tokenSymbol: string;
   chain: string;
   chainId: number;
@@ -22,6 +22,7 @@ export interface Pool {
   description: string;
   marketId: string;
   poolType: "collateral" | "leveraged";
+  assetDecimals: number;
 }
 
 const launchPools: Pool[] = [
@@ -41,6 +42,7 @@ const launchPools: Pool[] = [
     description: "Deposit fxSAVE to earn yield and secure the protocol.",
     marketId: "zheeth",
     poolType: "collateral",
+    assetDecimals: 18,
   },
   {
     id: "zheeth-steamedusd-eth",
@@ -50,7 +52,6 @@ const launchPools: Pool[] = [
     assetIcons: ["/icons/steamedUSD.png", "/icons/eth.png"], // TODO: Update steamedUSD icon when available
     address: markets.zheeth.addresses.stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
-    leverage: 2,
     tokenSymbol: "steamedUSD/ETH",
     chain: "Ethereum",
     chainId: 1,
@@ -59,6 +60,7 @@ const launchPools: Pool[] = [
       "Provide liquidity for the steamedUSD/ETH pair to earn leveraged rewards.",
     marketId: "zheeth",
     poolType: "leveraged",
+    assetDecimals: 18,
   },
   // Group 2: zheBTC Deposits (fxSAVE collateral)
   {
@@ -78,6 +80,7 @@ const launchPools: Pool[] = [
     description: "Deposit fxSAVE to earn yield and secure the protocol.",
     marketId: "zhebtc-fxsave",
     poolType: "collateral",
+    assetDecimals: 18,
   },
   {
     id: "zhebtc-fxsave-steamedusd-btc",
@@ -89,7 +92,6 @@ const launchPools: Pool[] = [
     address: markets["zhebtc-fxsave"].addresses
       .stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
-    leverage: 2,
     tokenSymbol: "steamedUSD/BTC",
     chain: "Ethereum",
     chainId: 1,
@@ -98,6 +100,7 @@ const launchPools: Pool[] = [
       "Provide liquidity for the steamedUSD/BTC pair to earn leveraged rewards.",
     marketId: "zhebtc-fxsave",
     poolType: "leveraged",
+    assetDecimals: 18,
   },
   // Group 3: zheBTC Deposits (wstETH collateral)
   {
@@ -117,6 +120,7 @@ const launchPools: Pool[] = [
     description: "Deposit wstETH to earn yield and secure the protocol.",
     marketId: "zhebtc-wsteth",
     poolType: "collateral",
+    assetDecimals: 18,
   },
   {
     id: "zhebtc-wsteth-steamedeth-btc",
@@ -128,7 +132,6 @@ const launchPools: Pool[] = [
     address: markets["zhebtc-wsteth"].addresses
       .stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
-    leverage: 2,
     tokenSymbol: "steamedETH/BTC",
     chain: "Ethereum",
     chainId: 1,
@@ -137,6 +140,7 @@ const launchPools: Pool[] = [
       "Provide liquidity for the steamedETH/BTC pair to earn leveraged rewards.",
     marketId: "zhebtc-wsteth",
     poolType: "leveraged",
+    assetDecimals: 18,
   },
 ];
 
