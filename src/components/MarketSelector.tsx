@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  marketsConfig,
-  getAvailableMarkets,
-  type MarketInfo,
-} from "../config/markets";
+import { markets } from "../config/markets";
 
 interface MarketSelectorProps {
   selectedMarketId: string;
@@ -21,8 +17,11 @@ export default function MarketSelector({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableMarkets = getAvailableMarkets();
-  const selectedMarket = marketsConfig[selectedMarketId];
+  const availableMarkets = Object.entries(markets).map(([id, market]) => ({
+    id,
+    ...market,
+  }));
+  const selectedMarket = markets[selectedMarketId as keyof typeof markets];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -74,7 +73,7 @@ export default function MarketSelector({
           onClick={() => setIsOpen(!isOpen)}
           className={`px-4 py-2 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 hover:border-[#4A7C59] hover:bg-[#2A2A2A] outline-none transition-all text-left w-[200px] shadow-md font-medium ${geoClassName} flex items-center justify-between`}
         >
-          <span>{selectedMarket?.title || "Select Market"}</span>
+          <span>{selectedMarket?.name || "Select Market"}</span>
           <svg
             className={`w-4 h-4 text-[#4A7C59] transition-transform ${
               isOpen ? "rotate-180" : ""
@@ -95,7 +94,7 @@ export default function MarketSelector({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-[300px] bg-[#1A1A1A] border border-[#4A7C59]/30 shadow-xl z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-2 w-[300px] bg-[#1A1A1A] border border-[#4A7C59]/30 shadow-xl z-[60] max-h-64 overflow-y-auto">
           <div className="p-2">
             {availableMarkets.length === 0 ? (
               <div className="p-4 text-center text-[#F5F5F5]/50">
@@ -114,15 +113,13 @@ export default function MarketSelector({
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`font-medium text-base ${geoClassName}`}>
-                      {market.title}
+                      {market.name}
                     </span>
                     {getStatusBadge(market.status)}
                   </div>
                   <div className="text-sm text-[#F5F5F5]/60">
                     <div className="flex items-center gap-2">
-                      <span className="text-[#4A7C59]">
-                        {market.collateralTokens[0]}
-                      </span>
+                      <span className="text-[#4A7C59]">wstETH</span>
                       <span>•</span>
                       <span>{market.peggedToken.name}</span>
                       <span>•</span>

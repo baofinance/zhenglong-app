@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAccount, useContractReads, useContractWrite } from "wagmi";
 import { parseEther } from "viem";
-import { markets, MarketConfig } from "@/config/contracts";
+import { markets } from "@/config/markets";
 import Navigation from "@/components/Navigation";
 import { Geo } from "next/font/google";
 
@@ -319,7 +319,7 @@ function useClaimRewards(marketId: string, pool: "collateral" | "leveraged") {
 
 export default function Earn() {
   const { isConnected, address } = useAccount();
-  const [selectedMarket, setSelectedMarket] = useState(markets["eth-usd"].id);
+  const [selectedMarket, setSelectedMarket] = useState("eth-usd");
   const [poolStates, setPoolStates] = useState<
     Record<string, { collateral: PoolState; leveraged: PoolState }>
   >({});
@@ -983,7 +983,7 @@ export default function Earn() {
               {/* Token Section Header - Moved outside */}
               <div className="flex flex-col mb-6">
                 <h2 className={`text-2xl text-[#4A7C59] ${geo.className}`}>
-                  Stake {markets[0].genesis.rewards.pegged.symbol}
+                  Stake {markets[0].peggedToken.symbol}
                 </h2>
               </div>
 
@@ -1057,8 +1057,7 @@ export default function Earn() {
                                     <div
                                       className={`text-xl text-[#4A7C59] ${geo.className}`}
                                     >
-                                      {market.genesis.rewards.pegged.symbol}{" "}
-                                      Stability Pool
+                                      {market.peggedToken.symbol} Stability Pool
                                     </div>
                                     <svg
                                       viewBox="0 0 24 24"
@@ -1224,10 +1223,7 @@ export default function Earn() {
                                               tokenBalances?.[marketIndex]
                                                 ?.result
                                             )}{" "}
-                                            {
-                                              market.genesis.rewards.pegged
-                                                .symbol
-                                            }
+                                            {market.peggedToken.symbol}
                                           </p>
                                         </div>
                                         <div className="flex items-center space-x-4">
@@ -1464,8 +1460,8 @@ export default function Earn() {
                                     <div
                                       className={`text-xl text-[#4A7C59] ${geo.className}`}
                                     >
-                                      {market.genesis.rewards.leveraged.symbol}{" "}
-                                      Leveraged Pool
+                                      {market.leveragedToken.symbol} Leveraged
+                                      Pool
                                     </div>
                                     <svg
                                       viewBox="0 0 24 24"
@@ -1632,10 +1628,7 @@ export default function Earn() {
                                               tokenBalances?.[marketIndex + 1]
                                                 ?.result
                                             )}{" "}
-                                            {
-                                              market.genesis.rewards.pegged
-                                                .symbol
-                                            }
+                                            {market.peggedToken.symbol}
                                           </p>
                                         </div>
                                         <div className="flex items-center space-x-4">

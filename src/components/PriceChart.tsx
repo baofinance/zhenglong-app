@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { PriceDataPoint } from "../config/contracts";
-import { marketConfig, markets } from "../config/contracts";
+import { markets } from "../config/markets";
 import { usePriceHistory } from "../hooks/usePriceHistory";
 import { useOraclePriceHistory } from "../hooks/useOraclePriceHistory";
 import dynamic from "next/dynamic";

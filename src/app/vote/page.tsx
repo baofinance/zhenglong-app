@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Geo } from "next/font/google";
 import { useAccount, useContractReads, useContractWrite } from "wagmi";
-import { markets } from "../../config/contracts";
+import { markets } from "../../config/markets";
 import Navigation from "../../components/Navigation";
 
 const geo = Geo({

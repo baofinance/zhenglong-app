@@ -8,7 +8,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { markets } from "../../config/contracts";
+import { markets } from "../../config/markets";
 import ConnectButton from "../../components/ConnectButton";
 import Navigation from "../../components/Navigation";
 import Link from "next/link";

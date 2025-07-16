@@ -12,8 +12,7 @@ import {
   useChainId,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { markets, marketConfig } from "../config/contracts";
-import { marketsConfig, getMarketById } from "../config/markets";
+import { markets } from "../config/markets";
 import TradingViewChart from "../components/TradingViewChart";
 import ConnectButton from "../components/ConnectButton";
 import Navigation from "../components/Navigation";
@@ -255,13 +254,13 @@ export default function App() {
   }, [mounted]);
 
   // Get the current market info from both configs
-  const currentMarket = useMemo(
-    () => markets[selectedMarket],
-    [selectedMarket]
-  );
+  const currentMarket = useMemo(() => {
+    const market = markets[selectedMarket as keyof typeof markets];
+    return market ? { ...market, id: selectedMarket } : null;
+  }, [selectedMarket]);
 
   const currentMarketInfo = useMemo(
-    () => getMarketById(selectedMarket),
+    () => markets[selectedMarket as keyof typeof markets],
     [selectedMarket]
   );
 
@@ -313,9 +312,7 @@ export default function App() {
             <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
               <p className={`text-sm text-white ${geo.className}`}>
                 <span className="font-bold">Collateral:</span>
-                <span className="text-[#F5F5F5]/70 ml-2">
-                  {currentMarketInfo?.collateralTokens.join(", ")}
-                </span>
+                <span className="text-[#F5F5F5]/70 ml-2">wstETH</span>
               </p>
             </div>
             <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
