@@ -221,17 +221,14 @@ export default function Earn() {
                     </tr>
                   </thead>
                   <tbody>
-                    {poolsInGroup.map((pool) => {
-                      if (pool.tvl === undefined) return null; // or a loading skeleton
-                      return (
-                        <PoolRow
-                          key={pool.id}
-                          pool={pool}
-                          formatAmount={formatAmount}
-                          formatAPRBreakdown={formatAPRBreakdown}
-                        />
-                      );
-                    })}
+                    {poolsInGroup.map((pool) => (
+                      <PoolRow
+                        key={pool.id}
+                        pool={pool}
+                        formatAmount={formatAmount}
+                        formatAPRBreakdown={formatAPRBreakdown}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
