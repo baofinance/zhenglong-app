@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useContractWrite, useContractRead } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  useReadContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { markets } from "../../config/contracts";
+import { markets } from "../../config/markets";
 import ConnectButton from "../../components/ConnectButton";
 import Navigation from "../../components/Navigation";
+import Link from "next/link";
 
 const minterABI = [
   {
@@ -172,125 +178,103 @@ export default function Admin() {
     .minter as `0x${string}`;
 
   // Contract writes
-  const { write: updateFeeReceiver } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "updateFeeReceiver",
-  });
-
-  const { write: updateReservePool } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "updateReservePool",
-  });
-
-  const { write: updatePriceOracle } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "updatePriceOracle",
-  });
-
-  const { write: writeFreeMintPeggedToken, isLoading: isMintingPegged } =
-    useContractWrite({
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "freeMintPeggedToken",
-      args: [
-        safeParseEther(freeMintCollateralAmount || "0"),
-        receiverAddress as `0x${string}`,
-      ] as [bigint, `0x${string}`],
-    });
-
-  const { write: freeRedeemPeggedToken } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "freeRedeemPeggedToken",
-    args: [
-      parseEther(freeRedeemAmount || "0"),
-      receiverAddress as `0x${string}`,
-    ] as [bigint, `0x${string}`],
-  });
-
-  const { write: freeSwapPeggedForLeveraged } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "freeSwapPeggedForLeveraged",
-    args: [
-      parseEther(freeSwapAmount || "0"),
-      receiverAddress as `0x${string}`,
-    ] as [bigint, `0x${string}`],
-  });
-
-  const { write: writeFreeMintLeveragedToken, isLoading: isMintingLeveraged } =
-    useContractWrite({
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "freeMintLeveragedToken",
-      args: [
-        safeParseEther(freeMintLeveragedCollateralAmount || "0"),
-        receiverAddress as `0x${string}`,
-      ] as [bigint, `0x${string}`],
-    });
-
-  const { write: freeRedeemLeveragedToken } = useContractWrite({
-    address: minterAddress,
-    abi: minterABI,
-    functionName: "freeRedeemLeveragedToken",
-    args: [
-      parseEther(freeRedeemLeveragedAmount || "0"),
-      receiverAddress as `0x${string}`,
-    ] as [bigint, `0x${string}`],
-  });
+  const {
+    writeContract: updateFeeReceiverWrite,
+    data: updateFeeReceiverHash,
+    isPending: isUpdatingFeeReceiver,
+  } = useWriteContract();
+  const {
+    writeContract: updateReservePoolWrite,
+    data: updateReservePoolHash,
+    isPending: isUpdatingReservePool,
+  } = useWriteContract();
+  const {
+    writeContract: updatePriceOracleWrite,
+    data: updatePriceOracleHash,
+    isPending: isUpdatingPriceOracle,
+  } = useWriteContract();
+  const {
+    writeContract: writeFreeMintPeggedToken,
+    data: mintPeggedHash,
+    isPending: isMintingPegged,
+  } = useWriteContract();
+  const {
+    writeContract: freeRedeemPeggedToken,
+    data: redeemPeggedHash,
+    isPending: isRedeemingPegged,
+  } = useWriteContract();
+  const {
+    writeContract: freeSwapPeggedForLeveraged,
+    data: swapHash,
+    isPending: isSwapping,
+  } = useWriteContract();
+  const {
+    writeContract: writeFreeMintLeveragedToken,
+    data: mintLeveragedHash,
+    isPending: isMintingLeveraged,
+  } = useWriteContract();
+  const {
+    writeContract: freeRedeemLeveragedToken,
+    data: redeemLeveragedHash,
+    isPending: isRedeemingLeveraged,
+  } = useWriteContract();
+  const {
+    writeContract: approve,
+    data: approveHash,
+    isPending: isApprovingWrite,
+  } = useWriteContract();
+  const {
+    writeContract: updatePriceFeed,
+    data: updatePriceHash,
+    isPending: isUpdatingPrice,
+  } = useWriteContract();
 
   // Check if user has admin role
-  const { data: zeroFeeRole } = useContractRead({
+  const { data: zeroFeeRole } = useReadContract({
     address: minterAddress,
     abi: minterABI,
     functionName: "ZERO_FEE_ROLE",
   });
 
   // Add contract reads for allowance
-  const { data: allowance } = useContractRead({
+  const { data: allowance } = useReadContract({
     address: markets[Object.keys(markets)[0]].addresses
       .collateralToken as `0x${string}`,
     abi: erc20ABI,
     functionName: "allowance",
     args: [address as `0x${string}`, minterAddress],
-    watch: true,
-  });
-
-  // Update the contract write for approval
-  const { write: approve } = useContractWrite({
-    address: markets[Object.keys(markets)[0]].addresses
-      .collateralToken as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-    args: [minterAddress, safeParseEther(approvalAmount)],
-  });
-
-  // Add contract write for updating price feed
-  const { write: updatePriceFeed } = useContractWrite({
-    address: markets[Object.keys(markets)[0]].addresses
-      .priceOracle as `0x${string}`,
-    abi: mockPriceFeedABI,
-    functionName: "updatePrice",
   });
 
   const handleUpdateFeeReceiver = () => {
     if (feeReceiver) {
-      updateFeeReceiver({ args: [feeReceiver as `0x${string}`] });
+      updateFeeReceiverWrite({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "updateFeeReceiver",
+        args: [feeReceiver as `0x${string}`],
+      });
     }
   };
 
   const handleUpdateReservePool = () => {
     if (reservePool) {
-      updateReservePool({ args: [reservePool as `0x${string}`] });
+      updateReservePoolWrite({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "updateReservePool",
+        args: [reservePool as `0x${string}`],
+      });
     }
   };
 
   const handleUpdatePriceOracle = () => {
     if (priceOracle) {
-      updatePriceOracle({ args: [priceOracle as `0x${string}`] });
+      updatePriceOracleWrite({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "updatePriceOracle",
+        args: [priceOracle as `0x${string}`],
+      });
     }
   };
 
@@ -320,8 +304,12 @@ export default function Admin() {
         allowance: allowance?.toString(),
       });
 
-      const result = await writeFreeMintPeggedToken();
-      console.log("Mint transaction result:", result);
+      writeFreeMintPeggedToken({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "freeMintPeggedToken",
+        args: [parsedAmount, receiverAddress as `0x${string}`],
+      });
     } catch (error) {
       console.error("Error minting pegged token:", error);
     }
@@ -329,13 +317,23 @@ export default function Admin() {
 
   const handleFreeRedeemPeggedToken = () => {
     if (freeRedeemAmount && receiverAddress) {
-      freeRedeemPeggedToken();
+      freeRedeemPeggedToken({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "freeRedeemPeggedToken",
+        args: [parseEther(freeRedeemAmount), receiverAddress as `0x${string}`],
+      });
     }
   };
 
   const handleFreeSwapPeggedForLeveraged = () => {
     if (freeSwapAmount && receiverAddress) {
-      freeSwapPeggedForLeveraged();
+      freeSwapPeggedForLeveraged({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "freeSwapPeggedForLeveraged",
+        args: [parseEther(freeSwapAmount), receiverAddress as `0x${string}`],
+      });
     }
   };
 
@@ -365,8 +363,12 @@ export default function Admin() {
         allowance: allowance?.toString(),
       });
 
-      const result = await writeFreeMintLeveragedToken();
-      console.log("Mint transaction result:", result);
+      writeFreeMintLeveragedToken({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "freeMintLeveragedToken",
+        args: [parsedAmount, receiverAddress as `0x${string}`],
+      });
     } catch (error) {
       console.error("Error minting leveraged token:", error);
     }
@@ -374,7 +376,15 @@ export default function Admin() {
 
   const handleFreeRedeemLeveragedToken = () => {
     if (freeRedeemLeveragedAmount && receiverAddress) {
-      freeRedeemLeveragedToken();
+      freeRedeemLeveragedToken({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "freeRedeemLeveragedToken",
+        args: [
+          parseEther(freeRedeemLeveragedAmount),
+          receiverAddress as `0x${string}`,
+        ],
+      });
     }
   };
 
@@ -382,7 +392,13 @@ export default function Admin() {
   const handleApprove = () => {
     if (approvalAmount) {
       setIsApproving(true);
-      approve();
+      approve({
+        address: markets[Object.keys(markets)[0]].addresses
+          .collateralToken as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "approve",
+        args: [minterAddress, safeParseEther(approvalAmount)],
+      });
       // Reset the state after a short delay
       setTimeout(() => {
         setIsApproving(false);
@@ -392,7 +408,12 @@ export default function Admin() {
   };
 
   const handleUpdatePriceFeed = () => {
-    updatePriceFeed();
+    updatePriceFeed({
+      address: markets[Object.keys(markets)[0]].addresses
+        .priceOracle as `0x${string}`,
+      abi: mockPriceFeedABI,
+      functionName: "updatePrice",
+    });
   };
 
   // Return a placeholder during server-side rendering
@@ -432,6 +453,16 @@ export default function Admin() {
           <div className="space-y-8">
             <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+                System Controls
+              </h2>
+              <Link href="/admin/genesis">
+                <button className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white">
+                  Genesis Admin
+                </button>
+              </Link>
+            </div>
+            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 Update Fee Receiver
               </h2>
               <div className="flex gap-4">
@@ -444,9 +475,10 @@ export default function Admin() {
                 />
                 <button
                   onClick={handleUpdateFeeReceiver}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                  disabled={isUpdatingFeeReceiver}
+                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                 >
-                  Update
+                  {isUpdatingFeeReceiver ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
@@ -465,9 +497,10 @@ export default function Admin() {
                 />
                 <button
                   onClick={handleUpdateReservePool}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                  disabled={isUpdatingReservePool}
+                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                 >
-                  Update
+                  {isUpdatingReservePool ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
@@ -486,9 +519,10 @@ export default function Admin() {
                 />
                 <button
                   onClick={handleUpdatePriceOracle}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                  disabled={isUpdatingPriceOracle}
+                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                 >
-                  Update
+                  {isUpdatingPriceOracle ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
@@ -545,10 +579,10 @@ export default function Admin() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleApprove}
-                          disabled={isApproving || !approvalAmount}
+                          disabled={isApprovingWrite || !approvalAmount}
                           className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isApproving ? "Approving..." : "Approve"}
+                          {isApprovingWrite ? "Approving..." : "Approve"}
                         </button>
                         {allowance && (
                           <span className="text-sm text-[#F5F5F5]/70">
@@ -583,7 +617,9 @@ export default function Admin() {
                           onClick={handleFreeMintPeggedToken}
                           disabled={
                             !allowance ||
-                            safeParseEther(freeMintCollateralAmount) > allowance
+                            safeParseEther(freeMintCollateralAmount) >
+                              allowance ||
+                            isMintingPegged
                           }
                           className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -592,6 +628,8 @@ export default function Admin() {
                             : safeParseEther(freeMintCollateralAmount) >
                               allowance
                             ? "Insufficient Allowance"
+                            : isMintingPegged
+                            ? "Minting..."
                             : "Mint Pegged Token"}
                         </button>
                         <p className="text-sm text-[#F5F5F5]/70">
@@ -628,7 +666,8 @@ export default function Admin() {
                           disabled={
                             !allowance ||
                             safeParseEther(freeMintLeveragedCollateralAmount) >
-                              allowance
+                              allowance ||
+                            isMintingLeveraged
                           }
                           className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -638,6 +677,8 @@ export default function Admin() {
                                 freeMintLeveragedCollateralAmount
                               ) > allowance
                             ? "Insufficient Allowance"
+                            : isMintingLeveraged
+                            ? "Minting..."
                             : "Mint Leveraged Token"}
                         </button>
                         <p className="text-sm text-[#F5F5F5]/70">
@@ -672,9 +713,12 @@ export default function Admin() {
                         />
                         <button
                           onClick={handleFreeRedeemPeggedToken}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                          disabled={isRedeemingPegged}
+                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                         >
-                          Redeem Pegged Token
+                          {isRedeemingPegged
+                            ? "Redeeming..."
+                            : "Redeem Pegged Token"}
                         </button>
                       </div>
                     </div>
@@ -693,9 +737,12 @@ export default function Admin() {
                         />
                         <button
                           onClick={handleFreeSwapPeggedForLeveraged}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                          disabled={isSwapping}
+                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                         >
-                          Swap Pegged for Leveraged
+                          {isSwapping
+                            ? "Swapping..."
+                            : "Swap Pegged for Leveraged"}
                         </button>
                       </div>
                     </div>
@@ -716,9 +763,12 @@ export default function Admin() {
                         />
                         <button
                           onClick={handleFreeRedeemLeveragedToken}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white"
+                          disabled={isRedeemingLeveraged}
+                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
                         >
-                          Redeem Leveraged Token
+                          {isRedeemingLeveraged
+                            ? "Redeeming..."
+                            : "Redeem Leveraged Token"}
                         </button>
                       </div>
                     </div>
@@ -728,16 +778,16 @@ export default function Admin() {
             </div>
 
             {/* Add Price Feed Update Button */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">
+            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+              <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
                 Price Feed Management
               </h2>
               <button
                 onClick={handleUpdatePriceFeed}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-                disabled={!isConnected}
+                disabled={!isConnected || isUpdatingPrice}
+                className="bg-[#4A7C59] hover:bg-[#4A7C59]/80 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
               >
-                Update Price Feed
+                {isUpdatingPrice ? "Updating..." : "Update Price Feed"}
               </button>
             </div>
           </div>

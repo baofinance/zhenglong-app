@@ -1,0 +1,206 @@
+/* admin.css */
+.admin-container {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 20px;
+  font-family: "Inter", sans-serif;
+  color: #333;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.admin-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.admin-badge {
+  background: #ff4444;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h4 {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.stat-card .value {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+.stat-card .subtitle {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.status-active .value {
+  color: #4caf50;
+}
+.status-ended .value {
+  color: #f44336;
+}
+
+.controls-section {
+  background: white;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 2rem;
+}
+
+.controls-section.active {
+  border-left: 4px solid #4caf50;
+}
+
+.controls-section.completed {
+  border-left: 4px solid #2196f3;
+}
+
+.end-genesis-section h4 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.requirements {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+.end-genesis-button {
+  background: #ff6b35;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: background-color 0.2s;
+}
+
+.end-genesis-button:hover {
+  background: #e65c2e;
+}
+
+.end-genesis-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmation-modal {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.confirmation-modal h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.confirmation-details p {
+  margin: 0.5rem 0;
+}
+
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.confirm-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-button {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-error-container {
+  text-align: center;
+  padding: 4rem;
+  background-color: #fff8f8;
+  border: 1px solid #ffcccc;
+  color: #cc0000;
+  border-radius: 8px;
+}
+
+.transaction-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #e8f4fd;
+  border: 1px solid #bde0fe;
+  border-radius: 4px;
+}
+
+.transaction-status a {
+  color: #0056b3;
+  text-decoration: underline;
+}

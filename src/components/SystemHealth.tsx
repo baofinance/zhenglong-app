@@ -1,68 +1,27 @@
 "use client";
 
 import { useContractReads } from "wagmi";
-import { markets } from "../config/contracts";
+import { markets } from "../config/markets";
 import { useState, useEffect, useMemo } from "react";
 import { formatEther } from "viem";
+import { minterABI } from "../abis/minter";
+import { STABILITY_POOL_MANAGER_ABI } from "../config/contracts";
 
-const minterABI = [
-  {
-    inputs: [],
-    name: "collateralTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "peggedTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "leveragedTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "collateralRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "leveragedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Add minimal ABI for Chainlink oracle
+// Add minimal ABI for Chainlink oracle - using correct standard Chainlink format
 const chainlinkOracleABI = [
   {
-    name: "latestAnswer",
-    outputs: [
-      { name: "minUnderlyingPrice", type: "uint256" },
-      { name: "maxUnderlyingPrice", type: "uint256" },
-      { name: "minWrappedRate", type: "uint256" },
-      { name: "maxWrappedRate", type: "uint256" },
-    ],
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
     stateMutability: "view",
     type: "function",
+  },
+  {
     inputs: [],
+    name: "latestAnswer",
+    outputs: [{ type: "int256", name: "" }],
+    stateMutability: "view",
+    type: "function",
   },
 ] as const;
 
@@ -80,7 +39,8 @@ interface SystemHealthValueProps {
     | "peggedTokens"
     | "leveragedValue"
     | "leveragedTokens"
-    | "collateralRatio";
+    | "collateralRatio"
+    | "rebalanceThreshold";
   marketId: string;
   collateralTokenBalance?: bigint;
 }
@@ -146,8 +106,9 @@ function Value({
     return `${percentage.toFixed(2)}%`;
   };
 
-  const { addresses } = markets[marketId];
+  const { addresses } = markets[marketId as keyof typeof markets];
 
+  // Choose contract view function available in current minter
   const functionName =
     type === "collateralValue"
       ? "collateralTokenBalance"
@@ -164,7 +125,7 @@ function Value({
       : "collateralRatio";
 
   const contractsToRead = useMemo(() => {
-    const baseContracts = [
+    const base = [
       {
         address: addresses.minter as `0x${string}`,
         abi: minterABI,
@@ -174,7 +135,11 @@ function Value({
 
     if (type === "collateralValue") {
       return [
-        ...baseContracts,
+        {
+          address: addresses.minter as `0x${string}`,
+          abi: minterABI,
+          functionName: "collateralTokenBalance",
+        },
         {
           address: addresses.priceOracle as `0x${string}`,
           abi: chainlinkOracleABI,
@@ -183,9 +148,9 @@ function Value({
       ];
     }
 
-    if (type === "leveragedValue") {
+    if (type === "leveragedValue" || type === "leveragedTokens") {
       return [
-        ...baseContracts,
+        ...base,
         {
           address: addresses.minter as `0x${string}`,
           abi: minterABI,
@@ -194,23 +159,27 @@ function Value({
       ];
     }
 
-    return baseContracts;
+    return base;
   }, [type, addresses, functionName]);
+
+  // Separate contract read for rebalance threshold
+  const { data: rebalanceThresholdData } = useContractReads({
+    contracts:
+      type === "rebalanceThreshold"
+        ? [
+            {
+              address: addresses.stabilityPoolManager as `0x${string}`,
+              abi: STABILITY_POOL_MANAGER_ABI,
+              functionName: "rebalanceThreshold",
+            },
+          ]
+        : [],
+    query: { enabled: mounted && type === "rebalanceThreshold" },
+  });
 
   const { data, isError, error } = useContractReads({
     contracts: contractsToRead,
-    watch: true,
-    enabled: mounted,
-    select: (data) => {
-      console.log("[DEBUG] Raw contract read result:", {
-        type,
-        functionName,
-        data,
-        result: data?.[0]?.result,
-        status: data?.[0]?.status,
-      });
-      return data;
-    },
+    query: { enabled: mounted },
   });
 
   // Add error and data logging
@@ -240,117 +209,62 @@ function Value({
     console.log("[DEBUG] Formatted collateral tokens value:", formattedValue);
     return <>{formattedValue}</>;
   } else if (type === "collateralValue") {
-    if (!data?.[0]?.result) {
-      console.log("[DEBUG] No collateral value data:", {
-        type,
-        functionName,
-        hasData: !!data,
-        isError,
-        errorDetails: error,
-      });
-      return <>-</>;
-    }
-    const tokenBal = data[0]?.result as bigint | undefined;
-    const priceData = data[1]?.result as
-      | readonly [bigint, bigint, bigint, bigint]
-      | undefined;
-    const priceRaw = priceData?.[0]; // minUnderlyingPrice is the first element
-    const priceDecimals = 18; // Mock contract uses ether units, so 18 decimals
+    if (!data?.[0]?.result || !data?.[1]?.result) return <>-</>;
+    const totalCollateralBalance = data[0].result as bigint; // From minter.collateralTokenBalance()
+    const collateralPrice = data[1].result as bigint; // From price oracle latestAnswer
 
-    if (tokenBal === undefined || !priceRaw) {
-      console.log("[DEBUG] Missing required values for collateral value:", {
-        hasTokenBal: tokenBal !== undefined,
-        hasPriceRaw: !!priceRaw,
-      });
-      return <>-</>;
-    }
-
-    // Normalize price to 18 decimals
-    const normalizedPrice = priceRaw * BigInt(10 ** (18 - priceDecimals));
-    // USD value = tokenBal * normalizedPrice / 1e18
-    const usdValue = (tokenBal * normalizedPrice) / BigInt(1e18);
-    // Format USD value
-    const num = Number(usdValue) / 1e18;
-    const usdFormatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-    return <>{usdFormatted}</>;
-  } else if (type === "peggedTokens" || type === "leveragedTokens") {
-    if (!data?.[0]?.result) {
-      console.log("[DEBUG] No token data:", {
-        type,
-        functionName,
-        hasData: !!data,
-        isError,
-        errorDetails: error,
-        rawData: data,
-      });
-      return <>-</>;
-    }
-    console.log("[DEBUG] Processing token data:", {
-      type,
-      rawResult: data[0].result.toString(),
-      hasError: isError,
-      error,
+    console.log("[DEBUG] Collateral value calculation:", {
+      totalCollateralBalance: totalCollateralBalance.toString(),
+      collateralPrice: collateralPrice.toString(),
+      balanceETH: Number(totalCollateralBalance) / 1e18,
+      priceUSD: Number(collateralPrice) / 1e8, // Assuming 8 decimals for Chainlink
     });
-    const formattedValue = formatValue(data[0].result);
-    console.log("[DEBUG] Formatted token value:", formattedValue);
-    return <>{formattedValue}</>;
+
+    // Calculate USD value: totalCollateralBalance * collateralPrice / 1e18
+    // totalCollateralBalance is in wstETH units (18 decimals)
+    // collateralPrice is in USD with 8 decimals
+    // Result gives USD value in wei (18 decimals)
+    const totalCollateralValueUSD =
+      (totalCollateralBalance * collateralPrice) / BigInt(1e18);
+
+    console.log("[DEBUG] Final USD value:", {
+      usdWei: totalCollateralValueUSD.toString(),
+      usdFormatted: Number(totalCollateralValueUSD) / 1e18,
+    });
+
+    return <>{formatUSD(totalCollateralValueUSD)}</>;
   } else if (type === "peggedValue") {
-    if (!data?.[0]?.result) {
-      console.log("[DEBUG] No value data:", {
-        type,
-        functionName,
-        hasData: !!data,
-        isError,
-        errorDetails: error,
-        rawData: data,
-      });
-      return <>-</>;
-    }
-    const tokenBal = data[0].result as bigint;
-    const num = Number(tokenBal) / 1e18;
-    const usdFormatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-    return <>{usdFormatted}</>;
-  } else if (type === "leveragedValue") {
-    if (!data?.[0]?.result || !data?.[1]?.result) {
-      console.log("[DEBUG] No value data for leveraged token:", {
-        type,
-        functionName,
-        hasData: !!data,
-        isError,
-        errorDetails: error,
-        rawData: data,
-      });
-      return <>-</>;
-    }
-    const tokenBal = data[0].result as bigint;
-    const priceRaw = data[1].result as bigint;
-    const price = Number(priceRaw) / 1e18;
-    const bal = Number(tokenBal) / 1e18;
-    const num = bal * price;
-    const usdFormatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-    return <>{usdFormatted}</>;
-  } else if (type === "collateralRatio") {
     if (!data?.[0]?.result) return <>-</>;
-    const ratio = data[0].result as bigint;
+    const bal = data[0].result as bigint;
+    return <>{formatUSD(bal)}</>; // 1 token = $1
+  } else if (type === "leveragedValue") {
+    if (!data?.[0]?.result || !data?.[1]?.result) return <>-</>;
+    const bal = data[0].result as bigint;
+    const price = data[1].result as bigint;
+    const usd = (bal * price) / BigInt(1e18);
+    return <>{formatUSD(usd)}</>;
+  } else if (type === "peggedTokens") {
+    if (!data?.[0]?.result) return <>-</>;
+    const tokens = (data[0].result as bigint) / BigInt(1e18);
+    return <>{tokens.toString()}</>;
+  } else if (type === "leveragedTokens") {
+    if (!data?.[0]?.result || !data?.[1]?.result) return <>-</>;
+    const bal = data[0].result as bigint;
+    const price = data[1].result as bigint;
+    if (price === 0n) return <>-</>;
+    const tokens = (bal * BigInt(1e18)) / price;
+    return <>{formatValue(tokens)}</>;
+  } else if (type === "collateralRatio") {
+    const ratio = data?.[0]?.result as bigint | undefined;
+    if (!ratio || ratio === 0n) return <>-</>;
     return <>{formatRatio(ratio)}</>;
+  } else if (type === "rebalanceThreshold") {
+    const threshold = rebalanceThresholdData?.[0]?.result as bigint | undefined;
+    if (!threshold || threshold === 0n) return <>-</>;
+    return <>{formatRatio(threshold)}</>;
   } else {
     if (!data?.[0]?.result) return <>-</>;
-    return <>{formatValue(data[0].result)}</>;
+    return <>{formatValue(data[0].result as bigint)}</>;
   }
 }
 
@@ -371,7 +285,7 @@ function SystemHealth({
   }, []);
 
   // Define constants for Price Oracle
-  const currentMarketDetails = markets[marketId];
+  const currentMarketDetails = markets[marketId as keyof typeof markets];
   const oracleAddress = currentMarketDetails?.addresses.priceOracle;
   const oraclePairName = currentMarketDetails?.name;
 
@@ -392,7 +306,7 @@ function SystemHealth({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
       {/* Total Collateral Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Total Collateral
         </div>
         <div
@@ -413,7 +327,7 @@ function SystemHealth({
       </div>
       {/* Pegged Tokens Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Pegged Tokens
         </div>
         <div
@@ -429,7 +343,7 @@ function SystemHealth({
       </div>
       {/* Leveraged Tokens Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Leveraged Tokens
         </div>
         <div
@@ -454,7 +368,7 @@ function SystemHealth({
       </div>
       {/* Collateral Ratio Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Collateral Ratio
         </div>
         <div
@@ -465,12 +379,12 @@ function SystemHealth({
           <Value type="collateralRatio" marketId={marketId} />
         </div>
         <div className="text-zinc-500 text-xs mt-1 opacity-80">
-          Target: 150%
+          Minimum: <Value type="rebalanceThreshold" marketId={marketId} />
         </div>
       </div>
       {/* Price Oracle Box */}
       <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
-        <div className="text-zinc-400 text-xs uppercase tracking-wider mb-2">
+        <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Price Oracle
         </div>
         <div

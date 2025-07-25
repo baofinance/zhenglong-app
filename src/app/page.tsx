@@ -12,11 +12,12 @@ import {
   useChainId,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { markets, marketConfig } from "../config/contracts";
+import { markets } from "../config/markets";
 import TradingViewChart from "../components/TradingViewChart";
 import ConnectButton from "../components/ConnectButton";
 import Navigation from "../components/Navigation";
 import MintRedeemForm from "@/components/MintRedeemForm"; // Adjust path as needed
+import MarketSelector from "@/components/MarketSelector";
 import Head from "next/head";
 import SystemHealthComponent from "@/components/SystemHealth";
 
@@ -216,8 +217,7 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const [selectedMarket, setSelectedMarket] = useState<string>("steth-usd");
-  const [showPopup, setShowPopup] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<string>("eth-usd");
   const formCardRef = useRef<HTMLDivElement>(null);
   const chartCardRef = useRef<HTMLDivElement>(null);
 
@@ -253,9 +253,14 @@ export default function App() {
     };
   }, [mounted]);
 
-  // Get the default market
-  const currentMarket = useMemo(
-    () => markets[selectedMarket],
+  // Get the current market info from both configs
+  const currentMarket = useMemo(() => {
+    const market = markets[selectedMarket as keyof typeof markets];
+    return market ? { ...market, id: selectedMarket } : null;
+  }, [selectedMarket]);
+
+  const currentMarketInfo = useMemo(
+    () => markets[selectedMarket as keyof typeof markets],
     [selectedMarket]
   );
 
@@ -263,13 +268,6 @@ export default function App() {
   // Default to LONG type and its first token for the current market
   const pageSelectedType: TokenType = "LONG"; // Default to LONG for page-level chart
   const pageSelectedToken: string = pageScopedTokens[pageSelectedType][0]; // Get the default token for LONG
-
-  const handleMarketClick = () => {
-    setShowPopup(true);
-    setTimeout(() => {
-      setShowPopup(false);
-    }, 2500);
-  };
 
   const handleMarketChange = (marketId: string) => {
     setSelectedMarket(marketId);
@@ -291,7 +289,7 @@ export default function App() {
         <Navigation />
 
         {/* Header */}
-        <div className="text-center mb-4">
+        <div className="text-center mb-4 mt-12">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
             MINT & REDEEM
           </h1>
@@ -300,25 +298,42 @@ export default function App() {
           </p>
         </div>
 
-        {/* Market Selector */}
-        <div className="max-w-7xl mx-auto mb-4">
-          <div className="flex items-center">
-            <div className="flex-1"></div>
-            <div className="flex items-center gap-4 w-[200px] justify-end relative">
-              <label className="text-[#F5F5F5]/70">Market</label>
-              <button
-                onClick={handleMarketClick}
-                className="px-4 py-2 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 hover:border-[#4A7C59] hover:bg-[#2A2A2A] outline-none transition-all text-left w-[120px] shadow-md font-medium"
-              >
-                {currentMarket.name}
-              </button>
-              {showPopup && (
-                <div
-                  className={`absolute top-full right-0 mt-2 px-4 py-2 bg-[#4A7C59] text-white shadow-xl border border-zinc-600/30 whitespace-nowrap z-50 ${geo.className} animate-fade-out backdrop-blur-sm`}
-                >
-                  New markets coming soon!
-                </div>
-              )}
+        {/* Market Selector & Token Info */}
+        <div className="max-w-7xl mx-auto mb-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          {/* Left: Market Selector */}
+          <MarketSelector
+            selectedMarketId={selectedMarket}
+            onMarketChange={handleMarketChange}
+            geoClassName={geo.className}
+          />
+
+          {/* Right: Token Descriptions */}
+          <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full lg:w-auto">
+            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+              <p className={`text-sm text-white ${geo.className}`}>
+                <span className="font-bold">Collateral:</span>
+                <span className="text-[#F5F5F5]/70 ml-2">wstETH</span>
+              </p>
+            </div>
+            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+              <p className={`text-sm text-white ${geo.className}`}>
+                <span className="font-bold">
+                  {currentMarketInfo?.peggedToken.name}:
+                </span>
+                <span className="text-[#F5F5F5]/70 ml-2">
+                  {currentMarketInfo?.peggedToken.description}
+                </span>
+              </p>
+            </div>
+            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+              <p className={`text-sm text-white ${geo.className}`}>
+                <span className="font-bold">
+                  {currentMarketInfo?.leveragedToken.name}:
+                </span>
+                <span className="text-[#F5F5F5]/70 ml-2">
+                  {currentMarketInfo?.leveragedToken.description}
+                </span>
+              </p>
             </div>
           </div>
         </div>
@@ -345,6 +360,7 @@ export default function App() {
                   currentMarket={currentMarket}
                   isConnected={isConnected}
                   userAddress={address}
+                  marketInfo={currentMarketInfo}
                 />
               </div>
             ) : (

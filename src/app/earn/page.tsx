@@ -7,6 +7,7 @@ import CustomFilterDropdown from "@/components/CustomFilterDropdown";
 import Image from "next/image";
 import TokenIcon from "@/components/TokenIcon";
 import { usePoolData } from "@/hooks/usePoolData";
+import { useAccount } from "wagmi";
 
 // Pool configuration
 const POOL_TYPES = {
@@ -111,6 +112,7 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
 export default function Earn() {
   const { getAllPools } = usePools();
   const allPools = getAllPools();
+  const { isConnected } = useAccount();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<
