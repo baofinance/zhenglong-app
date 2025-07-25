@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Web3Provider } from "../components/Web3Provider";
-import { AddressesProvider } from "../contexts/AddressesContext";
-import { ContractWriteProvider } from "../contexts/ContractWriteContext";
+import ContextProvider from "@/contexts";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "zhenglong",
   description: "Create tokens pegged to real-world data feeds",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersObj = await headers();
+  const cookies = headersObj.get("cookie");
+
   return (
     <html lang="en">
       <body
@@ -31,12 +33,13 @@ export default function RootLayout({
           <div className="absolute top-[30%] left-[25%] w-[100px] h-[100px] bg-[#4A7C59]/[0.04] animate-steam-3"></div>
         </div>
         <div className="relative z-10">
-          <Web3Provider>
-            <AddressesProvider>
-              <ContractWriteProvider>{children}</ContractWriteProvider>
-            </AddressesProvider>
-          </Web3Provider>
+          <ContextProvider cookies={cookies}>{children}</ContextProvider>
         </div>
+        <script
+          src="https://appkit-api.gokgs.com/appkit.js"
+          defer
+          async
+        ></script>
       </body>
     </html>
   );

@@ -50,7 +50,7 @@ export default function Navigation() {
           </div>
 
           {/* Right side: Connect Button */}
-          <ConnectButton />
+          <appkit-button size="sm" balance="hide" />
         </div>
       </div>
     </nav>

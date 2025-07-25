@@ -14,6 +14,6 @@ interface PoolPageProps {
   params: { marketId: string; poolType: "collateral" | "leveraged" };
 }
 
-export default function PoolPage({ params }: PoolPageProps) {
+export default async function PoolPage({ params }: PoolPageProps) {
   return <PoolClient marketId={params.marketId} poolType={params.poolType} />;
 }
