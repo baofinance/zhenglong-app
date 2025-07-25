@@ -6,7 +6,7 @@ import ConnectButton from "./ConnectButton";
 
 export default function Navigation() {
   const navLinks = [
-    { href: "/mint-redeem", label: "Mint & Redeem" },
+    { href: "/", label: "Mint & Redeem" },
     { href: "/earn", label: "Earn" },
     { href: "/vote", label: "Vote" },
     { href: "/genesis", label: "Genesis" },

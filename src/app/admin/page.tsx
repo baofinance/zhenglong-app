@@ -174,7 +174,7 @@ export default function Admin() {
   }, []);
 
   // Get the minter address from the first market
-  const minterAddress = markets[Object.keys(markets)[0]].addresses
+  const minterAddress = (markets as any)[Object.keys(markets)[0]].addresses
     .minter as `0x${string}`;
 
   // Contract writes
@@ -238,7 +238,7 @@ export default function Admin() {
 
   // Add contract reads for allowance
   const { data: allowance } = useReadContract({
-    address: markets[Object.keys(markets)[0]].addresses
+    address: (markets as any)[Object.keys(markets)[0]].addresses
       .collateralToken as `0x${string}`,
     abi: erc20ABI,
     functionName: "allowance",
@@ -393,7 +393,7 @@ export default function Admin() {
     if (approvalAmount) {
       setIsApproving(true);
       approve({
-        address: markets[Object.keys(markets)[0]].addresses
+        address: (markets as any)[Object.keys(markets)[0]].addresses
           .collateralToken as `0x${string}`,
         abi: erc20ABI,
         functionName: "approve",
@@ -409,7 +409,7 @@ export default function Admin() {
 
   const handleUpdatePriceFeed = () => {
     updatePriceFeed({
-      address: markets[Object.keys(markets)[0]].addresses
+      address: (markets as any)[Object.keys(markets)[0]].addresses
         .priceOracle as `0x${string}`,
       abi: mockPriceFeedABI,
       functionName: "updatePrice",
@@ -419,7 +419,7 @@ export default function Admin() {
   // Return a placeholder during server-side rendering
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-black text-white max-w-[1500px] mx-auto">
         <Navigation />
         <div className="container mx-auto px-4 py-8">
           <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">
@@ -437,7 +437,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white max-w-[1500px] mx-auto">
       <Navigation />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">Admin Panel</h1>

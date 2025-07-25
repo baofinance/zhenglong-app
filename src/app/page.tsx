@@ -284,111 +284,113 @@ export default function App() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
-        {/* Navigation */}
-        <Navigation />
+      <div className="max-w-[1500px] mx-auto">
+        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
+          {/* Navigation */}
+          <Navigation />
 
-        {/* Header */}
-        <div className="text-center mb-4 mt-12">
-          <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-            MINT & REDEEM
-          </h1>
-          <p className="text-[#F5F5F5]/60 text-sm mt-2">
-            Mint or redeem pegged and leverage tokens from any market
-          </p>
-        </div>
-
-        {/* Market Selector & Token Info */}
-        <div className="max-w-7xl mx-auto mb-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-          {/* Left: Market Selector */}
-          <MarketSelector
-            selectedMarketId={selectedMarket}
-            onMarketChange={handleMarketChange}
-            geoClassName={geo.className}
-          />
-
-          {/* Right: Token Descriptions */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full lg:w-auto">
-            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-              <p className={`text-sm text-white ${geo.className}`}>
-                <span className="font-bold">Collateral:</span>
-                <span className="text-[#F5F5F5]/70 ml-2">wstETH</span>
-              </p>
-            </div>
-            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-              <p className={`text-sm text-white ${geo.className}`}>
-                <span className="font-bold">
-                  {currentMarketInfo?.peggedToken.name}:
-                </span>
-                <span className="text-[#F5F5F5]/70 ml-2">
-                  {currentMarketInfo?.peggedToken.description}
-                </span>
-              </p>
-            </div>
-            <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-              <p className={`text-sm text-white ${geo.className}`}>
-                <span className="font-bold">
-                  {currentMarketInfo?.leveragedToken.name}:
-                </span>
-                <span className="text-[#F5F5F5]/70 ml-2">
-                  {currentMarketInfo?.leveragedToken.description}
-                </span>
-              </p>
-            </div>
+          {/* Header */}
+          <div className="text-center mb-4 mt-12">
+            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
+              MINT & REDEEM
+            </h1>
+            <p className="text-[#F5F5F5]/60 text-sm mt-2">
+              Mint or redeem pegged and leverage tokens from any market
+            </p>
           </div>
-        </div>
 
-        {/* System Health with uniform spacing */}
-        <div className="mb-2">
-          {mounted && currentMarket && (
-            <SystemHealthComponent
-              marketId={selectedMarket}
+          {/* Market Selector & Token Info */}
+          <div className="max-w-7xl mx-auto mb-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+            {/* Left: Market Selector */}
+            <MarketSelector
+              selectedMarketId={selectedMarket}
+              onMarketChange={handleMarketChange}
               geoClassName={geo.className}
             />
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
-          <div>
-            {mounted && currentMarket ? (
-              <div
-                ref={formCardRef}
-                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full"
-              >
-                <MintRedeemForm
-                  geoClassName={geo.className}
-                  currentMarket={currentMarket}
-                  isConnected={isConnected}
-                  userAddress={address}
-                  marketInfo={currentMarketInfo}
-                />
+            {/* Right: Token Descriptions */}
+            <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full lg:w-auto">
+              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+                <p className={`text-sm text-white ${geo.className}`}>
+                  <span className="font-bold">Collateral:</span>
+                  <span className="text-[#F5F5F5]/70 ml-2">wstETH</span>
+                </p>
               </div>
-            ) : (
-              <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
-                <h2 className={`text-2xl text-white mb-4 ${geo.className}`}>
-                  Loading Form...
-                </h2>
+              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+                <p className={`text-sm text-white ${geo.className}`}>
+                  <span className="font-bold">
+                    {currentMarketInfo?.peggedToken.name}:
+                  </span>
+                  <span className="text-[#F5F5F5]/70 ml-2">
+                    {currentMarketInfo?.peggedToken.description}
+                  </span>
+                </p>
               </div>
+              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
+                <p className={`text-sm text-white ${geo.className}`}>
+                  <span className="font-bold">
+                    {currentMarketInfo?.leveragedToken.name}:
+                  </span>
+                  <span className="text-[#F5F5F5]/70 ml-2">
+                    {currentMarketInfo?.leveragedToken.description}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* System Health with uniform spacing */}
+          <div className="mb-2">
+            {mounted && currentMarket && (
+              <SystemHealthComponent
+                marketId={selectedMarket}
+                geoClassName={geo.className}
+              />
             )}
           </div>
-          <div>
-            {mounted && currentMarket ? (
-              <div
-                ref={chartCardRef}
-                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full flex flex-col"
-              >
-                <div className="flex-1 min-h-0">
-                  <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
+            <div>
+              {mounted && currentMarket ? (
+                <div
+                  ref={formCardRef}
+                  className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full"
+                >
+                  <MintRedeemForm
+                    geoClassName={geo.className}
+                    currentMarket={currentMarket}
+                    isConnected={isConnected}
+                    userAddress={address}
+                    marketInfo={currentMarketInfo}
+                  />
                 </div>
-              </div>
-            ) : (
-              <div className="bg-[rgba(28,28,28,0.8)] backdrop-blur-md border border-zinc-800 p-6 text-center h-full">
-                Loading Price Chart...
-              </div>
-            )}
+              ) : (
+                <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
+                  <h2 className={`text-2xl text-white mb-4 ${geo.className}`}>
+                    Loading Form...
+                  </h2>
+                </div>
+              )}
+            </div>
+            <div>
+              {mounted && currentMarket ? (
+                <div
+                  ref={chartCardRef}
+                  className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full flex flex-col"
+                >
+                  <div className="flex-1 min-h-0">
+                    <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[rgba(28,28,28,0.8)] backdrop-blur-md border border-zinc-800 p-6 text-center h-full">
+                  Loading Price Chart...
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </>
   );
 }

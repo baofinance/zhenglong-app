@@ -713,7 +713,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1500px] mx-auto font-sans relative">
       <Navigation />
       <main className="container mx-auto px-8 sm:px-10 pt-32 pb-20 relative z-10">
         <div className="mb-4">

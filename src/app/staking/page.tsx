@@ -154,8 +154,10 @@ export default function Staking() {
           ]
         : []),
     ],
-    watch: true,
+    query: { enabled: true },
   });
+
+  const { writeContract: write } = useContractWrite();
 
   const formatEther = (value: bigint | undefined) => {
     if (!value) return "0";
@@ -173,28 +175,18 @@ export default function Staking() {
         stakingState.lockDuration * 7 * 24 * 60 * 60;
 
       // First approve tokens
-      const { writeAsync: approve } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xTokenAddress" as `0x${string}`,
-          abi: erc20ABI,
-          functionName: "approve",
-        })
-      );
-
-      await approve({
+      await write({
+        address: "0xTokenAddress" as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "approve",
         args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
       });
 
       // Then create lock
-      const { writeAsync: createLock } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "create_lock",
-        })
-      );
-
-      await createLock({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "create_lock",
         args: [parsedAmount, BigInt(unlockTime)],
       });
 
@@ -213,15 +205,10 @@ export default function Staking() {
       setIsPending(true);
       const parsedAmount = parseEther(stakingState.amount);
 
-      const { writeAsync: increaseAmount } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_amount",
-        })
-      );
-
-      await increaseAmount({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "increase_amount",
         args: [parsedAmount],
       });
 
@@ -242,15 +229,10 @@ export default function Staking() {
         Math.floor(Date.now() / 1000) +
         stakingState.lockDuration * 7 * 24 * 60 * 60;
 
-      const { writeAsync: increaseLockTime } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_unlock_time",
-        })
-      );
-
-      await increaseLockTime({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "increase_unlock_time",
         args: [BigInt(unlockTime)],
       });
     } catch (error) {
@@ -266,15 +248,12 @@ export default function Staking() {
     try {
       setIsPending(true);
 
-      const { writeAsync: withdraw } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "withdraw",
-        })
-      );
-
-      await withdraw();
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "withdraw",
+        args: [],
+      });
     } catch (error) {
       console.error("Error withdrawing:", error);
     } finally {
@@ -283,7 +262,7 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative">
+    <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative max-w-[1500px] mx-auto">
       {/* Steam Background */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Large base squares */}
