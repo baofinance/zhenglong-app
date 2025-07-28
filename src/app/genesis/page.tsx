@@ -414,7 +414,6 @@ export default function Genesis() {
   if (!mounted) {
     return (
       <div className="min-h-screen  text-[#F5F5F5] font-sans relative">
-        <Navigation />
         <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
           <div className="text-center">
             <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
@@ -430,8 +429,6 @@ export default function Genesis() {
   return (
     <div className="min-h-screen text-[#F5F5F5] font-sans relative max-w-[1500px] mx-auto">
       {/* Steam Background */}
-
-      <Navigation />
 
       <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20 relative z-10">
         {/* Header */}

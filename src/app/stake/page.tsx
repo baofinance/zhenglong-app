@@ -290,7 +290,6 @@ export default function Staking() {
       </div>
 
       {/* Navigation */}
-      <Navigation />
 
       {/* Main Content */}
       <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">

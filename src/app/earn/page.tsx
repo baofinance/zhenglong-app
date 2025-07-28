@@ -1,9 +1,8 @@
 "use client";
 
 import { usePools } from "@/hooks/usePools";
-import Navigation from "@/components/Navigation";
-import { useMemo, useState } from "react";
-import CustomFilterDropdown from "@/components/CustomFilterDropdown";
+import { useMemo, useState, Fragment } from "react";
+import Dropdown from "@/components/Dropdown";
 import Image from "next/image";
 import TokenIcon from "@/components/TokenIcon";
 import { usePoolData } from "@/hooks/usePoolData";
@@ -169,7 +168,6 @@ export default function Earn() {
 
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1500px] mx-auto font-sans relative">
-      <Navigation />
       <main className="container mx-auto px-4 sm:px-10 pt-32 pb-20 relative z-10">
         <div className="text-center mb-12">
           <h1 className={`text-4xl text-white`}>EARN</h1>
@@ -178,63 +176,108 @@ export default function Earn() {
             rewards. Boost rewards by staking STEAM.
           </p>
         </div>
-        <div className="space-y-12">
-          <div className="shadow-lg bg-grey-darker overflow-x-auto">
-            <div className="p-8 flex gap-8 items-end">
-              <div className="flex-grow">
-                <label
-                  htmlFor="search-pools"
-                  className="text-sm text-[#A3A3A3] mb-2 block"
+
+        <div className="flex justify-end items-center gap-4 mb-6">
+          <div className="relative w-48">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4">
+              <svg
+                className="h-5 w-5 text-gray-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-neutral-800 text-white rounded-2xl h-12 w-full pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-green-400/50 transition-shadow duration-300"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Dropdown
+            options={filterOptions}
+            value={filterType}
+            onChange={(value) =>
+              setFilterType(value as "all" | "Collateral" | "Leveraged")
+            }
+            trigger={
+              <button className="bg-neutral-800 text-white rounded-2xl h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400">
+                <svg
+                  className="h-6 w-6 text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  Search
-                </label>
-                <input
-                  id="search-pools"
-                  type="text"
-                  placeholder="Search pools..."
-                  className="w-full bg-grey-darkest text-white px-4 py-2 focus:outline-none"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 4h18M7 12h10m-7 8h4"
+                  />
+                </svg>
+              </button>
+            }
+          />
+        </div>
+
+        <div className="space-y-12">
+          <div className="shadow-lg rounded-2xl outline outline-1 outline-grey-light overflow-x-auto">
+            {groupedPools.length > 0 ? (
+              <table className="min-w-full text-left table-fixed">
+                <thead>
+                  <tr className="border-b border-white/10 text-[#A3A3A3] text-sm">
+                    <th className="py-4 px-8 font-normal">Pool</th>
+                    <th className="w-40 py-3 px-6 text-right font-normal">
+                      APR
+                    </th>
+                    <th className="w-40 py-3 px-6 text-right font-normal">
+                      Rewards
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Deposits
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedPools.map(([groupName, poolsInGroup], groupIndex) => (
+                    <Fragment key={groupName}>
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className={`px-8 ${groupIndex > 0 ? "pt-8" : "pt-4"}`}
+                        >
+                          <h2 className="text-2xl font-bold text-white mb-4">
+                            {groupName}
+                          </h2>
+                        </td>
+                      </tr>
+                      {poolsInGroup.map((pool) => (
+                        <PoolRow
+                          key={pool.id}
+                          pool={pool}
+                          formatAmount={formatAmount}
+                          formatAPRBreakdown={formatAPRBreakdown}
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-white/60">No pools found.</p>
               </div>
-              <div className="w-48">
-                <CustomFilterDropdown
-                  label="Filter"
-                  options={filterOptions}
-                  value={filterType}
-                  onChange={(value) =>
-                    setFilterType(value as "all" | "Collateral" | "Leveraged")
-                  }
-                />
-              </div>
-            </div>
-            {groupedPools.map(([groupName, poolsInGroup], groupIndex) => (
-              <div key={groupName} className={groupIndex > 0 ? "pt-8" : ""}>
-                <h2 className="text-2xl font-bold text-white mb-4 px-8">
-                  {groupName}
-                </h2>
-                <table className="min-w-full text-left table-fixed">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[#A3A3A3] text-sm">
-                      <th className="py-3 px-8">Pool</th>
-                      <th className="w-40 py-3 px-6 text-right">APR</th>
-                      <th className="w-40 py-3 px-6 text-right">Rewards</th>
-                      <th className="w-48 py-3 px-6 text-right">Deposits</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {poolsInGroup.map((pool) => (
-                      <PoolRow
-                        key={pool.id}
-                        pool={pool}
-                        formatAmount={formatAmount}
-                        formatAPRBreakdown={formatAPRBreakdown}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
+            )}
           </div>
         </div>
       </main>

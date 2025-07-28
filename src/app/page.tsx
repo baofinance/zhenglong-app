@@ -287,7 +287,6 @@ export default function App() {
       <div className="max-w-[1500px] mx-auto">
         <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
           {/* Navigation */}
-          <Navigation />
 
           {/* Header */}
           <div className="text-center mb-4 mt-12">

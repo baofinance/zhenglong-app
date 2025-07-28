@@ -420,7 +420,6 @@ export default function Admin() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black text-white max-w-[1500px] mx-auto">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">
             Admin Panel
@@ -438,7 +437,6 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black text-white max-w-[1500px] mx-auto">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">Admin Panel</h1>
 
