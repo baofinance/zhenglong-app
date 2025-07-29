@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Geo } from "next/font/google";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import {
   useAccount,
   useContractReads,
@@ -15,22 +14,10 @@ import {
   isGenesisActive,
   getGenesisPhaseInfo,
 } from "../../config/markets";
-import ConnectButton from "../../components/ConnectButton";
-import Link from "next/link";
-import Image from "next/image";
-import Navigation from "../../components/Navigation";
-import GenesisClaim from "../../components/GenesisClaim";
-import GenesisDepositModal from "../../components/GenesisDepositModal";
-import GenesisWithdrawModal from "../../components/GenesisWithdrawModal";
-import GenesisClaimStatusModal from "../../components/GenesisClaimStatusModal";
+import Dropdown from "../../components/Dropdown";
 import { minterABI } from "../../abis/minter";
-import { MarketRow } from "./MarketRow";
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import { GenesisRow } from "./GenesisRow";
+import { Skeleton } from "../../components/Skeleton";
 
 const genesisABI = [
   {
@@ -161,109 +148,30 @@ const erc20ABI = [
   },
 ] as const;
 
-export interface MarketState {
-  isExpanded: boolean;
-  depositAmount: string;
-  withdrawAmount: string;
-  activeTab: "deposit" | "withdraw" | "rewards" | "claim";
-  depositModalOpen: boolean;
-  withdrawModalOpen: boolean;
-}
-
-interface ContractReadResult<T = any> {
-  error?: Error;
-  result?: T;
-  status: "success" | "failure";
-}
-
-interface TotalRewards {
-  peggedAmount: bigint;
-  leveragedAmount: bigint;
-}
-
-// Custom hook for countdown
-function useCountdown(endDate: string) {
-  const [countdown, setCountdown] = useState({ text: "", isEnded: false });
-
-  useEffect(() => {
-    const updateCountdown = () => {
-      const end = new Date(endDate).getTime();
-      const now = new Date().getTime();
-      const distance = end - now;
-
-      if (distance < 0) {
-        setCountdown({ text: "Genesis Ended", isEnded: true });
-      } else {
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor(
-          (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-        );
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-        setCountdown({
-          text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
-          isEnded: false,
-        });
-      }
-    };
-
-    const timer = setInterval(updateCountdown, 1000);
-    updateCountdown(); // Initial update
-
-    return () => clearInterval(timer);
-  }, [endDate]);
-
-  return countdown;
-}
-
 export default function Genesis() {
   const { address, isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lastClaimedMarket, setLastClaimedMarket] = useState<any>(null);
-  const [lastClaimedPegged, setLastClaimedPegged] = useState<bigint>(BigInt(0));
-  const [lastClaimedLeveraged, setLastClaimedLeveraged] = useState<bigint>(
-    BigInt(0)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "active" | "completed">(
+    "all"
   );
 
-  const publicClient = usePublicClient();
+  const filterOptions = [
+    { value: "all", label: "All Markets" },
+    { value: "active", label: "Active" },
+    { value: "completed", label: "Completed" },
+  ];
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  type MarketWrites = {
-    approve: ReturnType<typeof useWriteContract>;
-    deposit: ReturnType<typeof useWriteContract>;
-    withdraw: ReturnType<typeof useWriteContract>;
-    claim: ReturnType<typeof useWriteContract>;
-  };
-
-  type ContractWrites = {
-    [marketId: string]: MarketWrites;
-  };
-
-  // Custom hook for market contract writes
-  function useMarketContractWrites(marketId: string): MarketWrites {
-    const approve = useWriteContract();
-    const deposit = useWriteContract();
-    const withdraw = useWriteContract();
-    const claim = useWriteContract();
-
-    return { approve, deposit, withdraw, claim };
-  }
-
-  // Get all markets that have Genesis functionality (same filtering as admin)
   const genesisMarkets = Object.entries(markets).filter(
     ([_, market]) =>
       market.status === "genesis" ||
-      market.status === "live" ||
-      // Include markets that might have completed genesis but still have "genesis" status in config
       (market.addresses.genesis && market.addresses.genesis.length > 0)
   );
 
-  // Get genesis contract state for all valid Genesis markets
   const { data: allMarketsData, refetch: refetchMarketsData } =
     useContractReads({
       contracts: genesisMarkets.flatMap(([id, market]) => [
@@ -302,56 +210,6 @@ export default function Genesis() {
       query: { enabled: genesisMarkets.length > 0 },
     });
 
-  // Create individual hooks for each market
-  const ethMarketWrites = useMarketContractWrites("eth-usd");
-
-  // Track transaction receipt for claim success
-  const { isSuccess: claimSuccess } = useWaitForTransactionReceipt({
-    hash: ethMarketWrites.claim.data,
-  });
-
-  // Show modal when claim transaction is submitted
-  useEffect(() => {
-    if (ethMarketWrites.claim.data && lastClaimedMarket) {
-      setShowSuccessModal(true);
-    }
-  }, [ethMarketWrites.claim.data, lastClaimedMarket]);
-
-  // Combine all contract writes
-  const contractWrites: ContractWrites = useMemo(
-    () => ({
-      "eth-usd": ethMarketWrites,
-    }),
-    [ethMarketWrites]
-  );
-
-  // Initialize countdowns for each market
-  const ethUsdCountdown = useCountdown(markets["eth-usd"].genesis.endDate);
-
-  // Group markets by status using hybrid on-chain + config system
-  const { activeMarkets, completedMarkets } = useMemo(() => {
-    const active: string[] = [];
-    const completed: string[] = [];
-
-    genesisMarkets.forEach(([id, market]: [string, any], index) => {
-      const dataOffset = index * (address ? 5 : 3);
-      const onChainGenesisEnded = allMarketsData?.[dataOffset]?.result === true;
-      const genesisStatus = getGenesisStatus(market, onChainGenesisEnded);
-
-      if (
-        genesisStatus.onChainStatus === "completed" ||
-        genesisStatus.onChainStatus === "closed"
-      ) {
-        completed.push(id);
-      } else {
-        active.push(id);
-      }
-    });
-
-    return { activeMarkets: active, completedMarkets: completed };
-  }, [address, allMarketsData, genesisMarkets]);
-
-  // Get token info for all valid Genesis markets
   const { data: allTokenData, refetch: refetchTokenData } = useContractReads({
     contracts: genesisMarkets.flatMap(([id, market]) => [
       {
@@ -385,41 +243,92 @@ export default function Genesis() {
     query: { enabled: genesisMarkets.length > 0 },
   });
 
-  // Get collateral balances held in each Minter contract (used after genesis completion)
-  const { data: allMinterData, refetch: refetchMinterData } = useContractReads({
-    contracts: genesisMarkets.map(([id, market]) => ({
-      address: market.addresses.minter as `0x${string}`,
-      abi: minterABI,
-      functionName: "collateralTokenBalance",
-    })),
-    query: { enabled: genesisMarkets.length > 0 },
-  });
-
-  // Function to refresh all contract data
   const refetchAllData = async () => {
-    await Promise.all([
-      refetchMarketsData(),
-      refetchTokenData(),
-      refetchMinterData(),
-    ]);
+    await Promise.all([refetchMarketsData(), refetchTokenData()]);
   };
 
-  // Refresh data when claim is successful
-  useEffect(() => {
-    if (claimSuccess) {
-      refetchAllData();
-    }
-  }, [claimSuccess]);
+  const filteredMarkets = useMemo(() => {
+    return genesisMarkets
+      .filter(([id, market]) => {
+        if (filterType === "all") return true;
+        const marketIndex = genesisMarkets.findIndex(([mid]) => mid === id);
+        const dataOffset = marketIndex * (address ? 5 : 3);
+        const onChainGenesisEnded =
+          allMarketsData?.[dataOffset]?.result === true;
+        const isCompleted = onChainGenesisEnded;
+        return filterType === "completed" ? isCompleted : !isCompleted;
+      })
+      .filter(([id, market]) =>
+        market.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [genesisMarkets, searchTerm, filterType, allMarketsData, address]);
 
   if (!mounted) {
     return (
-      <div className="min-h-screen  text-[#F5F5F5] font-sans relative">
-        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
-          <div className="text-center">
-            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-              GENESIS
+      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
+          <div className="text-center mb-4">
+            <h1 className="text-4xl font-medium text-left text-white">
+              <Skeleton className="w-48 h-10" />
             </h1>
-            <p className="text-[#F5F5F5]/60 text-lg mt-4">Loading...</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="shadow-lg rounded-md bg-[#1A1A1A] outline outline-1 outline-white/10 overflow-x-auto">
+              <h2 className="text-lg font-medium p-6 pb-2">
+                <Skeleton className="w-40 h-6" />
+              </h2>
+              <table className="min-w-full text-left table-fixed">
+                <thead>
+                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-[#1A1A1A] font-medium text-sm">
+                    <th className="py-4 px-8 font-normal">Market</th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Total Deposits
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Total Rewards
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Your Share
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <tr
+                      key={i}
+                      className="transition hover:bg-grey-light/20 text-sm cursor-pointer border-t border-white/10"
+                    >
+                      <td className="py-1 px-8 whitespace-nowrap">
+                        <div className="flex items-center gap-4">
+                          <div className="flex w-6 items-center justify-center">
+                            <Skeleton className="w-8 h-8 rounded-full" />
+                          </div>
+                          <div className="flex flex-col items-start gap-1">
+                            <Skeleton className="w-24 h-5" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                        <Skeleton className="w-20 h-5" />
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                        <Skeleton className="w-20 h-5" />
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                        <Skeleton className="w-16 h-5" />
+                      </td>
+                      <td className="w-48 py-3 px-6 text-right font-normal">
+                        <Skeleton className="w-24 h-10" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </main>
       </div>
@@ -427,86 +336,58 @@ export default function Genesis() {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] font-sans relative max-w-[1500px] mx-auto">
-      {/* Steam Background */}
-
-      <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20 relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-            GENESIS
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
+        <div className="text-center mb-4">
+          <h1 className={`text-4xl font-medium text-left text-white`}>
+            Genesis
           </h1>
-          <p className="text-[#F5F5F5]/60 text-lg mt-4">
-            Seed liquidity and earn rewards. Receive pegged and leveraged tokens
-            with the same net exposure as your collateral.
-          </p>
         </div>
 
-        {/* Active Markets */}
-        <div className="mb-2">
-          <h2 className={`text-2xl text-[#4A7C59] mb-2 ${geo.className}`}>
-            Active Markets
-          </h2>
-          {activeMarkets.length === 0 ? (
-            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-4 text-center text-[#F5F5F5]/50">
-              No active markets available
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {activeMarkets.map((marketId) => (
-                <MarketRow
-                  key={marketId}
-                  marketId={marketId}
-                  market={(markets as any)[marketId]}
-                  allMarketsData={allMarketsData}
-                  allTokenData={allTokenData}
-                  allMinterData={allMinterData}
-                  refetchAllData={refetchAllData}
-                  genesisMarkets={genesisMarkets}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Completed Markets */}
-        <div className="mb-2">
-          <h2 className={`text-2xl text-[#4A7C59] mb-2 ${geo.className}`}>
-            Completed Markets
-          </h2>
-          {completedMarkets.length === 0 ? (
-            <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-4 text-center text-[#F5F5F5]/50">
-              No completed markets available
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {completedMarkets.map((marketId) => (
-                <MarketRow
-                  key={marketId}
-                  marketId={marketId}
-                  market={(markets as any)[marketId]}
-                  allMarketsData={allMarketsData}
-                  allTokenData={allTokenData}
-                  allMinterData={allMinterData}
-                  refetchAllData={refetchAllData}
-                  genesisMarkets={genesisMarkets}
-                />
-              ))}
-            </div>
-          )}
+        <div className="space-y-4">
+          <div className="shadow-lg rounded-md bg-[#1A1A1A] outline outline-1 outline-white/10 overflow-x-auto">
+            <h2 className="text-lg font-medium p-6 pb-2">All Markets</h2>
+            {filteredMarkets.length > 0 ? (
+              <table className="min-w-full text-left table-fixed">
+                <thead>
+                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-[#1A1A1A] font-medium text-sm">
+                    <th className="py-4 px-8 font-normal">Market</th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Total Deposits
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Total Rewards
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Your Share
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMarkets.map(([marketId, market]) => (
+                    <GenesisRow
+                      key={marketId}
+                      marketId={marketId}
+                      market={market}
+                      allMarketsData={allMarketsData}
+                      allTokenData={allTokenData}
+                      refetchAllData={refetchAllData}
+                      genesisMarkets={genesisMarkets}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-white/60">No markets found.</p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
-
-      {/* Transaction Status Modal */}
-      <GenesisClaimStatusModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        market={lastClaimedMarket}
-        claimedPegged={lastClaimedPegged}
-        claimedLeveraged={lastClaimedLeveraged}
-        transactionHash={ethMarketWrites.claim.data}
-        onClaimSuccess={refetchAllData}
-      />
     </div>
   );
 }

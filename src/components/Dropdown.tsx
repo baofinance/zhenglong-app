@@ -53,7 +53,7 @@ export default function Dropdown({
       </div>
 
       {isOpen && (
-        <div className="absolute z-10 mt-2 w-56 origin-top-right right-0 rounded-2xl bg-neutral-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <div className="absolute z-10 mt-2 w-56 origin-top-right right-0 rounded-md bg-neutral-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div
             className="p-1"
             role="menu"

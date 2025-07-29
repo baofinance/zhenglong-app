@@ -124,7 +124,33 @@ export default function Staking() {
   const { isConnected, address } = useAccount();
   const [stakingState, setStakingState] = useState<StakingState>({
     amount: "",
-    lockDuration: 1,mx-auto 
+    lockDuration: 1, // in weeks
+    activeTab: "stake",
+  });
+
+  const [isPending, setIsPending] = useState(false);
+
+  const { data: stakingData } = useContractReads({
+    contracts: [
+      {
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "totalSupply",
+      },
+      ...(address
+        ? [
+            {
+              address: "0xVotingEscrowAddress" as `0x${string}`,
+              abi: votingEscrowABI,
+              functionName: "balanceOf",
+              args: [address],
+            },
+            {
+              address: "0xVotingEscrowAddress" as `0x${string}`,
+              abi: votingEscrowABI,
+              functionName: "locked__end",
+              args: [address],
+            },
           ]
         : []),
     ],
@@ -236,10 +262,9 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative max-w-[1500px] mx-auto">
-
+    <div className="min-h-screen  text-[#F5F5F5] font-sans relative max-w-[1300px] mx-auto">
       {/* Main Content */}
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+      <main className="container mx-auto px-6 pt-[6rem] pb-20 relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>

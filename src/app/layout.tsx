@@ -3,6 +3,8 @@ import "./globals.css";
 import ContextProvider from "@/contexts";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 
 export const metadata: Metadata = {
   title: "zhenglong",
@@ -20,7 +22,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`antialiased bg-[#131313] text-[#F5F5F5] font-sans relative`}
+        className={`antialiased font-sans bg-[#0d0f0d] text-[#F5F5F5] ${GeistSans.variable} ${GeistMono.variable} relative`}
       >
         <div className="relative z-10">
           <ContextProvider cookies={cookies}>

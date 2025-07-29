@@ -6,7 +6,7 @@ export const markets = {
     status: "genesis" as const,
     chain: {
       name: "Ethereum",
-      logo: "/eth-logo.svg",
+      logo: "icons/eth.png",
     },
     addresses: {
       minter: contracts.minter,

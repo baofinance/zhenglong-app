@@ -20,12 +20,7 @@ import MintRedeemForm from "@/components/MintRedeemForm"; // Adjust path as need
 import MarketSelector from "@/components/MarketSelector";
 import Head from "next/head";
 import SystemHealthComponent from "@/components/SystemHealth";
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+import clsx from "clsx";
 
 type TokenType = "LONG" | "STEAMED";
 type TokenAction = "MINT" | "REDEEM";
@@ -134,7 +129,7 @@ const SystemHealthValue: React.FC<SystemHealthValueProps> = ({
   const getValue = (): string => {
     switch (type) {
       case "collateralValue":
-        return totalCollateralValue || "0";
+        return totalCollateralValue || "$0";
       case "collateralTokens":
         return formatValue(collateralTokenBalance);
       case "collateralRatio":
@@ -148,9 +143,6 @@ const SystemHealthValue: React.FC<SystemHealthValueProps> = ({
 
         // Convert from raw value (with 18 decimals) to actual token amount
         const formattedValue = Number(formatEther(peggedBalance));
-        console.log("Raw pegged balance:", peggedBalance.toString());
-        console.log("Formatted pegged balance:", formattedValue);
-
         // For pegged tokens, value in USD equals token amount (1:1 peg)
         return type === "peggedValue"
           ? formattedValue.toFixed(2)
@@ -218,6 +210,7 @@ export default function App() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const [selectedMarket, setSelectedMarket] = useState<string>("eth-usd");
+  const [selectedType, setSelectedType] = useState<TokenType>("LONG");
   const formCardRef = useRef<HTMLDivElement>(null);
   const chartCardRef = useRef<HTMLDivElement>(null);
 
@@ -273,7 +266,36 @@ export default function App() {
     setSelectedMarket(marketId);
   };
 
-  console.log("[DEBUG page.tsx] geo.className:", geo.className); // DEBUG LINE
+  const healthStats = [
+    {
+      label: "Total Collateral",
+      value: (
+        <SystemHealth.Value type="collateralValue" marketId={selectedMarket} />
+      ),
+    },
+    {
+      label: "Pegged Tokens",
+      value: (
+        <SystemHealth.Value type="peggedTokens" marketId={selectedMarket} />
+      ),
+    },
+    {
+      label: "Leveraged Tokens",
+      value: (
+        <SystemHealth.Value type="leveragedTokens" marketId={selectedMarket} />
+      ),
+    },
+    {
+      label: "Collateral Ratio",
+      value: (
+        <SystemHealth.Value type="collateralRatio" marketId={selectedMarket} />
+      ),
+    },
+    {
+      label: "Price Oracle",
+      value: "Chainlink",
+    },
+  ];
 
   // The main return statement of page.tsx
   return (
@@ -284,98 +306,81 @@ export default function App() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="max-w-[1500px] mx-auto">
-        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
-          {/* Navigation */}
-
-          {/* Header */}
-          <div className="text-center mb-4 mt-12">
-            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-              MINT & REDEEM
-            </h1>
-            <p className="text-[#F5F5F5]/60 text-sm mt-2">
-              Mint or redeem pegged and leverage tokens from any market
-            </p>
+      <div className="max-w-[1300px] px-4 sm:px-10 mx-auto">
+        <main className="container mx-auto max-w-full pt-28 pb-20">
+          {/* System Health Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            {healthStats.map((stat, index) => (
+              <div key={stat.label} className="relative text-left">
+                {index < healthStats.length - 1 && (
+                  <div className="absolute top-0 right-0 h-full w-px bg-zinc-700 mr-2" />
+                )}
+                <p className="text-xs font-bold text-zinc-400 mb-1">
+                  {stat.label}
+                </p>
+                <p className={`text-xl font-bold text-white`}>{stat.value}</p>
+              </div>
+            ))}
           </div>
 
           {/* Market Selector & Token Info */}
-          <div className="max-w-7xl mx-auto mb-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          <div className="max-w-7xl mx-auto mb-4 mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
             {/* Left: Market Selector */}
             <MarketSelector
               selectedMarketId={selectedMarket}
               onMarketChange={handleMarketChange}
-              geoClassName={geo.className}
             />
-
-            {/* Right: Token Descriptions */}
-            <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full lg:w-auto">
-              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-                <p className={`text-sm text-white ${geo.className}`}>
-                  <span className="font-bold">Collateral:</span>
-                  <span className="text-[#F5F5F5]/70 ml-2">wstETH</span>
-                </p>
-              </div>
-              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-                <p className={`text-sm text-white ${geo.className}`}>
-                  <span className="font-bold">
-                    {currentMarketInfo?.peggedToken.name}:
-                  </span>
-                  <span className="text-[#F5F5F5]/70 ml-2">
-                    {currentMarketInfo?.peggedToken.description}
-                  </span>
-                </p>
-              </div>
-              <div className="bg-[#1A1A1A]/50 border border-zinc-700/30 px-4 py-2 text-center sm:text-right">
-                <p className={`text-sm text-white ${geo.className}`}>
-                  <span className="font-bold">
-                    {currentMarketInfo?.leveragedToken.name}:
-                  </span>
-                  <span className="text-[#F5F5F5]/70 ml-2">
-                    {currentMarketInfo?.leveragedToken.description}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* System Health with uniform spacing */}
-          <div className="mb-2">
-            {mounted && currentMarket && (
-              <SystemHealthComponent
-                marketId={selectedMarket}
-                geoClassName={geo.className}
-              />
-            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
             <div>
-              {mounted && currentMarket ? (
-                <div
-                  ref={formCardRef}
-                  className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full"
+              <div className="flex mb-4">
+                <button
+                  onClick={() => setSelectedType("LONG")}
+                  className={clsx(
+                    `px-4 py-2 text-2xl font-semibold transition-colors`,
+                    selectedType === "LONG"
+                      ? "text-white"
+                      : "text-zinc-400 hover:text-white"
+                  )}
                 >
+                  Pegged
+                </button>
+                <button
+                  onClick={() => setSelectedType("STEAMED")}
+                  className={clsx(
+                    `px-4 py-2 text-2xl font-semibold transition-colors`,
+                    selectedType === "STEAMED"
+                      ? "text-white"
+                      : "text-zinc-400 hover:text-white"
+                  )}
+                >
+                  Leverage
+                </button>
+              </div>
+              {mounted && currentMarket ? (
+                <div ref={formCardRef}>
                   <MintRedeemForm
-                    geoClassName={geo.className}
                     currentMarket={currentMarket}
                     isConnected={isConnected}
                     userAddress={address}
                     marketInfo={currentMarketInfo}
+                    selectedType={selectedType}
                   />
                 </div>
               ) : (
                 <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
-                  <h2 className={`text-2xl text-white mb-4 ${geo.className}`}>
+                  <h2 className={`text-2xl text-white mb-4`}>
                     Loading Form...
                   </h2>
                 </div>
               )}
             </div>
-            <div>
+            <div className="min-h-[480px]">
               {mounted && currentMarket ? (
                 <div
                   ref={chartCardRef}
-                  className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full flex flex-col"
+                  className="shadow-lg rounded-md outline outline-1 outline-white/10 px-6 py-4 w-full h-full flex flex-col"
                 >
                   <div className="flex-1 min-h-0">
                     <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />

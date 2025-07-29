@@ -16,7 +16,6 @@ import {
   useWalletClient,
 } from "wagmi";
 import { markets } from "../config/markets";
-import GenesisOverlay from "./GenesisOverlay";
 import MintRedeemStatusModal from "./MintRedeemStatusModal";
 
 // Constants (to be moved from page.tsx)
@@ -301,20 +300,20 @@ type Market = {
 type TokenType = "LONG" | "STEAMED";
 
 interface MintRedeemFormProps {
-  geoClassName: string;
   currentMarket: Market;
   isConnected: boolean;
   userAddress: string | undefined;
   marketInfo?: any;
+  selectedType: TokenType;
   // publicClient: any; // Not passing publicClient, component will get its own
 }
 
 const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
-  geoClassName,
   currentMarket,
   isConnected,
   userAddress,
   marketInfo,
+  selectedType,
 }) => {
   const [mounted, setMounted] = useState(false);
   const chainId = useChainId();
@@ -323,7 +322,6 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
 
   // State variables previously in App component, now local to MintRedeemForm
   const [isFlipped, setIsFlipped] = useState(false);
-  const [selectedType, setSelectedType] = useState<TokenType>("LONG");
   const [isCollateralAtTop, setIsCollateralAtTop] = useState(true);
   const [inputAmount, setInputAmount] = useState<string>("");
   const [outputAmount, setOutputAmount] = useState<string>("");
@@ -347,6 +345,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const [isMaxClick, setIsMaxClick] = useState(false);
   // Tracks if the user manually edited the output amount (used for reverse calculation)
   const [isOutputManual, setIsOutputManual] = useState(false);
+  const [showGenesisBanner, setShowGenesisBanner] = useState(true);
 
   // Default to the first token in the selected type
   const [selectedToken, setSelectedToken] = useState<string>(
@@ -578,21 +577,6 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     },
   });
 
-  const { data: reverseRedeemPeggedDryRunResult } = useContractRead({
-    address: currentMarket.addresses.minter as `0x${string}`,
-    abi: minterABI,
-    functionName: "redeemPeggedTokenDryRun",
-    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
-    query: {
-      enabled:
-        mounted &&
-        !isCollateralAtTop &&
-        selectedType === "LONG" &&
-        !!outputAmount &&
-        parseFloat(outputAmount) > 0,
-    },
-  });
-
   const { data: reverseRedeemLeveragedDryRunResult } = useContractRead({
     address: currentMarket.addresses.minter as `0x${string}`,
     abi: minterABI,
@@ -603,6 +587,21 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         mounted &&
         !isCollateralAtTop &&
         selectedType === "STEAMED" &&
+        !!outputAmount &&
+        parseFloat(outputAmount) > 0,
+    },
+  });
+
+  const { data: reverseRedeemPeggedDryRunResult } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "redeemPeggedTokenDryRun",
+    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "LONG" &&
         !!outputAmount &&
         parseFloat(outputAmount) > 0,
     },
@@ -1458,53 +1457,21 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     // Optional: render a simpler loading state for this component if needed
     return (
       <div className="px-6 py-2">
-        <h2 className={`text-2xl text-[#F5F5F5] mb-4 ${geoClassName}`}>
-          Loading Form...
-        </h2>
+        <h2 className={`text-2xl text-[#F5F5F5] mb-4`}>Loading Form...</h2>
       </div>
     );
   }
 
   // JSX for Mint & Redeem section (to be copied from page.tsx)
   return (
-    <GenesisOverlay
-      marketName={marketInfoData?.title || currentMarket.name}
-      className="px-6 py-2"
-      isActive={isGenesisActive}
-      geoClassName={geoClassName}
-    >
-      <div className="w-full max-w-xl mx-auto flex flex-col">
-        {/* Tabs row above the form, left-aligned with form content */}
-        <div className="flex border-b border-zinc-800 mb-4">
-          <button
-            onClick={() => {
-              setSelectedType("LONG");
-              setIsFlipped(false);
-            }}
-            className={clsx(
-              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
-              selectedType === "LONG"
-                ? "border-[#4A7C59] text-[#4A7C59] bg-[#1E1E1E]"
-                : "border-transparent text-zinc-400 hover:text-white"
-            )}
-          >
-            PEGGED
-          </button>
-          <button
-            onClick={() => {
-              setSelectedType("STEAMED");
-              setIsFlipped(true);
-            }}
-            className={clsx(
-              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
-              selectedType === "STEAMED"
-                ? "border-[#4A7C59] text-[#4A7C59] bg-[#1E1E1E]"
-                : "border-transparent text-zinc-400 hover:text-white"
-            )}
-          >
-            LEVERAGE
-          </button>
+    <div className="px-2 py-2">
+      {isGenesisActive && (
+        <div className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-200 text-sm rounded-md p-4">
+          <strong>Genesis Active:</strong> Minting and redeeming are currently
+          disabled for this market.
         </div>
+      )}
+      <div className="w-full mx-auto flex flex-col">
         <div className="relative w-full">
           <div className="relative grid w-full">
             {/* Front Side (PEGGED) */}
@@ -1516,13 +1483,15 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     : "opacity-0 z-0 pointer-events-none"
                 }`}
               >
-                <div className="pt-6 pb-1 px-6 flex flex-col gap-2 min-h-[480px]">
+                <div className="pt-4 pb-1 flex flex-col gap-2 min-h-[480px]">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-0">
                     <div className="flex flex-col gap-y-0">
                       {/* From Token Input */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 border border-zinc-700/50 rounded-md p-4">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">From</label>
+                          <label className="text-md font-medium text-zinc-400">
+                            From
+                          </label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
                             {isCollateralAtTop ? (
@@ -1552,13 +1521,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={inputAmount}
                             onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className={`w-full p-4 bg-[#0D0D0D] text-white border-2 focus:ring-2 focus:ring-[#4A7C59]/70 focus:outline-none focus:shadow-[0_0_0_2px_#4A7C59] transition-all pr-24 shadow-inner ${
-                              inputAdjusted &&
-                              isCollateralAtTop &&
-                              selectedType === "LONG"
-                                ? "border-yellow-400 bg-yellow-400/5"
-                                : "border-[#4A7C59] focus:border-[#4A7C59]"
-                            }`}
+                            className="w-full text-4xl font-semibold bg-transparent text-white focus:outline-none pr-24"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -1615,74 +1578,36 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                       </div>
 
                       {/* Swap Direction */}
-                      <div className="flex items-center w-full">
-                        {/* Center: Mint/Arrows/Redeem */}
-                        <div className="flex-grow flex items-center justify-center gap-x-4">
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
+                      <div className="relative h-0 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsCollateralAtTop(!isCollateralAtTop)
+                          }
+                          className="bg-neutral-800 text-white rounded-md h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 z-10"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`w-5 h-5 transition-transform duration-300 ${
+                              !isCollateralAtTop ? "rotate-180" : "rotate-0"
                             }`}
                           >
-                            Mint
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsCollateralAtTop(!isCollateralAtTop)
-                            }
-                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 4V20M19 13L12 20L5 13"
-                                stroke="#F5F5F5"
-                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 20V4M5 11L12 4L19 11"
-                                stroke="#F5F5F5"
-                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              !isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Redeem
-                          </span>
-                        </div>
+                            <path d="M12 4v16m-6-6 6 6 6-6" />
+                          </svg>
+                        </button>
                       </div>
 
                       {/* To Token Input */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 border border-zinc-700/50 rounded-md p-4 mt-1">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">To</label>
+                          <label className="text-md font-medium text-zinc-400">
+                            To
+                          </label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
                             {isCollateralAtTop ? (
@@ -1708,15 +1633,11 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         </div>
                         <div className="flex-1 relative">
                           <input
-                            type="number"
+                            type="text"
                             value={outputAmount}
                             onChange={handleOutputAmountChange}
                             placeholder="0.0"
-                            className={`w-full p-4 bg-[#0D0D0D] text-white border-2 focus:ring-2 focus:ring-[#4A7C59]/70 focus:outline-none focus:shadow-[0_0_0_2px_#4A7C59] transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              outputAdjusted && selectedType === "LONG"
-                                ? "border-blue-400 bg-blue-400/5"
-                                : "border-[#4A7C59] focus:border-[#4A7C59]"
-                            }`}
+                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             aria-readonly={true}
                             tabIndex={0}
                           />
@@ -1789,7 +1710,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Connect Wallet
                         </button>
@@ -1797,7 +1718,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for approval transaction...
                         </button>
@@ -1805,7 +1726,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for mint/redeem transaction...
                         </button>
@@ -1815,7 +1736,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                           disabled={
                             !inputAmount || parseFloat(inputAmount) <= 0
                           }
-                          className={`w-full h-[60px] p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200 ${geoClassName}`}
+                          className={`w-full h-[60px] p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200`}
                         >
                           {(() => {
                             if (!inputAmount || parseFloat(inputAmount) <= 0)
@@ -1839,13 +1760,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     : "opacity-0 z-0 pointer-events-none"
                 }`}
               >
-                <div className="pt-6 pb-1 px-6 flex flex-col gap-2 min-h-[480px]">
+                <div className="pt-4 pb-1 flex flex-col gap-2 min-h-[480px]">
                   <form onSubmit={handleSubmit} className="flex flex-col gap-0">
                     <div className="flex flex-col gap-y-0">
                       {/* From Token Input */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 border border-zinc-700/50 rounded-md p-4">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">From</label>
+                          <label className="text-md text-zinc-400">From</label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
                             {isCollateralAtTop ? (
@@ -1876,13 +1797,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={inputAmount}
                             onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className={`w-full p-4 bg-[#0D0D0D] text-white border-2 focus:ring-2 focus:ring-[#4A7C59]/70 focus:outline-none focus:shadow-[0_0_0_2px_#4A7C59] transition-all pr-24 shadow-inner ${
-                              inputAdjusted &&
-                              isCollateralAtTop &&
-                              selectedType === "STEAMED"
-                                ? "border-yellow-400 bg-yellow-400/5"
-                                : "border-[#4A7C59] focus:border-[#4A7C59]"
-                            }`}
+                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -1939,74 +1854,34 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                       </div>
 
                       {/* Swap Direction - LEVERAGE */}
-                      <div className="flex items-center w-full">
-                        {/* Center: Mint/Arrows/Redeem */}
-                        <div className="flex-grow flex items-center justify-center gap-x-4">
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
+                      <div className="relative h-0 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsCollateralAtTop(!isCollateralAtTop)
+                          }
+                          className="bg-neutral-800 text-white rounded-md h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 z-10"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`w-5 h-5 transition-transform duration-300 ${
+                              !isCollateralAtTop ? "rotate-180" : "rotate-0"
                             }`}
                           >
-                            Mint
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsCollateralAtTop(!isCollateralAtTop)
-                            }
-                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 4V20M19 13L12 20L5 13"
-                                stroke="#F5F5F5"
-                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 20V4M5 11L12 4L19 11"
-                                stroke="#F5F5F5"
-                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              !isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Redeem
-                          </span>
-                        </div>
+                            <path d="M12 4v16m-6-6 6 6 6-6" />
+                          </svg>
+                        </button>
                       </div>
 
                       {/* To Token Input */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 border border-zinc-700/50 rounded-md p-4 mt-1">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">To</label>
+                          <label className="text-md text-zinc-400">To</label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
                             {isCollateralAtTop ? (
@@ -2033,15 +1908,11 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         </div>
                         <div className="flex-1 relative">
                           <input
-                            type="number"
+                            type="text"
                             value={outputAmount}
                             onChange={handleOutputAmountChange}
                             placeholder="0.0"
-                            className={`w-full p-4 bg-[#0D0D0D] text-white border-2 focus:ring-2 focus:ring-[#4A7C59]/70 focus:outline-none focus:shadow-[0_0_0_2px_#4A7C59] transition-all pr-24 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              outputAdjusted && selectedType === "STEAMED"
-                                ? "border-blue-400 bg-blue-400/5"
-                                : "border-[#4A7C59] focus:border-[#4A7C59]"
-                            }`}
+                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             aria-readonly={true}
                             tabIndex={0}
                           />
@@ -2112,7 +1983,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Connect Wallet
                         </button>
@@ -2120,7 +1991,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for approval transaction...
                         </button>
@@ -2128,7 +1999,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for mint/redeem transaction...
                         </button>
@@ -2138,7 +2009,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                           disabled={
                             !inputAmount || parseFloat(inputAmount) <= 0
                           }
-                          className={`w-full h-[60px] p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200 ${geoClassName}`}
+                          className={`w-full h-[60px] p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200`}
                         >
                           {(() => {
                             if (!inputAmount || parseFloat(inputAmount) <= 0)
@@ -2157,7 +2028,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         {/* Modal skeleton */}
         {showConfirmModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-[#181818] p-8 rounded-lg shadow-lg w-full max-w-md">
+            <div className="bg-[#181818] p-8 rounded-md shadow-lg w-full max-w-md">
               <h3 className="text-xl font-bold mb-4 text-[#F5F5F5]">
                 Confirm Mint Transaction
               </h3>
@@ -2218,7 +2089,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           }}
         />
       </div>
-    </GenesisOverlay>
+    </div>
   );
 };
 

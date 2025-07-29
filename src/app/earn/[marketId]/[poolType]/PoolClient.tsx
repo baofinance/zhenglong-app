@@ -15,6 +15,7 @@ import { usePoolData } from "@/hooks/usePoolData";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { rewardsABI } from "@/abis/rewards";
 import { erc20ABI } from "@/abis/erc20";
+import { clsx } from "clsx";
 
 const RechartsChart = dynamic(() => import("@/components/RechartsChart"), {
   ssr: false,
@@ -69,8 +70,8 @@ function EtherscanLink({ label, address }: EtherscanLinkProps) {
 function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
   if (!pool || !market) {
     return (
-      <div className="lg:col-span-1 bg-[#1A1A1A] p-6">
-        <h2 className="text-xl font-bold text-white mb-4">Contract Info</h2>
+      <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+        <h2 className="text-lg font-medium mb-4">Contract Info</h2>
         <p className="text-sm text-[#F5F5F5]/70">
           Pool information not available.
         </p>
@@ -84,8 +85,8 @@ function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
       : market.addresses.peggedToken;
 
   return (
-    <div className="lg:col-span-1 bg-[#1A1A1A] p-6">
-      <h2 className="text-xl font-bold text-white mb-4">Contract Info</h2>
+    <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+      <h2 className="text-lg font-medium mb-4">Contract Info</h2>
       <div className="space-y-2">
         <EtherscanLink label={pool.name} address={pool.address} />
         <EtherscanLink
@@ -119,11 +120,12 @@ function TabButton({ isActive, onClick, children }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-3 text-sm font-medium transition-colors ${
+      className={clsx(
+        "text-md font-medium transition-colors rounded-md px-3 py-2",
         isActive
-          ? "text-white border-b-2 border-white"
-          : "text-[#F5F5F5]/50 hover:text-[#F5F5F5]"
-      }`}
+          ? "text-white bg-white/10"
+          : "text-white/60 hover:bg-white/10 hover:text-white"
+      )}
     >
       {children}
     </button>
@@ -148,18 +150,18 @@ function InputField({
   maxButton,
 }: InputFieldProps) {
   return (
-    <div className="flex items-center space-x-4">
+    <div className="flex items-center space-x-4 border border-zinc-700/50 rounded-md p-4">
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-grey-darkest text-white p-3 border border-[#4A7C59]/20 focus:border-[#4A7C59] focus:outline-none"
+        className="w-full text-4xl font-semibold bg-transparent text-white focus:outline-none pr-4"
       />
       {maxButton && (
         <button
           onClick={maxButton.onClick}
-          className="px-4 py-2 text-sm bg-[#4A7C59]/10 text-white hover:bg-[#4A7C59]/20 border border-[#4A7C59]/20 transition-colors"
+          className="text-md font-medium text-[#4A7C59] hover:text-[#3A6147] transition-colors"
         >
           {maxButton.label}
         </button>
@@ -410,9 +412,9 @@ function ActionTabs({
   formatAmount,
 }: ActionTabsProps) {
   return (
-    <div className="bg-[#1A1A1A] px-8 py-6">
+    <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-6">
       {/* Tab Navigation */}
-      <div className="flex mb-6">
+      <div className="flex gap-2 mb-6">
         <TabButton
           isActive={activeTab === "deposit"}
           onClick={() => setActiveTab("deposit")}
@@ -494,23 +496,20 @@ function PoolInfo({ pool, market, baseAPR, boostAPR }: PoolInfoProps) {
     (parseFloat(baseAPR) + parseFloat(boostAPR)).toFixed(2) + "%";
 
   return (
-    <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <ContractInfoSection pool={pool} market={market} />
-      <div className="lg:col-span-2 bg-[#1A1A1A] p-6">
-        <h2 className="text-xl font-bold text-white mb-4">APR Breakdown</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-[#F5F5F5]/70">Base APR</span>
-            <span className="font-mono text-white">{baseAPR}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-[#F5F5F5]/70">STEAM Boost APR</span>
-            <span className="font-mono text-white">{boostAPR}</span>
-          </div>
-          <div className="flex justify-between items-center text-base font-bold border-t border-white/10 pt-3 mt-3">
-            <span className="text-white">Total APR</span>
-            <span className="font-mono text-white">{totalAPR}</span>
-          </div>
+    <div className="lg:col-span-2 bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-6">
+      <h2 className="text-xl font-bold text-white mb-4">APR Breakdown</h2>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-[#F5F5F5]/70">Base APR</span>
+          <span className="font-mono text-white">{baseAPR}</span>
+        </div>
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-[#F5F5F5]/70">STEAM Boost APR</span>
+          <span className="font-mono text-white">{boostAPR}</span>
+        </div>
+        <div className="flex justify-between items-center text-base font-bold border-t border-white/10 pt-3 mt-3">
+          <span className="text-white">Total APR</span>
+          <span className="font-mono text-white">{totalAPR}</span>
         </div>
       </div>
     </div>
@@ -702,7 +701,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   if (!pool) {
     return (
       <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
-        <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+        <main className="container mx-auto px-6 pt-[6rem] pb-20 relative z-10">
           <div className="text-center">
             <h1 className={`text-4xl text-white `}>Pool Not Found</h1>
           </div>
@@ -712,12 +711,12 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1500px] mx-auto font-sans relative">
-      <main className="container mx-auto px-8 sm:px-10 pt-32 pb-20 relative z-10">
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-20 relative z-10">
         <div className="mb-4">
           <Link
             href="/earn"
-            className="inline-flex items-center gap-2 text-white hover:text-white/80 transition-colors"
+            className="inline-flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -733,12 +732,12 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
               ></path>
             </svg>
-            Back to Earn
+            Earn
           </Link>
         </div>
-        <div className="text-center mb-12">
-          <div className="flex justify-center items-center gap-6">
-            <div className="flex items-center">
+        <div className="text-left mb-8">
+          <div className="flex items-center gap-3">
+            <div className="flex w-7 items-center justify-center">
               {pool.assetIcons
                 .slice()
                 .reverse()
@@ -747,92 +746,75 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
                     key={index}
                     src={icon}
                     alt="token icon"
-                    width={40}
-                    height={40}
-                    className={`rounded-full border-2 border-black ${
+                    width={32}
+                    height={32}
+                    className={`rounded-full border-1 antialiased border-white/50 ${
                       index > 0 ? "-ml-4" : ""
                     }`}
                   />
                 ))}
             </div>
-            <h1 className={`text-4xl text-white font-bold`}>{pool.name}</h1>
+            <h1 className={`text-4xl text-white font-medium`}>{pool.name}</h1>
           </div>
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 backdrop-blur-sm">
-              <Image
-                src={pool.chainIcon}
-                alt={pool.chain}
-                width={20}
-                height={20}
-                className="rounded-full"
-              />
-              <p className="text-sm text-[#F5F5F5]/60">{pool.chain}</p>
-            </div>
-            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-[#F5F5F5]/60 backdrop-blur-sm">
-              {pool.poolType === "collateral"
-                ? "Stability Pool"
-                : "Leveraged Pool"}
-            </div>
-          </div>
+          <p className="text-sm text-zinc-400 mt-2">
+            <span className="font-mono">{pool.address}</span>
+          </p>
         </div>
-        {/* Pool Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
-              Total Value Locked
-            </p>
-            <p className="text-2xl font-bold text-white font-mono">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+            <p className="text-[#F5F5F5]/50 text-sm mb-1">Total Value Locked</p>
+            <p className="text-2xl font-semibold text-white">
               ${tvlUSD.toFixed(2)}
             </p>
           </div>
-          <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
-              Your Deposit
-            </p>
-            <p className="text-2xl font-bold text-white font-mono">
+          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+            <p className="text-[#F5F5F5]/50 text-sm mb-1">Your Deposit</p>
+            <p className="text-2xl font-semibold text-white">
               {formatAmount(poolWithData?.userDeposit)} {tokenSymbol}
             </p>
           </div>
-          <div className="text-center">
-            <p className="text-[#F5F5F5]/50 text-sm mb-2 uppercase tracking-wider">
-              APR
-            </p>
-            <p className="text-2xl font-bold text-white font-mono">
-              {baseAPR} + {boostAPR}
-            </p>
+          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+            <p className="text-[#F5F5F5]/50 text-sm mb-1">Base APR</p>
+            <p className="text-2xl font-semibold text-white">{baseAPR}</p>
+          </div>
+          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+            <p className="text-[#F5F5F5]/50 text-sm mb-1">Boost APR</p>
+            <p className="text-2xl font-semibold text-white">{boostAPR}</p>
           </div>
         </div>
-        {/* Action Tabs */}
-        <ActionTabs
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          depositAmount={depositAmount}
-          setDepositAmount={setDepositAmount}
-          withdrawAmount={withdrawAmount}
-          setWithdrawAmount={setWithdrawAmount}
-          tokenBalance={tokenBalance}
-          poolWithData={poolWithData}
-          tokenSymbol={tokenSymbol || ""}
-          error={error}
-          isConnected={isConnected}
-          isDepositLoading={isDepositLoading}
-          isApproveLoading={isApproveLoading}
-          isWithdrawLoading={isWithdrawLoading}
-          isClaimLoading={isClaimLoading}
-          handleDeposit={handleDeposit}
-          handleWithdraw={handleWithdraw}
-          handleClaimRewards={handleClaimRewards}
-          handleMaxDeposit={handleMaxDeposit}
-          handleMaxWithdraw={handleMaxWithdraw}
-          formatAmount={formatAmount}
-        />
-        {/* Pool Info Section */}
-        <PoolInfo
-          pool={pool}
-          market={market}
-          baseAPR={baseAPR}
-          boostAPR={boostAPR}
-        />
+
+        {/* Action Tabs and Info sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <ActionTabs
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              depositAmount={depositAmount}
+              setDepositAmount={setDepositAmount}
+              withdrawAmount={withdrawAmount}
+              setWithdrawAmount={setWithdrawAmount}
+              tokenBalance={tokenBalance}
+              poolWithData={poolWithData}
+              tokenSymbol={tokenSymbol || ""}
+              error={error}
+              isConnected={isConnected}
+              isDepositLoading={isDepositLoading}
+              isApproveLoading={isApproveLoading}
+              isWithdrawLoading={isWithdrawLoading}
+              isClaimLoading={isClaimLoading}
+              handleDeposit={handleDeposit}
+              handleWithdraw={handleWithdraw}
+              handleClaimRewards={handleClaimRewards}
+              handleMaxDeposit={handleMaxDeposit}
+              handleMaxWithdraw={handleMaxWithdraw}
+              formatAmount={formatAmount}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <ContractInfoSection pool={pool} market={market} />
+          </div>
+        </div>
       </main>
     </div>
   );

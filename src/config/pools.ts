@@ -31,7 +31,7 @@ const launchPools: Pool[] = [
     id: "zheeth-fxsave",
     groupName: "zheETH Deposits",
     groupIcon: "🟢",
-    name: "fxSAVE Pool",
+    name: "fxSAVE",
     assetIcons: ["/icons/fxSave.png"],
     address: markets.zheeth.addresses.stabilityPoolCollateral as `0x${string}`,
     type: "Collateral",
@@ -68,7 +68,7 @@ const launchPools: Pool[] = [
     groupName: "zheBTC Deposits",
     groupIcon: "🟠",
     groupSubText: "(fxSAVE collateral)",
-    name: "fxSAVE Pool",
+    name: "fxSAVE",
     assetIcons: ["/icons/fxSave.png"],
     address: markets["zhebtc-fxsave"].addresses
       .stabilityPoolCollateral as `0x${string}`,
@@ -108,7 +108,7 @@ const launchPools: Pool[] = [
     groupName: "zheBTC Deposits",
     groupIcon: "🔵",
     groupSubText: "(wstETH collateral)",
-    name: "wstETH Pool",
+    name: "wstETH",
     assetIcons: ["/icons/wstETH.webp"],
     address: markets["zhebtc-wsteth"].addresses
       .stabilityPoolCollateral as `0x${string}`,
