@@ -60,7 +60,7 @@ export function GenesisRow({
               alt={market.chain.name}
               width={32}
               height={32}
-              className="flex-shrink-0 rounded-full border-1 antialiased border-white/50"
+              className="flex-shrink-0-full border-1 antialiased border-white/50"
             />
           </div>
           <div className="flex flex-col items-start gap-1">
@@ -82,7 +82,7 @@ export function GenesisRow({
           onClick={() => {
             /* Logic to handle deposit/claim */
           }}
-          className="bg-green-500/10 border-green-500/50 text-green-400 border rounded-lg px-4 py-2 hover:bg-green-500/20"
+          className="bg-green-500/10 border-green-500/50 text-green-400 border-lg px-4 py-2 hover:bg-green-500/20"
         >
           {isCompleted ? "Claim" : "Deposit"}
         </button>

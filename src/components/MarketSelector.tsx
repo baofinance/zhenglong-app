@@ -53,7 +53,7 @@ export default function MarketSelector({
 
     return (
       <span
-        className={`text-xs px-2 py-1 ${
+        className={`inline-block text-xs px-1.5 py-0.5 font-bold ${
           statusStyles[status as keyof typeof statusStyles] ||
           statusStyles.archived
         }`}
@@ -65,41 +65,39 @@ export default function MarketSelector({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-neutral-800 text-white rounded-full h-12 w-48 flex items-center justify-between px-4 hover:bg-neutral-700 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 hover:scale-105 focus:scale-105"
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 text-4xl font-semibold font-geo text-white hover:text-zinc-300 transition-colors"
+      >
+        <span>{selectedMarket?.name || "Select Market"}</span>
+        <svg
+          className={`w-6 h-6 text-zinc-400 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
         >
-          <span>{selectedMarket?.name || "Select Market"}</span>
-          <svg
-            className={`w-4 h-4 text-green-400 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
-      </div>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
 
       {/* Dropdown Menu */}
       <div
-        className={`absolute z-10 mt-2 w-[300px] origin-top-left left-0 rounded-md bg-neutral-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-300 ease-in-out ${
+        className={`absolute z-10 mt-2 w-[300px] origin-top-left left-0 bg-[#1C1C1C] border border-zinc-800 shadow-2xl focus:outline-none transition-all duration-300 ease-in-out ${
           isOpen
             ? "opacity-100 scale-100"
             : "opacity-0 scale-95 pointer-events-none"
         }`}
       >
-        <div className="p-1 max-h-64 overflow-y-auto">
+        <div className="p-1 max-h-80 overflow-y-auto">
           {availableMarkets.length === 0 ? (
-            <div className="p-4 text-center text-gray-400">
+            <div className="p-4 text-center text-zinc-400">
               No markets available
             </div>
           ) : (
@@ -107,19 +105,21 @@ export default function MarketSelector({
               <button
                 key={market.id}
                 onClick={() => handleMarketSelect(market.id)}
-                className="w-full p-3 text-left hover:bg-neutral-700 transition-colors rounded-xl flex justify-between items-start"
+                className="w-full p-3 text-left hover:bg-zinc-800 transition-colors-lg flex justify-between items-center"
               >
-                <div className="text-white">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-base">{market.name}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-base">
+                      {market.name}
+                    </span>
                     {getStatusBadge(market.status)}
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-zinc-400">
                     <div className="flex items-center gap-2">
                       <span>wstETH</span>
-                      <span>•</span>
+                      <span className="text-zinc-600">•</span>
                       <span>{market.peggedToken.name}</span>
-                      <span>•</span>
+                      <span className="text-zinc-600">•</span>
                       <span>{market.leveragedToken.name}</span>
                     </div>
                   </div>
@@ -127,7 +127,7 @@ export default function MarketSelector({
 
                 {selectedMarketId === market.id && (
                   <svg
-                    className="w-5 h-5 text-green-400 ml-4 flex-shrink-0 mt-1"
+                    className="w-5 h-5 text-white ml-3 flex-shrink-0"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"

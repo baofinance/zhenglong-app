@@ -70,7 +70,7 @@ function EtherscanLink({ label, address }: EtherscanLinkProps) {
 function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
   if (!pool || !market) {
     return (
-      <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+      <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
         <h2 className="text-lg font-medium mb-4">Contract Info</h2>
         <p className="text-sm text-[#F5F5F5]/70">
           Pool information not available.
@@ -85,7 +85,7 @@ function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
       : market.addresses.peggedToken;
 
   return (
-    <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
       <h2 className="text-lg font-medium mb-4">Contract Info</h2>
       <div className="space-y-2">
         <EtherscanLink label={pool.name} address={pool.address} />
@@ -121,7 +121,7 @@ function TabButton({ isActive, onClick, children }: TabButtonProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "text-md font-medium transition-colors rounded-md px-3 py-2",
+        "text-md font-medium transition-colors px-3 py-2",
         isActive
           ? "text-white bg-white/10"
           : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -150,7 +150,7 @@ function InputField({
   maxButton,
 }: InputFieldProps) {
   return (
-    <div className="flex items-center space-x-4 border border-zinc-700/50 rounded-md p-4">
+    <div className="flex items-center space-x-4 border border-zinc-700/50 p-4">
       <input
         type="text"
         value={value}
@@ -412,7 +412,7 @@ function ActionTabs({
   formatAmount,
 }: ActionTabsProps) {
   return (
-    <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-6">
+    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
       {/* Tab Navigation */}
       <div className="flex gap-2 mb-6">
         <TabButton
@@ -496,7 +496,7 @@ function PoolInfo({ pool, market, baseAPR, boostAPR }: PoolInfoProps) {
     (parseFloat(baseAPR) + parseFloat(boostAPR)).toFixed(2) + "%";
 
   return (
-    <div className="lg:col-span-2 bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-6">
+    <div className="lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
       <h2 className="text-xl font-bold text-white mb-4">APR Breakdown</h2>
       <div className="space-y-3">
         <div className="flex justify-between items-center text-sm">
@@ -762,23 +762,23 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <p className="text-[#F5F5F5]/50 text-sm mb-1">Total Value Locked</p>
             <p className="text-2xl font-semibold text-white">
               ${tvlUSD.toFixed(2)}
             </p>
           </div>
-          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <p className="text-[#F5F5F5]/50 text-sm mb-1">Your Deposit</p>
             <p className="text-2xl font-semibold text-white">
               {formatAmount(poolWithData?.userDeposit)} {tokenSymbol}
             </p>
           </div>
-          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <p className="text-[#F5F5F5]/50 text-sm mb-1">Base APR</p>
             <p className="text-2xl font-semibold text-white">{baseAPR}</p>
           </div>
-          <div className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-4">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <p className="text-[#F5F5F5]/50 text-sm mb-1">Boost APR</p>
             <p className="text-2xl font-semibold text-white">{boostAPR}</p>
           </div>

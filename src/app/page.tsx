@@ -14,6 +14,7 @@ import {
 import { parseEther, formatEther } from "viem";
 import { markets } from "../config/markets";
 import TradingViewChart from "../components/TradingViewChart";
+import HistoricalDataChart from "@/components/HistoricalDataChart";
 import ConnectButton from "../components/ConnectButton";
 import Navigation from "../components/Navigation";
 import MintRedeemForm from "@/components/MintRedeemForm"; // Adjust path as needed
@@ -315,16 +316,18 @@ export default function App() {
                 {index < healthStats.length - 1 && (
                   <div className="absolute top-0 right-0 h-full w-px bg-zinc-700 mr-2" />
                 )}
-                <p className="text-xs font-bold text-zinc-400 mb-1">
+                <p className="text-md font-geo font-bold text-zinc-400 mb-1">
                   {stat.label}
                 </p>
-                <p className={`text-xl font-bold text-white`}>{stat.value}</p>
+                <p className={`text-xl font-bold font-mono text-white`}>
+                  {stat.value}
+                </p>
               </div>
             ))}
           </div>
 
           {/* Market Selector & Token Info */}
-          <div className="max-w-7xl mx-auto mb-4 mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          <div className="max-w-7xl mx-auto mb-4 mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             {/* Left: Market Selector */}
             <MarketSelector
               selectedMarketId={selectedMarket}
@@ -332,30 +335,30 @@ export default function App() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <div>
-              <div className="flex mb-4">
+              <div className="flex mb-4 gap-3">
                 <button
                   onClick={() => setSelectedType("LONG")}
                   className={clsx(
-                    `px-4 py-2 text-2xl font-semibold transition-colors`,
+                    `py-2 text-2xl font-semibold transition-colors`,
                     selectedType === "LONG"
                       ? "text-white"
                       : "text-zinc-400 hover:text-white"
                   )}
                 >
-                  Pegged
+                  Pegged (zheETH)
                 </button>
                 <button
                   onClick={() => setSelectedType("STEAMED")}
                   className={clsx(
-                    `px-4 py-2 text-2xl font-semibold transition-colors`,
+                    `py-2 text-2xl font-semibold transition-colors`,
                     selectedType === "STEAMED"
                       ? "text-white"
                       : "text-zinc-400 hover:text-white"
                   )}
                 >
-                  Leverage
+                  Leverage (steamed)
                 </button>
               </div>
               {mounted && currentMarket ? (
@@ -380,10 +383,10 @@ export default function App() {
               {mounted && currentMarket ? (
                 <div
                   ref={chartCardRef}
-                  className="shadow-lg rounded-md outline outline-1 outline-white/10 px-6 py-4 w-full h-full flex flex-col"
+                  className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col"
                 >
                   <div className="flex-1 min-h-0">
-                    <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />
+                    <HistoricalDataChart />
                   </div>
                 </div>
               ) : (

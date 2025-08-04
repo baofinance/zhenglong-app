@@ -202,10 +202,10 @@ export default function ContractInfo({
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4 p-4">
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-3/4"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-1/2"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-2/3"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-1/2"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-3/4"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-2/3"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
       </div>
     );
   }
@@ -233,7 +233,7 @@ export default function ContractInfo({
 
   const StatusIndicator = ({ isError }: { isError: boolean }) => (
     <span
-      className={`inline-block w-2 h-2 rounded-full ${
+      className={`inline-block w-2 h-2-full ${
         isError ? "bg-red-500" : "bg-green-500"
       }`}
     ></span>

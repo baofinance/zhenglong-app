@@ -277,7 +277,7 @@ export default function Staking() {
         </div>
 
         <div className="max-w-5xl mx-auto space-y-6">
-          <div className="bg-[#1A1A1A] p-6 relative">
+          <div className="bg-zinc-900/50 p-6 relative">
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-black p-4 border border-[#4A7C59]/20">

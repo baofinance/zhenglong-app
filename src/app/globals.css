@@ -16,7 +16,7 @@
   }
 
   body {
-    @apply text-[#F5F5F5] min-h-screen;
+    @apply text-[#F5F5F5] min-h-screen font-geo;
   }
 }
 

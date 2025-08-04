@@ -449,7 +449,7 @@ export default function Admin() {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 System Controls
               </h2>
@@ -459,7 +459,7 @@ export default function Admin() {
                 </button>
               </Link>
             </div>
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 Update Fee Receiver
               </h2>
@@ -481,7 +481,7 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 Update Reserve Pool
               </h2>
@@ -503,7 +503,7 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 Update Price Oracle
               </h2>
@@ -525,7 +525,7 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
                 Free Functions
               </h2>
@@ -544,7 +544,7 @@ export default function Admin() {
                         value={receiverAddress}
                         onChange={(e) => setReceiverAddress(e.target.value)}
                         placeholder="Enter receiver address"
-                        className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                        className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                       />
                     </div>
                   </div>
@@ -571,7 +571,7 @@ export default function Admin() {
                           value={approvalAmount}
                           onChange={(e) => setApprovalAmount(e.target.value)}
                           placeholder="Enter amount to approve"
-                          className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                         />
                       </div>
                       <div className="flex items-center gap-2">
@@ -608,7 +608,7 @@ export default function Admin() {
                               setFreeMintCollateralAmount(e.target.value)
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                            className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                           />
                         </div>
                         <button
@@ -656,7 +656,7 @@ export default function Admin() {
                               )
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                            className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                           />
                         </div>
                         <button
@@ -707,7 +707,7 @@ export default function Admin() {
                           value={freeRedeemAmount}
                           onChange={(e) => setFreeRedeemAmount(e.target.value)}
                           placeholder="Amount to redeem"
-                          className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                         />
                         <button
                           onClick={handleFreeRedeemPeggedToken}
@@ -731,7 +731,7 @@ export default function Admin() {
                           value={freeSwapAmount}
                           onChange={(e) => setFreeSwapAmount(e.target.value)}
                           placeholder="Amount to swap"
-                          className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                         />
                         <button
                           onClick={handleFreeSwapPeggedForLeveraged}
@@ -757,7 +757,7 @@ export default function Admin() {
                             setFreeRedeemLeveragedAmount(e.target.value)
                           }
                           placeholder="Amount to redeem"
-                          className="w-full bg-[#1A1A1A] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
                         />
                         <button
                           onClick={handleFreeRedeemLeveragedToken}
@@ -776,14 +776,14 @@ export default function Admin() {
             </div>
 
             {/* Add Price Feed Update Button */}
-            <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
               <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
                 Price Feed Management
               </h2>
               <button
                 onClick={handleUpdatePriceFeed}
                 disabled={!isConnected || isUpdatingPrice}
-                className="bg-[#4A7C59] hover:bg-[#4A7C59]/80 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                className="bg-[#4A7C59] hover:bg-[#4A7C59]/80 text-white font-bold py-2 px-4 disabled:opacity-50"
               >
                 {isUpdatingPrice ? "Updating..." : "Update Price Feed"}
               </button>

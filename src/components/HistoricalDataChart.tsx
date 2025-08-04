@@ -1,0 +1,208 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import TimeRangeSelector from "./TimeRangeSelector";
+import { TimeRange } from "../config/types";
+
+// Dummy data - replace with actual data fetching
+const generateData = (timeRange: TimeRange, dataType: string) => {
+  const now = new Date();
+  let data = [];
+  let numPoints = 0;
+  let interval = 1000 * 60 * 60; // 1 hour
+
+  switch (timeRange) {
+    case "1D":
+      numPoints = 24;
+      break;
+    case "1W":
+      numPoints = 7 * 24;
+      interval = 1000 * 60 * 60;
+      break;
+    case "1M":
+      numPoints = 30;
+      interval = 1000 * 60 * 60 * 24; // 1 day
+      break;
+    case "1Y":
+      numPoints = 12;
+      interval = 1000 * 60 * 60 * 24 * 30; // 1 month
+      break;
+    case "ALL":
+      numPoints = 48; // e.g. 4 years of monthly data
+      interval = 1000 * 60 * 60 * 24 * 30;
+      break;
+  }
+
+  for (let i = numPoints - 1; i >= 0; i--) {
+    let value;
+    if (dataType === "apr") {
+      value = Math.random() * 5 + 10; // APR between 10-15%
+    } else {
+      value = Math.random() * 2000000 + 8000000; // Collateral between 8M-10M
+    }
+    data.push({
+      timestamp: now.getTime() - i * interval,
+      value: value,
+    });
+  }
+  return data;
+};
+
+const CustomTooltip = ({ active, payload, label, dataType }: any) => {
+  if (active && payload && payload.length) {
+    const value = payload[0].value;
+    const formattedDate = new Date(label).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return (
+      <div className="bg-[#0c0c0c] p-4 border border-white/10 shadow-lg">
+        <p className="text-sm text-white/80">{formattedDate}</p>
+        <p className="text-lg font-bold text-[#4A7C59]">
+          {dataType === "apr"
+            ? `${value.toFixed(2)}%`
+            : `$${(value / 1_000_000).toFixed(2)}M`}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const HistoricalDataChart = () => {
+  const [timeRange, setTimeRange] = useState<TimeRange>("1M");
+  const [dataType, setDataType] = useState("apr"); // 'apr' or 'collateral'
+
+  const data = useMemo(
+    () => generateData(timeRange, dataType),
+    [timeRange, dataType]
+  );
+
+  const formatXAxis = (timestamp: number) => {
+    const date = new Date(timestamp);
+    switch (timeRange) {
+      case "1D":
+        return date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      case "1W":
+      case "1M":
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      case "1Y":
+        return date.toLocaleDateString("en-US", { month: "short" });
+      case "ALL":
+        return date.toLocaleDateString("en-US", { year: "numeric" });
+      default:
+        return "";
+    }
+  };
+
+  const formatYAxis = (value: number) => {
+    if (dataType === "apr") {
+      return `${value.toFixed(0)}%`;
+    } else {
+      return `$${(value / 1_000_000).toFixed(0)}M`;
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col">
+      <div className="flex justify-between items-center px-4 pt-2">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setDataType("apr")}
+            className={`text-sm font-semibold ${
+              dataType === "apr" ? "text-white" : "text-zinc-400"
+            }`}
+          >
+            APR
+          </button>
+          <button
+            onClick={() => setDataType("collateral")}
+            className={`text-sm font-semibold ${
+              dataType === "collateral" ? "text-white" : "text-zinc-400"
+            }`}
+          >
+            Total Collateral
+          </button>
+        </div>
+        <TimeRangeSelector
+          selectedRange={timeRange}
+          onSelectRange={setTimeRange}
+        />
+      </div>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={data}
+          margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+        >
+          <defs>
+            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#4A7C59" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#4A7C59" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#4A7C59"
+            opacity={0.1}
+            vertical={false}
+          />
+          <XAxis
+            dataKey="timestamp"
+            stroke="#F5F5F5"
+            opacity={0.5}
+            tick={{ fontSize: 12, fill: "#A3A3A3" }}
+            tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+            tickFormatter={formatXAxis}
+            padding={{ left: 20, right: 20 }}
+          />
+          <YAxis
+            stroke="#F5F5F5"
+            opacity={0.5}
+            tick={{ fontSize: 12, fill: "#A3A3A3" }}
+            tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+            tickFormatter={formatYAxis}
+            domain={["auto", "auto"]}
+          />
+          <Tooltip content={<CustomTooltip dataType={dataType} />} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="#4A7C59"
+            strokeWidth={2}
+            fillOpacity={1}
+            fill="url(#colorValue)"
+            dot={false}
+            activeDot={{
+              r: 5,
+              strokeWidth: 2,
+              fill: "#0c0c0c",
+              stroke: "#4A7C59",
+            }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+export default HistoricalDataChart;

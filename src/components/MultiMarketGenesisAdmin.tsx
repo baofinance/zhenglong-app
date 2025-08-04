@@ -48,7 +48,7 @@ function MarketAdminCard({
     "bg-gray-900/30 text-gray-400 border-gray-500/30";
 
   return (
-    <div className="bg-[#1A1A1A]/95 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors p-6">
+    <div className="bg-zinc-900/50/95 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors p-6">
       {/* Market Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ function MarketAdminCard({
 
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="text-center p-3 bg-[#202020] rounded">
+        <div className="text-center p-3 bg-[#202020]">
           <div className={`text-xl font-bold text-blue-400 ${geo.className}`}>
             {formatEther(totalCollateral)}
           </div>
@@ -92,7 +92,7 @@ function MarketAdminCard({
             Total {collateralSymbol} Deposited
           </div>
         </div>
-        <div className="text-center p-3 bg-[#202020] rounded">
+        <div className="text-center p-3 bg-[#202020]">
           <div className={`text-xl font-bold text-green-400 ${geo.className}`}>
             {totalCollateral > 0n ? formatEther(totalCollateral / 2n) : "0"}
           </div>
@@ -100,7 +100,7 @@ function MarketAdminCard({
             Collateral for Pegged Tokens
           </div>
         </div>
-        <div className="text-center p-3 bg-[#202020] rounded">
+        <div className="text-center p-3 bg-[#202020]">
           <div className={`text-xl font-bold text-purple-400 ${geo.className}`}>
             {totalCollateral > 0n
               ? formatEther(totalCollateral - totalCollateral / 2n)
@@ -123,7 +123,7 @@ function MarketAdminCard({
               <button
                 onClick={() => onEndGenesis(marketId)}
                 disabled={isPending || totalCollateral === 0n}
-                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-medium transition-colors"
+                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 font-medium transition-colors"
               >
                 {isPending ? "Processing Transaction..." : "End Genesis Phase"}
               </button>
@@ -185,7 +185,7 @@ export function MultiMarketGenesisAdmin() {
     return (
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-6xl mx-auto p-6">
-          <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 text-center">
+          <div className="bg-red-900/20 border border-red-500/30-lg p-6 text-center">
             <h2
               className={`text-2xl font-bold text-red-400 mb-4 ${geo.className}`}
             >
@@ -227,14 +227,14 @@ export function MultiMarketGenesisAdmin() {
         </h1>
 
         {/* Overall Statistics */}
-        <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
+        <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
           <h2
             className={`text-xl font-semibold mb-4 text-[#4A7C59] ${geo.className}`}
           >
             Platform Overview
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div
                 className={`text-2xl font-bold text-green-400 ${geo.className}`}
               >
@@ -242,7 +242,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-[#F5F5F5]/70">Active Markets</div>
             </div>
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div
                 className={`text-2xl font-bold text-blue-400 ${geo.className}`}
               >
@@ -250,7 +250,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-[#F5F5F5]/70">Ended Markets</div>
             </div>
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div
                 className={`text-2xl font-bold text-yellow-400 ${geo.className}`}
               >
@@ -258,7 +258,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-[#F5F5F5]/70">Scheduled Markets</div>
             </div>
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div
                 className={`text-2xl font-bold text-purple-400 ${geo.className}`}
               >
@@ -271,12 +271,12 @@ export function MultiMarketGenesisAdmin() {
 
         {/* Market Filter Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-[#1A1A1A]/95 p-1 rounded-lg">
+          <div className="flex space-x-1 bg-zinc-900/50/95 p-1-lg">
             {["active", "ended", "scheduled", "closed", "all"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setSelectedTab(tab as any)}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                   selectedTab === tab
                     ? "bg-[#4A7C59] text-white"
                     : "text-[#F5F5F5]/60 hover:text-[#F5F5F5] hover:bg-[#4A7C59]/20"

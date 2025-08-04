@@ -74,7 +74,7 @@ export default function PriceChart({
                 className={`px-2 py-1 text-xs ${
                   timeRange === range
                     ? "bg-[#4A7C59] text-white"
-                    : "bg-[#1A1A1A] text-[#F5F5F5]/50 hover:text-[#F5F5F5] hover:bg-[#4A7C59]/20"
+                    : "bg-zinc-900/50 text-[#F5F5F5]/50 hover:text-[#F5F5F5] hover:bg-[#4A7C59]/20"
                 }`}
               >
                 {range}

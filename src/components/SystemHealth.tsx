@@ -305,7 +305,7 @@ function SystemHealth({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
       {/* Total Collateral Box */}
-      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Total Collateral
         </div>
@@ -326,7 +326,7 @@ function SystemHealth({
         </div>
       </div>
       {/* Pegged Tokens Box */}
-      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Pegged Tokens
         </div>
@@ -342,7 +342,7 @@ function SystemHealth({
         </div>
       </div>
       {/* Leveraged Tokens Box */}
-      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Leveraged Tokens
         </div>
@@ -367,7 +367,7 @@ function SystemHealth({
         </div>
       </div>
       {/* Collateral Ratio Box */}
-      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Collateral Ratio
         </div>
@@ -383,7 +383,7 @@ function SystemHealth({
         </div>
       </div>
       {/* Price Oracle Box */}
-      <div className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Price Oracle
         </div>

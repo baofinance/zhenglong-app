@@ -274,13 +274,13 @@ export default function Genesis() {
           </div>
 
           <div className="space-y-4">
-            <div className="shadow-lg rounded-md bg-[#1A1A1A] outline outline-1 outline-white/10 overflow-x-auto">
+            <div className="shadow-lg bg-zinc-900/50 outline outline-1 outline-white/10 overflow-x-auto">
               <h2 className="text-lg font-medium p-6 pb-2">
                 <Skeleton className="w-40 h-6" />
               </h2>
               <table className="min-w-full text-left table-fixed">
                 <thead>
-                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-[#1A1A1A] font-medium text-sm">
+                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-zinc-900/50 font-medium text-sm">
                     <th className="py-4 px-8 font-normal">Market</th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
                       Total Deposits
@@ -305,7 +305,7 @@ export default function Genesis() {
                       <td className="py-1 px-8 whitespace-nowrap">
                         <div className="flex items-center gap-4">
                           <div className="flex w-6 items-center justify-center">
-                            <Skeleton className="w-8 h-8 rounded-full" />
+                            <Skeleton className="w-8 h-8-full" />
                           </div>
                           <div className="flex flex-col items-start gap-1">
                             <Skeleton className="w-24 h-5" />
@@ -345,12 +345,12 @@ export default function Genesis() {
         </div>
 
         <div className="space-y-4">
-          <div className="shadow-lg rounded-md bg-[#1A1A1A] outline outline-1 outline-white/10 overflow-x-auto">
+          <div className="shadow-lg bg-zinc-900/50 outline outline-1 outline-white/10 overflow-x-auto">
             <h2 className="text-lg font-medium p-6 pb-2">All Markets</h2>
             {filteredMarkets.length > 0 ? (
               <table className="min-w-full text-left table-fixed">
                 <thead>
-                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-[#1A1A1A] font-medium text-sm">
+                  <tr className="border-b border-white/10 text-[#A3A3A3] font-medium text-sm">
                     <th className="py-4 px-8 font-normal">Market</th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
                       Total Deposits

@@ -220,7 +220,7 @@ export default function GenesisWithdrawModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-[#1A1A1A] border border-[#4A7C59]/30 shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+      <div className="relative bg-zinc-900/50 border border-[#4A7C59]/30 shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#4A7C59]/20">
           <h2 className={`text-xl font-medium text-[#F5F5F5] ${geo.className}`}>

@@ -56,7 +56,9 @@ export default function Vote() {
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-20 relative z-10">
         <div className="text-left mb-4">
-          <h1 className="text-3xl font-medium text-white">Vote</h1>
+          <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
+            VOTE
+          </h1>
           <p className="text-[#F5F5F5]/60 text-sm mt-1">
             Allocate your voting power across the protocol's gauges.
           </p>
@@ -66,7 +68,7 @@ export default function Vote() {
           {Object.entries(markets).map(([marketId, market]) => (
             <div
               key={marketId}
-              className="bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10 p-6"
+              className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6"
             >
               <h2 className="text-lg font-medium mb-4">{market.name}</h2>
               <div className="space-y-4">
@@ -97,7 +99,7 @@ export default function Vote() {
                       }
                       min="0"
                       max="100"
-                      className="w-24 bg-neutral-800 text-white rounded-lg h-10 px-3 focus:outline-none focus:ring-2 focus:ring-green-400/50 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-24 bg-neutral-800 text-white-lg h-10 px-3 focus:outline-none focus:ring-2 focus:ring-green-400/50 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <span className="text-[#F5F5F5]/70">%</span>
                   </div>
@@ -132,7 +134,7 @@ export default function Vote() {
                       }
                       min="0"
                       max="100"
-                      className="w-24 bg-neutral-800 text-white rounded-lg h-10 px-3 focus:outline-none focus:ring-2 focus:ring-green-400/50 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-24 bg-neutral-800 text-white-lg h-10 px-3 focus:outline-none focus:ring-2 focus:ring-green-400/50 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <span className="text-[#F5F5F5]/70">%</span>
                   </div>
@@ -143,7 +145,7 @@ export default function Vote() {
         </div>
 
         <div className="mt-8 max-w-sm mx-auto space-y-4">
-          <div className="flex items-center justify-between px-6 py-3 bg-[#1A1A1A] rounded-md outline outline-1 outline-white/10">
+          <div className="flex items-center justify-between px-6 py-3 bg-zinc-900/50 outline outline-1 outline-white/10">
             <span className="text-lg font-medium text-white">Total</span>
             <span
               className={`text-lg font-semibold ${
@@ -157,7 +159,7 @@ export default function Vote() {
           <button
             onClick={handleVote}
             disabled={!isConnected || isPending || totalPercentage > 100}
-            className={`w-full p-3 text-center text-lg font-medium transition-colors rounded-lg ${
+            className={`w-full p-3 text-center text-lg font-medium transition-colors-lg ${
               !isConnected || isPending || totalPercentage > 100
                 ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700 text-white"

@@ -15,7 +15,7 @@ export function GenesisAdminPage() {
     return (
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-4xl mx-auto p-6">
-          <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 text-center">
+          <div className="bg-red-900/20 border border-red-500/30-lg p-6 text-center">
             <h2 className="text-2xl font-bold text-red-400 mb-4">
               Access Denied
             </h2>
@@ -36,7 +36,7 @@ export function GenesisAdminPage() {
         </h1>
 
         {/* Status Overview */}
-        <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
+        <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
           <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
             Genesis Status
           </h2>
@@ -44,7 +44,7 @@ export function GenesisAdminPage() {
             <div>
               <span className="text-[#F5F5F5]/70">Status:</span>
               <span
-                className={`ml-2 px-3 py-1 rounded text-sm font-medium ${
+                className={`ml-2 px-3 py-1 text-sm font-medium ${
                   status === "ACTIVE"
                     ? "bg-green-900/30 text-green-400 border border-green-500/30"
                     : "bg-red-900/30 text-red-400 border border-red-500/30"
@@ -63,7 +63,7 @@ export function GenesisAdminPage() {
         </div>
 
         {/* Admin Actions */}
-        <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
+        <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)] mb-6">
           <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
             Admin Actions
           </h2>
@@ -78,7 +78,7 @@ export function GenesisAdminPage() {
               <button
                 onClick={endGenesis}
                 disabled={isPending || totalCollateral === 0n}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3-lg font-medium transition-colors"
               >
                 {isPending ? "Ending Genesis..." : "End Genesis Phase"}
               </button>
@@ -99,7 +99,7 @@ export function GenesisAdminPage() {
           )}
 
           {isSuccess && (
-            <div className="mt-4 p-4 bg-green-900/30 border border-green-500/30 text-green-400 rounded-lg">
+            <div className="mt-4 p-4 bg-green-900/30 border border-green-500/30 text-green-400-lg">
               🎉 Genesis phase ended successfully! Users can now claim their
               tokens.
             </div>
@@ -107,18 +107,18 @@ export function GenesisAdminPage() {
         </div>
 
         {/* Genesis Statistics */}
-        <div className="bg-[#1A1A1A]/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
+        <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
           <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
             Genesis Statistics
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div className="text-2xl font-bold text-blue-400">
                 {formatEther(totalCollateral)}
               </div>
               <div className="text-[#F5F5F5]/70">Total wstETH Deposited</div>
             </div>
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div className="text-2xl font-bold text-green-400">
                 {totalCollateral > 0n ? formatEther(totalCollateral / 2n) : "0"}
               </div>
@@ -126,7 +126,7 @@ export function GenesisAdminPage() {
                 Pegged Tokens to be Minted
               </div>
             </div>
-            <div className="text-center p-4 bg-[#202020] rounded-lg">
+            <div className="text-center p-4 bg-[#202020]-lg">
               <div className="text-2xl font-bold text-purple-400">
                 {totalCollateral > 0n
                   ? formatEther(totalCollateral - totalCollateral / 2n)

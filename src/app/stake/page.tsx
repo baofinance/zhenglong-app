@@ -262,7 +262,7 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative max-w-[1300px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-bg-zinc-900/50 to-black text-[#F5F5F5] font-sans relative max-w-[1300px] mx-auto">
       {/* Steam Background */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Large base squares */}
@@ -305,7 +305,7 @@ export default function Staking() {
         </div>
 
         <div className="max-w-5xl mx-auto space-y-6">
-          <div className="bg-[#1A1A1A] p-6 relative">
+          <div className="bg-zinc-900/50 p-6 relative">
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-black p-4 border border-[#4A7C59]/20">

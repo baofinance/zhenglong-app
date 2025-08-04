@@ -1,6 +1,5 @@
 import React from "react";
-
-type TimeRange = "24H" | "7D" | "1M" | "1Y" | "ALL";
+import { TimeRange } from "../config/types";
 
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange;
@@ -18,7 +17,7 @@ const TimeRangeButton = ({
 }) => (
   <button
     onClick={() => onSelectRange(range)}
-    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+    className={`px-3 py-1 text-xs font-medium-full transition-colors ${
       selectedRange === range
         ? "bg-white/10 text-white"
         : "text-white/50 hover:bg-white/5 hover:text-white"
@@ -32,7 +31,7 @@ export default function TimeRangeSelector({
   selectedRange,
   onSelectRange,
 }: TimeRangeSelectorProps) {
-  const ranges: TimeRange[] = ["24H", "7D", "1M", "1Y", "ALL"];
+  const ranges: TimeRange[] = ["1D", "1W", "1M", "1Y", "ALL"];
   return (
     <div className="flex items-center gap-2">
       {ranges.map((range) => (

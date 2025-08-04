@@ -40,7 +40,7 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
   return (
     <tr
       key={pool.address}
-      className="transition hover:bg-grey-light/20 text-sm cursor-pointer border-t border-white/10"
+      className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
       onClick={() =>
         (window.location.href = `/earn/${pool.marketId}/${pool.poolType}`)
       }
@@ -73,7 +73,7 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
               )}
             </div> 
             <div className="flex items-center gap-2 mt-1">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-sm">
+              <div className="inline-flex items-center gap-2-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-sm">
                 <Image
                   src={pool.chainIcon}
                   alt={pool.chain}
@@ -165,19 +165,23 @@ export default function Earn() {
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
         <div className="text-center mb-4">
-          <h1 className={`text-3xl font-medium text-left text-white`}>Earn</h1>
+          <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
+            EARN
+          </h1>
         </div>
         <div className="space-y-4">
           {groupedPools.map(([groupName, poolsInGroup]) => (
             <div
               key={groupName}
-              className="shadow-lg rounded-md bg-[#1A1A1A] outline outline-1 outline-white/10 overflow-x-auto"
+              className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto"
             >
-              <h2 className="text-lg font-medium p-6 pb-2">{groupName}</h2>
+              <h2 className="text-2xl font-medium p-6 pb-2 font-geo">
+                {groupName}
+              </h2>
               {poolsInGroup.length > 0 ? (
-                <table className="min-w-full text-left table-fixed">
+                <table className="min-w-full text-left font-geo text-xl table-fixed ">
                   <thead>
-                    <tr className="border-b border-white/10 text-[#A3A3A3] bg-[#1A1A1A] font-medium text-sm">
+                    <tr className="border-b border-white/10 uppercase text-base">
                       <th className="py-4 px-8 font-normal">Pool</th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
                         Type

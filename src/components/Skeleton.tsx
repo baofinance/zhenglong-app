@@ -17,7 +17,7 @@ export function Skeleton({
     <span
       key={i}
       className={clsx(
-        "bg-neutral-800 animate-pulse rounded-md",
+        "bg-neutral-800 animate-pulse",
         inline ? "inline-block" : "block",
         className
       )}

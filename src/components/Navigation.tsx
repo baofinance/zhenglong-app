@@ -44,7 +44,7 @@ export default function Navigation() {
                     key={link.href}
                     href={link.href}
                     className={clsx(
-                      "text-sm font-medium transition-colors",
+                      "text-xl font-medium font-geo transition-colors",
                       isActive
                         ? " text-white"
                         : " hover:text-white/80 text-white/60 "
