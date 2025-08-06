@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Geo } from "next/font/google";
+import AnimatedSmokeBackground from "@/components/AnimatedSmokeBackground";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default async function RootLayout({
       <body
         className={`antialiased font-sans bg-zinc-950 text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} ${geo.variable} relative`}
       >
+        <AnimatedSmokeBackground />
         <div className="relative z-10">
           <ContextProvider cookies={cookies}>
             <Navigation />

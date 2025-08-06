@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, Fragment } from "react";
+import { Geo } from "next/font/google";
 import {
   useAccount,
   useContractReads,
@@ -8,16 +9,31 @@ import {
   usePublicClient,
   useWaitForTransactionReceipt,
 } from "wagmi";
+import { parseEther } from "viem";
 import {
   markets,
   getGenesisStatus,
+  getPrimaryRewardToken,
   isGenesisActive,
   getGenesisPhaseInfo,
 } from "../../config/markets";
-import Dropdown from "../../components/Dropdown";
+import ConnectButton from "../../components/ConnectButton";
+import Link from "next/link";
+import Image from "next/image";
+import Info from "pixelarticons/svg/info-box.svg";
+import Navigation from "../../components/Navigation";
+import GenesisClaim from "../../components/GenesisClaim";
+import GenesisDepositModal from "../../components/GenesisDepositModal";
+import GenesisWithdrawModal from "../../components/GenesisWithdrawModal";
+import GenesisClaimStatusModal from "../../components/GenesisClaimStatusModal";
+import GenesisSummaryModal from "../../components/GenesisSummaryModal";
 import { minterABI } from "../../abis/minter";
-import { GenesisRow } from "./GenesisRow";
-import { Skeleton } from "../../components/Skeleton";
+
+const geo = Geo({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 
 const genesisABI = [
   {
@@ -148,30 +164,133 @@ const erc20ABI = [
   },
 ] as const;
 
+interface MarketState {
+  isExpanded: boolean;
+  depositAmount: string;
+  withdrawAmount: string;
+  activeTab: "deposit" | "withdraw" | "rewards" | "claim";
+  depositModalOpen: boolean;
+  withdrawModalOpen: boolean;
+}
+
+interface ContractReadResult<T = any> {
+  error?: Error;
+  result?: T;
+  status: "success" | "failure";
+}
+
+interface TotalRewards {
+  peggedAmount: bigint;
+  leveragedAmount: bigint;
+}
+
+// Custom hook for countdown
+function useCountdown(endDate: string) {
+  const [countdown, setCountdown] = useState({ text: "", isEnded: false });
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const end = new Date(endDate).getTime();
+      const now = new Date().getTime();
+      const distance = end - now;
+
+      if (distance < 0) {
+        setCountdown({ text: "Genesis Ended", isEnded: true });
+      } else {
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor(
+          (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        );
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        setCountdown({
+          text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
+          isEnded: false,
+        });
+      }
+    };
+
+    const timer = setInterval(updateCountdown, 1000);
+    updateCountdown(); // Initial update
+
+    return () => clearInterval(timer);
+  }, [endDate]);
+
+  return countdown;
+}
+
 export default function Genesis() {
   const { address, isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "active" | "completed">(
-    "all"
+  const [marketStates, setMarketStates] = useState<Record<string, MarketState>>(
+    () => {
+      // Initialize market states with default values
+      return Object.keys(markets).reduce((acc, id) => {
+        acc[id] = {
+          isExpanded: false,
+          depositAmount: "",
+          withdrawAmount: "",
+          activeTab: "deposit",
+          depositModalOpen: false,
+          withdrawModalOpen: false,
+        };
+        return acc;
+      }, {} as Record<string, MarketState>);
+    }
   );
+  const [isPending, setIsPending] = useState(false);
+  const [pendingStep, setPendingStep] = useState<"approval" | "deposit" | null>(
+    null
+  );
+  const [showNotice, setShowNotice] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastClaimedMarket, setLastClaimedMarket] = useState<any>(null);
+  const [lastClaimedPegged, setLastClaimedPegged] = useState<bigint>(BigInt(0));
+  const [lastClaimedLeveraged, setLastClaimedLeveraged] = useState<bigint>(
+    BigInt(0)
+  );
+  const [isSummaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [selectedMarketForSummary, setSelectedMarketForSummary] =
+    useState<string>("");
 
-  const filterOptions = [
-    { value: "all", label: "All Markets" },
-    { value: "active", label: "Active" },
-    { value: "completed", label: "Completed" },
-  ];
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  type MarketWrites = {
+    approve: ReturnType<typeof useWriteContract>;
+    deposit: ReturnType<typeof useWriteContract>;
+    withdraw: ReturnType<typeof useWriteContract>;
+    claim: ReturnType<typeof useWriteContract>;
+  };
+
+  type ContractWrites = {
+    [marketId: string]: MarketWrites;
+  };
+
+  // Custom hook for market contract writes
+  function useMarketContractWrites(marketId: string): MarketWrites {
+    const approve = useWriteContract();
+    const deposit = useWriteContract();
+    const withdraw = useWriteContract();
+    const claim = useWriteContract();
+
+    return { approve, deposit, withdraw, claim };
+  }
+
+  // Get all markets that have Genesis functionality (same filtering as admin)
   const genesisMarkets = Object.entries(markets).filter(
     ([_, market]) =>
       market.status === "genesis" ||
+      market.status === "live" ||
+      // Include markets that might have completed genesis but still have "genesis" status in config
       (market.addresses.genesis && market.addresses.genesis.length > 0)
   );
 
+  // Get genesis contract state for all valid Genesis markets
   const { data: allMarketsData, refetch: refetchMarketsData } =
     useContractReads({
       contracts: genesisMarkets.flatMap(([id, market]) => [
@@ -210,6 +329,53 @@ export default function Genesis() {
       query: { enabled: genesisMarkets.length > 0 },
     });
 
+  // Create individual hooks for each market
+  const ethMarketWrites = useMarketContractWrites("eth-usd");
+
+  // Track transaction receipt for claim success
+  const { isSuccess: claimSuccess } = useWaitForTransactionReceipt({
+    hash: ethMarketWrites.claim.data,
+  });
+
+  // Show modal when claim transaction is submitted
+  useEffect(() => {
+    if (ethMarketWrites.claim.data && lastClaimedMarket) {
+      setShowSuccessModal(true);
+    }
+  }, [ethMarketWrites.claim.data, lastClaimedMarket]);
+
+  // Combine all contract writes
+  const contractWrites: ContractWrites = useMemo(
+    () => ({
+      "eth-usd": ethMarketWrites,
+    }),
+    [ethMarketWrites]
+  );
+
+  // Initialize countdowns for each market
+  const ethUsdCountdown = useCountdown(markets["eth-usd"].genesis.endDate);
+
+  // Group markets by status using hybrid on-chain + config system
+  const activeMarkets: string[] = [];
+  const completedMarkets: string[] = [];
+  genesisMarkets.forEach(([id], index) => {
+    const dataOffset = index * (address ? 5 : 3);
+    const onChainGenesisEnded = allMarketsData?.[dataOffset]?.result === true;
+    const genesisStatus = getGenesisStatus(
+      (markets as any)[id],
+      onChainGenesisEnded
+    );
+    if (
+      genesisStatus.onChainStatus === "completed" ||
+      genesisStatus.onChainStatus === "closed"
+    ) {
+      completedMarkets.push(id);
+    } else {
+      activeMarkets.push(id);
+    }
+  });
+
+  // Get token info for all valid Genesis markets
   const { data: allTokenData, refetch: refetchTokenData } = useContractReads({
     contracts: genesisMarkets.flatMap(([id, market]) => [
       {
@@ -243,92 +409,257 @@ export default function Genesis() {
     query: { enabled: genesisMarkets.length > 0 },
   });
 
+  // Get collateral balances held in each Minter contract (used after genesis completion)
+  const { data: allMinterData, refetch: refetchMinterData } = useContractReads({
+    contracts: genesisMarkets.map(([id, market]) => ({
+      address: market.addresses.minter as `0x${string}`,
+      abi: minterABI,
+      functionName: "collateralTokenBalance",
+    })),
+    query: { enabled: genesisMarkets.length > 0 },
+  });
+
+  // Function to refresh all contract data
   const refetchAllData = async () => {
-    await Promise.all([refetchMarketsData(), refetchTokenData()]);
+    await Promise.all([
+      refetchMarketsData(),
+      refetchTokenData(),
+      refetchMinterData(),
+    ]);
   };
 
-  const filteredMarkets = useMemo(() => {
-    return genesisMarkets
-      .filter(([id, market]) => {
-        if (filterType === "all") return true;
-        const marketIndex = genesisMarkets.findIndex(([mid]) => mid === id);
-        const dataOffset = marketIndex * (address ? 5 : 3);
-        const onChainGenesisEnded =
-          allMarketsData?.[dataOffset]?.result === true;
-        const isCompleted = onChainGenesisEnded;
-        return filterType === "completed" ? isCompleted : !isCompleted;
-      })
-      .filter(([id, market]) =>
-        market.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [genesisMarkets, searchTerm, filterType, allMarketsData, address]);
+  // Refresh data when claim is successful
+  useEffect(() => {
+    if (claimSuccess) {
+      refetchAllData();
+    }
+  }, [claimSuccess]);
+
+  const formatEther = (value: bigint | undefined) => {
+    if (!value) return "0";
+    const num = Number(value) / 1e18;
+    if (num > 0 && num < 0.0001) return "<0.0001";
+    return num.toFixed(4);
+  };
+
+  const handleMaxDeposit = (marketId: string) => {
+    const marketIndex = genesisMarkets.findIndex(([id]) => id === marketId);
+    const tokenDataOffset = marketIndex * (address ? 4 : 2);
+    const balance = allTokenData?.[tokenDataOffset + 2]?.result;
+
+    if (balance) {
+      setMarketStates((prev) => ({
+        ...prev,
+        [marketId]: {
+          ...prev[marketId],
+          depositAmount: (Number(balance) / 1e18).toString(),
+        },
+      }));
+    }
+  };
+
+  const handleMaxWithdraw = (marketId: string) => {
+    const marketIndex = genesisMarkets.findIndex(([id]) => id === marketId);
+    const dataOffset = marketIndex * (address ? 5 : 3);
+    const balance = allMarketsData?.[dataOffset + 3]?.result;
+
+    if (balance) {
+      setMarketStates((prev) => ({
+        ...prev,
+        [marketId]: {
+          ...prev[marketId],
+          withdrawAmount: (Number(balance) / 1e18).toString(),
+        },
+      }));
+    }
+  };
+
+  const handleApprove = async (marketId: string) => {
+    if (!isConnected || !marketStates[marketId]?.depositAmount || !address)
+      return;
+
+    const amount = parseEther(marketStates[marketId].depositAmount);
+    if (amount <= 0) return;
+
+    try {
+      setIsPending(true);
+      setPendingStep("approval");
+      const market = (markets as any)[marketId];
+      const approveTx = await contractWrites[marketId].approve.writeContract({
+        address: market.addresses.collateralToken as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "approve",
+        args: [
+          (typeof market.addresses.genesis === "string" &&
+          market.addresses.genesis.length > 0
+            ? market.addresses.genesis
+            : "0x0000000000000000000000000000000000000000") as `0x${string}`,
+          amount,
+        ],
+      });
+
+      // After a successful approval, allowance should update automatically shortly
+    } catch (e) {
+      console.error("Approval failed", e);
+    } finally {
+      setIsPending(false);
+      setPendingStep(null);
+    }
+  };
+
+  const handleDeposit = async (marketId: string) => {
+    if (!isConnected || !marketStates[marketId]?.depositAmount || !address)
+      return;
+
+    try {
+      setIsPending(true);
+      setPendingStep("deposit");
+      const amount = parseEther(marketStates[marketId].depositAmount);
+      const { deposit } = contractWrites[marketId];
+
+      const market = (markets as any)[marketId];
+      await deposit.writeContract({
+        address: market.addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "deposit",
+        args: [
+          amount,
+          typeof (address ?? "") === "string" && (address ?? "").length > 0
+            ? address ?? ""
+            : ("0x0000000000000000000000000000000000000000" as `0x${string}`),
+        ],
+      });
+
+      // Reset form
+      setMarketStates((prev) => ({
+        ...prev,
+        [marketId]: { ...prev[marketId], depositAmount: "" },
+      }));
+
+      // Refresh data after successful deposit
+      await refetchAllData();
+    } catch (error: any) {
+      console.error("Deposit failed:", error);
+    } finally {
+      setIsPending(false);
+      setPendingStep(null);
+    }
+  };
+
+  const handleWithdraw = async (marketId: string) => {
+    if (!isConnected || !address) return;
+
+    try {
+      setIsPending(true);
+      // Get user's balance for withdrawal
+      const marketIndex = genesisMarkets.findIndex(([id]) => id === marketId);
+      const dataOffset = marketIndex * (address ? 5 : 3);
+      const userBalance = allMarketsData?.[dataOffset + 3]?.result;
+      const withdrawAmount =
+        userBalance && typeof userBalance === "bigint"
+          ? userBalance // Withdraw user's full balance
+          : BigInt(
+              "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ); // MaxUint256 for max
+
+      const write = contractWrites[marketId].withdraw;
+
+      const market = (markets as any)[marketId];
+      await write.writeContract({
+        address: market.addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "withdraw",
+        args: [
+          withdrawAmount, // Amount to withdraw
+          address as `0x${string}`, // Receiver address
+        ],
+      });
+
+      // Reset form
+      setMarketStates((prev) => ({
+        ...prev,
+        [marketId]: { ...prev[marketId], withdrawAmount: "" },
+      }));
+
+      // Refresh data after successful withdrawal
+      await refetchAllData();
+    } catch (error: any) {
+      console.error("Withdraw failed:", error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleClaim = async (marketId: string) => {
+    if (!isConnected || !address) return;
+
+    try {
+      setIsPending(true);
+      const write = contractWrites[marketId].claim;
+
+      const market = (markets as any)[marketId];
+      const marketIndex = genesisMarkets.findIndex(([id]) => id === marketId);
+      const dataOffset = marketIndex * (address ? 5 : 3);
+      const claimableAmounts = allMarketsData?.[dataOffset + 4]?.result as
+        | [bigint, bigint]
+        | undefined;
+
+      // Store the claimed amounts and show modal immediately
+      if (claimableAmounts) {
+        setLastClaimedPegged(claimableAmounts[0] || BigInt(0));
+        setLastClaimedLeveraged(claimableAmounts[1] || BigInt(0));
+        setLastClaimedMarket(market);
+        setShowSuccessModal(true);
+      }
+
+      write.writeContract({
+        address: market.addresses.genesis as `0x${string}`,
+        abi: genesisABI,
+        functionName: "claim",
+        args: [address as `0x${string}`],
+      });
+
+      // Refresh data after successful claim
+      await refetchAllData();
+    } catch (error: any) {
+      console.error("Claim failed:", error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const toggleMarket = (marketId: string) => {
+    setMarketStates((prev) => ({
+      ...prev,
+      [marketId]: {
+        ...prev[marketId],
+        isExpanded: !prev[marketId].isExpanded,
+      },
+    }));
+  };
+
+  const setActiveTab = (
+    marketId: string,
+    tab: "deposit" | "withdraw" | "rewards" | "claim"
+  ) => {
+    setMarketStates((prev) => ({
+      ...prev,
+      [marketId]: {
+        ...prev[marketId],
+        activeTab: tab,
+      },
+    }));
+  };
 
   if (!mounted) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
-        <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
-          <div className="text-center mb-4">
-            <h1 className="text-4xl font-medium text-left text-white">
-              <Skeleton className="w-48 h-10" />
+      <div className="min-h-screen bg-gradient-to-b text-[#F5F5F5] font-sans relative">
+        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
+          <div className="text-center">
+            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
+              GENESIS
             </h1>
-          </div>
-
-          <div className="space-y-4">
-            <div className="shadow-lg bg-zinc-900/50 outline outline-1 outline-white/10 overflow-x-auto">
-              <h2 className="text-lg font-medium p-6 pb-2">
-                <Skeleton className="w-40 h-6" />
-              </h2>
-              <table className="min-w-full text-left table-fixed">
-                <thead>
-                  <tr className="border-b border-white/10 text-[#A3A3A3] bg-zinc-900/50 font-medium text-sm">
-                    <th className="py-4 px-8 font-normal">Market</th>
-                    <th className="w-48 py-3 px-6 text-right font-normal">
-                      Total Deposits
-                    </th>
-                    <th className="w-48 py-3 px-6 text-right font-normal">
-                      Total Rewards
-                    </th>
-                    <th className="w-48 py-3 px-6 text-right font-normal">
-                      Your Share
-                    </th>
-                    <th className="w-48 py-3 px-6 text-right font-normal">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <tr
-                      key={i}
-                      className="transition hover:bg-grey-light/20 text-sm cursor-pointer border-t border-white/10"
-                    >
-                      <td className="py-1 px-8 whitespace-nowrap">
-                        <div className="flex items-center gap-4">
-                          <div className="flex w-6 items-center justify-center">
-                            <Skeleton className="w-8 h-8-full" />
-                          </div>
-                          <div className="flex flex-col items-start gap-1">
-                            <Skeleton className="w-24 h-5" />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-6 text-right">
-                        <Skeleton className="w-20 h-5" />
-                      </td>
-                      <td className="py-3 px-6 text-right">
-                        <Skeleton className="w-20 h-5" />
-                      </td>
-                      <td className="py-3 px-6 text-right">
-                        <Skeleton className="w-16 h-5" />
-                      </td>
-                      <td className="w-48 py-3 px-6 text-right font-normal">
-                        <Skeleton className="w-24 h-10" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <p className="text-[#F5F5F5]/60 text-lg mt-4">Loading...</p>
           </div>
         </main>
       </div>
@@ -338,20 +669,48 @@ export default function Genesis() {
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
-        <div className="text-center mb-4">
-          <h1 className={`text-4xl font-medium text-left text-white`}>
-            Genesis
+        {/* Header */}
+        <div className="text-center mb-4 flex items-center">
+          <button
+            onClick={() => {
+              setSelectedMarketForSummary("eth-usd"); // Or dynamically set based on context
+              setSummaryModalOpen(true);
+            }}
+            className="mr-4"
+          >
+            <Image
+              src={Info}
+              alt="Info"
+              width={24}
+              height={24}
+              className="w-6 h-6 filter invert brightness-0"
+            />
+          </button>
+          <h1
+            className={`text-4xl font-medium text-left text-white ${geo.className}`}
+          >
+            GENESIS
           </h1>
         </div>
 
+        {/* Active Markets */}
         <div className="space-y-4">
-          <div className="shadow-lg bg-zinc-900/50 outline outline-1 outline-white/10 overflow-x-auto">
-            <h2 className="text-lg font-medium p-6 pb-2">All Markets</h2>
-            {filteredMarkets.length > 0 ? (
-              <table className="min-w-full text-left table-fixed">
+          <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
+            <h2 className={`text-2xl text-white mb-2 font-geo p-6 pb-2`}>
+              Active Markets
+            </h2>
+            {activeMarkets.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-white/60">No active markets available</p>
+              </div>
+            ) : (
+              <table className="min-w-full text-left font-geo text-xl table-fixed">
                 <thead>
-                  <tr className="border-b border-white/10 text-[#A3A3A3] font-medium text-sm">
+                  <tr className="border-b border-white/10 uppercase text-base">
                     <th className="py-4 px-8 font-normal">Market</th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Collateral
+                    </th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
                       Total Deposits
                     </th>
@@ -359,35 +718,508 @@ export default function Genesis() {
                       Total Rewards
                     </th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
-                      Your Share
+                      Your Deposit
                     </th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
-                      Actions
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMarkets.map(([marketId, market]) => (
-                    <GenesisRow
-                      key={marketId}
-                      marketId={marketId}
-                      market={market}
-                      allMarketsData={allMarketsData}
-                      allTokenData={allTokenData}
-                      refetchAllData={refetchAllData}
-                      genesisMarkets={genesisMarkets}
-                    />
-                  ))}
+                  {activeMarkets.map((marketId) => {
+                    const market = (markets as any)[marketId];
+                    const marketIndex = genesisMarkets.findIndex(
+                      ([id]) => id === marketId
+                    );
+                    const dataOffset = marketIndex * (address ? 5 : 3);
+                    const tokenDataOffset = marketIndex * (address ? 4 : 2);
+
+                    const totalDeposits =
+                      allTokenData?.[tokenDataOffset + 1]?.result;
+                    const totalRewards =
+                      allMarketsData?.[dataOffset + 2]?.result;
+                    const userBalance = address
+                      ? allMarketsData?.[dataOffset + 3]?.result
+                      : undefined;
+                    const claimableAmounts = address
+                      ? allMarketsData?.[dataOffset + 4]?.result
+                      : undefined;
+                    const collateralSymbol =
+                      allTokenData?.[tokenDataOffset]?.result;
+
+                    const onChainGenesisEnded =
+                      allMarketsData?.[dataOffset]?.result === true;
+                    const genesisStatus = getGenesisStatus(
+                      market,
+                      onChainGenesisEnded
+                    );
+                    const phaseInfo = getGenesisPhaseInfo(genesisStatus.phase);
+                    const phaseStyles = {
+                      scheduled: "text-blue-400 bg-blue-400/10",
+                      live: "text-green-400 bg-green-400/10",
+                      closed: "text-yellow-400 bg-yellow-400/10",
+                      completed: "text-purple-400 bg-purple-400/10",
+                    };
+
+                    return (
+                      <Fragment key={marketId}>
+                        <tr
+                          onClick={() => toggleMarket(marketId)}
+                          className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
+                        >
+                          <td className="py-1 px-8 whitespace-nowrap">
+                            <div className="flex items-center gap-4">
+                              <Image
+                                src={market.chain.logo}
+                                alt={market.chain.name}
+                                width={32}
+                                height={32}
+                                className="flex-shrink-0"
+                              />
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="font-medium">
+                                  {market.name}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            <a
+                              href={`https://etherscan.io/address/${market.addresses.collateralToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`text-lg font-medium ${geo.className} text-white hover:text-grey-light transition-colors underline decoration-dotted`}
+                            >
+                              {collateralSymbol}
+                            </a>
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            {totalDeposits && typeof totalDeposits === "bigint"
+                              ? formatEther(totalDeposits)
+                              : "0"}{" "}
+                            {collateralSymbol}
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            {Number(market.rewardToken.amount).toLocaleString()}{" "}
+                            {market.rewardToken.symbol}
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            {isConnected &&
+                            userBalance &&
+                            typeof userBalance === "bigint"
+                              ? formatEther(userBalance)
+                              : "0"}{" "}
+                            {collateralSymbol}
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            <span
+                              className={`text-sm inline-block px-3 py-1 border font-bold ${
+                                geo.className
+                              } ${phaseStyles[genesisStatus.phase]}`}
+                            >
+                              {phaseInfo.title}
+                            </span>
+                          </td>
+                        </tr>
+                        {marketStates[marketId].isExpanded && (
+                          <tr>
+                            <td colSpan={6}>
+                              <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Left Column: User Stats & Claimable Tokens */}
+                                  <div className="flex w-full">
+                                    {/* Your Stats */}
+                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
+                                      <h3 className="text-lg font-medium text-white mb-4">
+                                        Your Stats
+                                      </h3>
+                                      <div className="space-y-3">
+                                        <div className="flex justify-between items-center text-sm">
+                                          <span className="text-[#F5F5F5]/70">
+                                            Your Deposit
+                                          </span>
+                                          <span className="font-mono text-white">
+                                            {isConnected &&
+                                            userBalance &&
+                                            typeof userBalance === "bigint"
+                                              ? formatEther(userBalance)
+                                              : "0"}{" "}
+                                            {collateralSymbol}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                          <span className="text-[#F5F5F5]/70">
+                                            Your Reward Share
+                                          </span>
+                                          <span className="font-mono text-white">
+                                            {(() => {
+                                              if (
+                                                !isConnected ||
+                                                !claimableAmounts ||
+                                                !totalRewards
+                                              )
+                                                return "0%";
+
+                                              const totalRewardSupply =
+                                                Array.isArray(totalRewards) &&
+                                                totalRewards.length >= 2
+                                                  ? (
+                                                      totalRewards as [
+                                                        bigint,
+                                                        bigint
+                                                      ]
+                                                    )[0] +
+                                                    (
+                                                      totalRewards as [
+                                                        bigint,
+                                                        bigint
+                                                      ]
+                                                    )[1]
+                                                  : BigInt(0);
+                                              if (totalRewardSupply === 0n)
+                                                return "0%";
+
+                                              const userClaimableSum =
+                                                Array.isArray(
+                                                  claimableAmounts
+                                                ) &&
+                                                claimableAmounts.length >= 2
+                                                  ? (
+                                                      claimableAmounts as [
+                                                        bigint,
+                                                        bigint
+                                                      ]
+                                                    )[0] +
+                                                    (
+                                                      claimableAmounts as [
+                                                        bigint,
+                                                        bigint
+                                                      ]
+                                                    )[1]
+                                                  : BigInt(0);
+
+                                              const percentage =
+                                                (Number(userClaimableSum) /
+                                                  Number(totalRewardSupply)) *
+                                                100;
+                                              return `${percentage.toFixed(
+                                                2
+                                              )}%`;
+                                            })()}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Claimable Tokens */}
+                                  <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
+                                    <h3 className="text-lg font-medium text-white mb-4">
+                                      Claimable Tokens
+                                    </h3>
+                                    <div className="space-y-3">
+                                      <div className="flex justify-between items-center text-sm">
+                                        <span className="text-[#F5F5F5]/70">
+                                          {market.peggedToken.name}
+                                        </span>
+                                        <span className="font-mono text-white">
+                                          {Array.isArray(claimableAmounts) &&
+                                          claimableAmounts[0] &&
+                                          typeof claimableAmounts[0] ===
+                                            "bigint"
+                                            ? formatEther(claimableAmounts[0])
+                                            : "0"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between items-center text-sm">
+                                        <span className="text-[#F5F5F5]/70">
+                                          {market.leveragedToken.name}
+                                        </span>
+                                        <span className="font-mono text-white">
+                                          {Array.isArray(claimableAmounts) &&
+                                          claimableAmounts[1] &&
+                                          typeof claimableAmounts[1] ===
+                                            "bigint"
+                                            ? formatEther(claimableAmounts[1])
+                                            : "0"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between items-center text-sm">
+                                        <span className="text-[#F5F5F5]/70">
+                                          Rewards
+                                        </span>
+                                        <span className="font-mono text-white">
+                                          {Number(
+                                            market.rewardToken.amount
+                                          ).toLocaleString()}{" "}
+                                          {market.rewardToken.symbol}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
-            ) : (
+            )}
+          </div>
+        </div>
+
+        {/* Completed Markets */}
+        <div className="space-y-4">
+          <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
+            <h2 className={`text-2xl text-white mb-2 font-geo p-6 pb-2`}>
+              Completed Markets
+            </h2>
+            {completedMarkets.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-white/60">No markets found.</p>
+                <p className="text-white/60">No completed markets available</p>
               </div>
+            ) : (
+              <table className="min-w-full text-left font-geo text-xl table-fixed">
+                <thead>
+                  <tr className="border-b border-white/10 uppercase text-base">
+                    <th className="py-4 px-8 font-normal">Market</th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Your Deposit
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Your Reward Share
+                    </th>
+                    <th className="w-48 py-3 px-6 text-right font-normal">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completedMarkets.map((marketId) => {
+                    const market = (markets as any)[marketId];
+                    const marketIndex = genesisMarkets.findIndex(
+                      ([id]) => id === marketId
+                    );
+                    const dataOffset = marketIndex * (address ? 5 : 3);
+                    const tokenDataOffset = marketIndex * (address ? 4 : 2);
+
+                    const userBalance = address
+                      ? allMarketsData?.[dataOffset + 3]?.result
+                      : undefined;
+                    const claimableAmounts = address
+                      ? (allMarketsData?.[dataOffset + 4]?.result as
+                          | [bigint, bigint]
+                          | undefined)
+                      : undefined;
+                    const collateralSymbol =
+                      allTokenData?.[tokenDataOffset]?.result;
+
+                    const onChainGenesisEnded =
+                      allMarketsData?.[dataOffset]?.result === true;
+                    const genesisStatus = getGenesisStatus(
+                      market,
+                      onChainGenesisEnded
+                    );
+                    const phaseInfo = getGenesisPhaseInfo(genesisStatus.phase);
+                    const phaseStyles = {
+                      scheduled: "text-blue-400 bg-blue-400/10",
+                      live: "text-green-400 bg-green-400/10",
+                      closed: "text-yellow-400 bg-yellow-400/10",
+                      completed: "text-purple-400 bg-purple-400/10",
+                    } as const;
+
+                    return (
+                      <Fragment key={marketId}>
+                        <tr
+                          onClick={() => toggleMarket(marketId)}
+                          className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
+                        >
+                          <td className="py-1 px-8 whitespace-nowrap">
+                            <div className="flex items-center gap-4">
+                              <Image
+                                src={market.chain.logo}
+                                alt={market.chain.name}
+                                width={32}
+                                height={32}
+                                className="flex-shrink-0"
+                              />
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="font-medium">
+                                  {market.name}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            {isConnected &&
+                            userBalance &&
+                            typeof userBalance === "bigint"
+                              ? formatEther(userBalance)
+                              : "0"}{" "}
+                            {collateralSymbol}
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            {(() => {
+                              if (!isConnected || !claimableAmounts)
+                                return "0%";
+
+                              const userClaimableSum =
+                                claimableAmounts[0] + claimableAmounts[1];
+                              const rewardPool = Number(
+                                market.rewardToken.amount
+                              );
+                              if (rewardPool === 0) return "0%";
+
+                              const percentage =
+                                (Number(userClaimableSum) * 100) / rewardPool;
+                              return percentage.toFixed(2) + "%";
+                            })()}
+                          </td>
+                          <td className="py-3 px-6 text-right">
+                            <span
+                              className={`text-sm inline-block px-3 py-1 border font-bold ${
+                                geo.className
+                              } ${phaseStyles[genesisStatus.phase]}`}
+                            >
+                              {phaseInfo.title}
+                            </span>
+                          </td>
+                        </tr>
+                        {marketStates[marketId].isExpanded && (
+                          <tr>
+                            <td colSpan={4}>
+                              <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Left Column: Claimable Tokens */}
+                                  <div className="space-y-6">
+                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
+                                      <h3 className="text-lg font-medium text-white mb-4">
+                                        Claimable Tokens
+                                      </h3>
+                                      <div className="space-y-3">
+                                        <div className="flex justify-between items-center text-sm">
+                                          <span className="text-[#F5F5F5]/70">
+                                            {market.peggedToken.name}
+                                          </span>
+                                          <span className="font-mono text-white">
+                                            {Array.isArray(claimableAmounts) &&
+                                            claimableAmounts[0] &&
+                                            typeof claimableAmounts[0] ===
+                                              "bigint"
+                                              ? formatEther(claimableAmounts[0])
+                                              : "0"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                          <span className="text-[#F5F5F5]/70">
+                                            {market.leveragedToken.name}
+                                          </span>
+                                          <span className="font-mono text-white">
+                                            {Array.isArray(claimableAmounts) &&
+                                            claimableAmounts[1] &&
+                                            typeof claimableAmounts[1] ===
+                                              "bigint"
+                                              ? formatEther(claimableAmounts[1])
+                                              : "0"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                          <span className="text-[#F5F5F5]/70">
+                                            Rewards
+                                          </span>
+                                          <span className="font-mono text-white">
+                                            {Number(
+                                              market.rewardToken.amount
+                                            ).toLocaleString()}{" "}
+                                            {market.rewardToken.symbol}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Right Column: Claim Button */}
+                                  <div className="space-y-6">
+                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full flex flex-col justify-center">
+                                      {isConnected && genesisStatus.canClaim ? (
+                                        (() => {
+                                          const hasClaimableTokens =
+                                            Array.isArray(claimableAmounts) &&
+                                            claimableAmounts[0] &&
+                                            claimableAmounts[1] &&
+                                            typeof claimableAmounts[0] ===
+                                              "bigint" &&
+                                            typeof claimableAmounts[1] ===
+                                              "bigint" &&
+                                            (claimableAmounts[0] > 0n ||
+                                              claimableAmounts[1] > 0n);
+
+                                          return hasClaimableTokens ? (
+                                            <button
+                                              onClick={() =>
+                                                handleClaim(marketId)
+                                              }
+                                              className={`w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors`}
+                                            >
+                                              CLAIM TOKENS
+                                            </button>
+                                          ) : (
+                                            <button
+                                              disabled
+                                              className={`w-full py-3 bg-gray-600 text-gray-400 font-medium shadow-lg cursor-not-allowed`}
+                                            >
+                                              NO TOKENS TO CLAIM
+                                            </button>
+                                          );
+                                        })()
+                                      ) : (
+                                        <div className="py-3 text-center text-[#F5F5F5]/50 text-sm">
+                                          {genesisStatus.canClaim
+                                            ? "Connect wallet to claim"
+                                            : "Claiming not available"}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
       </main>
+
+      {/* Transaction Status Modal */}
+      <GenesisClaimStatusModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        market={lastClaimedMarket}
+        claimedPegged={lastClaimedPegged}
+        claimedLeveraged={lastClaimedLeveraged}
+        transactionHash={ethMarketWrites.claim.data}
+        onClaimSuccess={refetchAllData}
+      />
+
+      {/* Genesis Summary Modal */}
+      <GenesisSummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setSummaryModalOpen(false)}
+        marketName={
+          selectedMarketForSummary
+            ? (markets as any)[selectedMarketForSummary].name
+            : ""
+        }
+      />
     </div>
   );
 }

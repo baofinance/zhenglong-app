@@ -16,6 +16,14 @@ import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { rewardsABI } from "@/abis/rewards";
 import { erc20ABI } from "@/abis/erc20";
 import { clsx } from "clsx";
+import Dollar from "pixelarticons/svg/dollar.svg";
+import Money from "pixelarticons/svg/money.svg";
+import Trending from "pixelarticons/svg/trending.svg";
+import Moon from "pixelarticons/svg/moon.svg";
+import ArrowDown from "pixelarticons/svg/arrow-down.svg";
+import ArrowUp from "pixelarticons/svg/arrow-up.svg";
+import Gift from "pixelarticons/svg/gift.svg";
+import HistoricalDataChart from "@/components/HistoricalDataChart";
 
 const RechartsChart = dynamic(() => import("@/components/RechartsChart"), {
   ssr: false,
@@ -70,7 +78,7 @@ function EtherscanLink({ label, address }: EtherscanLinkProps) {
 function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
   if (!pool || !market) {
     return (
-      <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
+      <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full">
         <h2 className="text-lg font-medium mb-4">Contract Info</h2>
         <p className="text-sm text-[#F5F5F5]/70">
           Pool information not available.
@@ -85,7 +93,7 @@ function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
       : market.addresses.peggedToken;
 
   return (
-    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
+    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full">
       <h2 className="text-lg font-medium mb-4">Contract Info</h2>
       <div className="space-y-2">
         <EtherscanLink label={pool.name} address={pool.address} />
@@ -121,7 +129,7 @@ function TabButton({ isActive, onClick, children }: TabButtonProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "text-md font-medium transition-colors px-3 py-2",
+        "text-md font-medium transition-colors px-3 py-2 flex items-center",
         isActive
           ? "text-white bg-white/10"
           : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -412,31 +420,46 @@ function ActionTabs({
   formatAmount,
 }: ActionTabsProps) {
   return (
-    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
+    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 h-full flex flex-col">
       {/* Tab Navigation */}
       <div className="flex gap-2 mb-6">
         <TabButton
           isActive={activeTab === "deposit"}
           onClick={() => setActiveTab("deposit")}
         >
+          <Image
+            src={ArrowUp}
+            alt="ArrowUp"
+            className="mr-2 w-6 h-6 filter invert brightness-0"
+          />
           Deposit
         </TabButton>
         <TabButton
           isActive={activeTab === "withdraw"}
           onClick={() => setActiveTab("withdraw")}
         >
+          <Image
+            src={ArrowDown}
+            alt="ArrowDown"
+            className="mr-2 w-6 h-6 filter invert brightness-0"
+          />
           Withdraw
         </TabButton>
         <TabButton
           isActive={activeTab === "rewards"}
           onClick={() => setActiveTab("rewards")}
         >
+          <Image
+            src={Gift}
+            alt="Gift"
+            className="mr-2 w-6 h-6 filter invert brightness-0"
+          />
           Rewards
         </TabButton>
       </div>
 
       {/* Tab Content */}
-      <div>
+      <div className="flex-grow">
         {activeTab === "deposit" && (
           <DepositTab
             depositAmount={depositAmount}
@@ -563,7 +586,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             address: assetAddress as `0x${string}`,
             abi: erc20ABI,
             functionName: "balanceOf",
-            args: [address ?? "0x0"],
+            args: [address ?? "0x"],
           },
         ]
       : [],
@@ -763,30 +786,67 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1">Total Value Locked</p>
+            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+              <Image
+                src={Dollar}
+                alt="Dollar"
+                className="w-6 h-6 filter invert brightness-0"
+              />
+              Total Value Locked
+            </p>
             <p className="text-2xl font-semibold text-white">
               ${tvlUSD.toFixed(2)}
             </p>
           </div>
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1">Your Deposit</p>
+            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+              <Image
+                src={Money}
+                alt="Money"
+                className="w-6 h-6 filter invert brightness-0"
+              />
+              Your Deposit
+            </p>
             <p className="text-2xl font-semibold text-white">
               {formatAmount(poolWithData?.userDeposit)} {tokenSymbol}
             </p>
           </div>
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1">Base APR</p>
+            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+              <Image
+                src={Trending}
+                alt="Trending"
+                className="w-6 h-6 filter invert brightness-0"
+              />
+              Base APR
+            </p>
             <p className="text-2xl font-semibold text-white">{baseAPR}</p>
           </div>
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1">Boost APR</p>
+            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+              <Image
+                src={Moon}
+                alt="Moon"
+                className="w-6 h-6 filter invert brightness-0"
+              />
+              Boost APR
+            </p>
             <p className="text-2xl font-semibold text-white">{boostAPR}</p>
           </div>
         </div>
 
+        {/* Chart */}
+        <div className="mt-4">
+          <div className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col">
+            <div className="flex-1 min-h-[480px]">
+              <HistoricalDataChart />
+            </div>
+          </div>
+        </div>
+
         {/* Action Tabs and Info sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <div className="lg:col-span-2 h-full">
             <ActionTabs
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -811,7 +871,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               formatAmount={formatAmount}
             />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 h-full">
             <ContractInfoSection pool={pool} market={market} />
           </div>
         </div>

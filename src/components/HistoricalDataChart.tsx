@@ -133,7 +133,7 @@ const HistoricalDataChart = () => {
               dataType === "apr" ? "text-white" : "text-zinc-400"
             }`}
           >
-            APR
+            Price
           </button>
           <button
             onClick={() => setDataType("collateral")}

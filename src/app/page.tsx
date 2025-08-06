@@ -12,6 +12,12 @@ import {
   useChainId,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
+import Dollar from "pixelarticons/svg/dollar.svg";
+import Money from "pixelarticons/svg/money.svg";
+import Chart from "pixelarticons/svg/chart.svg";
+import Shield from "pixelarticons/svg/shield.svg";
+import LinkIcon from "pixelarticons/svg/link.svg";
+
 import { markets } from "../config/markets";
 import TradingViewChart from "../components/TradingViewChart";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
@@ -266,12 +272,18 @@ export default function App() {
   const handleMarketChange = (marketId: string) => {
     setSelectedMarket(marketId);
   };
-
   const healthStats = [
     {
       label: "Total Collateral",
       value: (
         <SystemHealth.Value type="collateralValue" marketId={selectedMarket} />
+      ),
+      icon: (
+        <Image
+          src={Dollar}
+          alt="Dollar"
+          className="w-6 h-6 filter invert brightness-0"
+        />
       ),
     },
     {
@@ -279,11 +291,25 @@ export default function App() {
       value: (
         <SystemHealth.Value type="peggedTokens" marketId={selectedMarket} />
       ),
+      icon: (
+        <Image
+          src={Money}
+          alt="Money"
+          className="w-6 h-6 filter invert brightness-0"
+        />
+      ),
     },
     {
       label: "Leveraged Tokens",
       value: (
         <SystemHealth.Value type="leveragedTokens" marketId={selectedMarket} />
+      ),
+      icon: (
+        <Image
+          src={Chart}
+          alt="Chart"
+          className="w-6 h-6 filter invert brightness-0"
+        />
       ),
     },
     {
@@ -291,10 +317,24 @@ export default function App() {
       value: (
         <SystemHealth.Value type="collateralRatio" marketId={selectedMarket} />
       ),
+      icon: (
+        <Image
+          src={Shield}
+          alt="Shield"
+          className="w-6 h-6 filter invert brightness-0"
+        />
+      ),
     },
     {
       label: "Price Oracle",
       value: "Chainlink",
+      icon: (
+        <Image
+          src={LinkIcon}
+          alt="Link"
+          className="w-6 h-6 filter invert brightness-0"
+        />
+      ),
     },
   ];
 
@@ -311,15 +351,16 @@ export default function App() {
         <main className="container mx-auto max-w-full pt-28 pb-20">
           {/* System Health Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            {healthStats.map((stat, index) => (
-              <div key={stat.label} className="relative text-left">
-                {index < healthStats.length - 1 && (
-                  <div className="absolute top-0 right-0 h-full w-px bg-zinc-700 mr-2" />
-                )}
-                <p className="text-md font-geo font-bold text-zinc-400 mb-1">
+            {healthStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4"
+              >
+                <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+                  {stat.icon}
                   {stat.label}
                 </p>
-                <p className={`text-xl font-bold font-mono text-white`}>
+                <p className="text-2xl font-semibold text-white">
                   {stat.value}
                 </p>
               </div>

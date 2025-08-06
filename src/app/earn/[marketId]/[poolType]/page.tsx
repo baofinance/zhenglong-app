@@ -15,5 +15,11 @@ interface PoolPageProps {
 }
 
 export default async function PoolPage({ params }: PoolPageProps) {
-  return <PoolClient marketId={params.marketId} poolType={params.poolType} />;
+  const resolvedParams = await params;
+  return (
+    <PoolClient
+      marketId={resolvedParams.marketId}
+      poolType={resolvedParams.poolType}
+    />
+  );
 }

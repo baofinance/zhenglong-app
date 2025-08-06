@@ -25,3 +25,29 @@
     @apply bg-red-500 text-white p-4;
   }
 }
+
+.smoke-particle-el {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  animation: smoke-fade infinite;
+}
+
+@keyframes smoke-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8) translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50vh) scale(1.2) translateX(50px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) scale(0.8) translateX(0);
+  }
+}

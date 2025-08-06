@@ -26,10 +26,10 @@ export interface Pool {
 }
 
 const launchPools: Pool[] = [
-  // Group 1: zheETH Deposits
+  // Group 1: zheETH
   {
     id: "zheeth-fxsave",
-    groupName: "zheETH Deposits",
+    groupName: "zheETH",
     groupIcon: "🟢",
     name: "fxSAVE",
     assetIcons: ["/icons/fxSave.png"],
@@ -46,7 +46,7 @@ const launchPools: Pool[] = [
   },
   {
     id: "zheeth-steamedusd-eth",
-    groupName: "zheETH Deposits",
+    groupName: "zheETH",
     groupIcon: "🟢",
     name: "steamedUSD / ETH",
     assetIcons: ["/icons/steamedUSD.png", "/icons/eth.png"], // TODO: Update steamedUSD icon when available
@@ -62,10 +62,10 @@ const launchPools: Pool[] = [
     poolType: "leveraged",
     assetDecimals: 18,
   },
-  // Group 2: zheBTC Deposits (fxSAVE collateral)
+  // Group 2: zheBTC (fxSAVE collateral)
   {
     id: "zhebtc-fxsave-fxsave",
-    groupName: "zheBTC Deposits",
+    groupName: "zheBTC",
     groupIcon: "🟠",
     groupSubText: "(fxSAVE collateral)",
     name: "fxSAVE",
@@ -84,7 +84,7 @@ const launchPools: Pool[] = [
   },
   {
     id: "zhebtc-fxsave-steamedusd-btc",
-    groupName: "zheBTC Deposits",
+    groupName: "zheBTC",
     groupIcon: "🟠",
     groupSubText: "(fxSAVE collateral)",
     name: "steamedUSD / BTC",
@@ -102,10 +102,10 @@ const launchPools: Pool[] = [
     poolType: "leveraged",
     assetDecimals: 18,
   },
-  // Group 3: zheBTC Deposits (wstETH collateral)
+  // Group 3: zheBTC (wstETH collateral)
   {
     id: "zhebtc-wsteth-wsteth",
-    groupName: "zheBTC Deposits",
+    groupName: "zheBTC",
     groupIcon: "🔵",
     groupSubText: "(wstETH collateral)",
     name: "wstETH",
@@ -124,7 +124,7 @@ const launchPools: Pool[] = [
   },
   {
     id: "zhebtc-wsteth-steamedeth-btc",
-    groupName: "zheBTC Deposits",
+    groupName: "zheBTC",
     groupIcon: "🔵",
     groupSubText: "(wstETH collateral)",
     name: "steamedETH / BTC",

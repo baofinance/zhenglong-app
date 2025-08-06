@@ -55,8 +55,10 @@ export const markets = {
   },
 } as const;
 
+export type Market = (typeof markets)[keyof typeof markets];
+
 // Helper functions for genesis status
-export function getGenesisStatus(market: any, onChainGenesisEnded: boolean) {
+export function getGenesisStatus(market: Market, onChainGenesisEnded: boolean) {
   const now = new Date();
   const startDate = new Date(market.genesis.startDate);
   const endDate = new Date(market.genesis.endDate);
@@ -115,11 +117,11 @@ export function getGenesisPhaseInfo(phase: string) {
   }
 }
 
-export function isGenesisActive(market: any) {
+export function isGenesisActive(market: Market) {
   const status = getGenesisStatus(market, false);
   return status.phase === "live";
 }
 
-export function getPrimaryRewardToken(market: any) {
+export function getPrimaryRewardToken(market: Market) {
   return market.rewardToken;
 }
