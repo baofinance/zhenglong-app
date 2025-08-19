@@ -39,10 +39,7 @@ export default function GenesisSummaryModal({
         </div>
 
         <div className="text-sm text-zinc-300 space-y-3">
-          <p>
-            <span className="text-white font-medium">Genesis ended.</span>{" "}
-            Collateral was split 50/50:
-          </p>
+          <p>Collateral is split 50/50:</p>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>

@@ -10,7 +10,7 @@ export default function Navigation() {
     { href: "/", label: "Mint & Redeem" },
     { href: "/earn", label: "Earn" },
     { href: "/staking", label: "Staking" },
-    { href: "/vote", label: "Vote" },
+    { href: "https://snapshot.box", label: "Vote" },
     { href: "/genesis", label: "Genesis" },
   ];
 
@@ -44,7 +44,7 @@ export default function Navigation() {
                     key={link.href}
                     href={link.href}
                     className={clsx(
-                      "text-xl font-medium font-geo transition-colors",
+                      "text-base font-medium transition-colors",
                       isActive
                         ? " text-white"
                         : " hover:text-white/80 text-white/60 "
@@ -56,7 +56,6 @@ export default function Navigation() {
               })}
             </div>
           </div>
-
           <div>
             <appkit-button size="sm" balance="hide" />
           </div>

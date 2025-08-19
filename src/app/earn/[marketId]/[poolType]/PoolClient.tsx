@@ -839,7 +839,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         <div className="mt-4">
           <div className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col">
             <div className="flex-1 min-h-[480px]">
-              <HistoricalDataChart />
+              <HistoricalDataChart marketId={marketId} />
             </div>
           </div>
         </div>

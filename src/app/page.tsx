@@ -354,15 +354,13 @@ export default function App() {
             {healthStats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4"
+                className="relative group h-full bg-zinc-900/50 outline outline-1 outline-emerald-500/10 p-6 hover:outline-emerald-500/30 transition-all duration-300"
               >
-                <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
+                <p className="text-md font-bold text-white tracking-wide mb-1 flex items-center gap-2">
                   {stat.icon}
                   {stat.label}
                 </p>
-                <p className="text-2xl font-semibold text-white">
-                  {stat.value}
-                </p>
+                <p className="text-sm text-white/60">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -427,7 +425,7 @@ export default function App() {
                   className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col"
                 >
                   <div className="flex-1 min-h-0">
-                    <HistoricalDataChart />
+                    <HistoricalDataChart marketId={selectedMarket} />
                   </div>
                 </div>
               ) : (

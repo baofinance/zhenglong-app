@@ -31,9 +31,11 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0) 70%
+    rgba(16, 185, 129, 0.06) 0%,
+    /* emerald-500 with low alpha */ rgba(20, 184, 166, 0.03) 40%,
+    /* teal-500 with lower alpha */ rgba(0, 0, 0, 0) 70%
   );
+  mix-blend-mode: screen;
   animation: smoke-fade infinite;
 }
 
@@ -49,5 +51,56 @@
   100% {
     opacity: 0;
     transform: translateY(-100vh) scale(0.8) translateX(0);
+  }
+}
+
+/* Glowing float animations inspired by landing section */
+@keyframes floatA {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-22px) translateX(10px) scale(1.02);
+  }
+}
+
+@keyframes floatB {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-28px) translateX(-12px) scale(1.03);
+  }
+}
+
+@keyframes floatC {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-18px) translateX(6px) scale(1.04);
+  }
+}
+
+@keyframes floatD {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) translateX(-8px) scale(1.02);
+  }
+}
+
+@keyframes floatE {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) translateX(8px) scale(1.01);
   }
 }

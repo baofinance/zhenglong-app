@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -13,8 +13,11 @@ import {
 import TimeRangeSelector from "./TimeRangeSelector";
 import { TimeRange } from "../config/types";
 
-// Dummy data - replace with actual data fetching
-const generateData = (timeRange: TimeRange, dataType: string) => {
+const generateData = (
+  timeRange: TimeRange,
+  dataType: string,
+  marketId: string
+) => {
   const now = new Date();
   let data = [];
   let numPoints = 0;
@@ -42,12 +45,21 @@ const generateData = (timeRange: TimeRange, dataType: string) => {
       break;
   }
 
+  // Seed the random number generator with the marketId to ensure unique data for each chart
+  let seed = marketId
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const random = () => {
+    var x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
+
   for (let i = numPoints - 1; i >= 0; i--) {
     let value;
     if (dataType === "apr") {
-      value = Math.random() * 5 + 10; // APR between 10-15%
+      value = random() * 5 + 10; // APR between 10-15%
     } else {
-      value = Math.random() * 2000000 + 8000000; // Collateral between 8M-10M
+      value = random() * 2000000 + 8000000; // Collateral between 8M-10M
     }
     data.push({
       timestamp: now.getTime() - i * interval,
@@ -83,13 +95,20 @@ const CustomTooltip = ({ active, payload, label, dataType }: any) => {
   return null;
 };
 
-const HistoricalDataChart = () => {
+const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>("1M");
   const [dataType, setDataType] = useState("apr"); // 'apr' or 'collateral'
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (marketId) {
+      setIsLoading(false);
+    }
+  }, [marketId]);
 
   const data = useMemo(
-    () => generateData(timeRange, dataType),
-    [timeRange, dataType]
+    () => (marketId ? generateData(timeRange, dataType, marketId) : []),
+    [timeRange, dataType, marketId]
   );
 
   const formatXAxis = (timestamp: number) => {
@@ -122,6 +141,10 @@ const HistoricalDataChart = () => {
       return `$${(value / 1_000_000).toFixed(0)}M`;
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="w-full h-full flex flex-col">

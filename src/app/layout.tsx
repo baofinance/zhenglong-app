@@ -5,14 +5,8 @@ import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Geo } from "next/font/google";
+import { geo, spaceGrotesk } from "@/utils/fonts";
 import AnimatedSmokeBackground from "@/components/AnimatedSmokeBackground";
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-geo",
-});
 
 export const metadata: Metadata = {
   title: "zhenglong",
@@ -28,9 +22,9 @@ export default async function RootLayout({
   const cookies = headersObj.get("cookie");
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${geo.variable} ${spaceGrotesk.variable}`}>
       <body
-        className={`antialiased font-sans bg-zinc-950 text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} ${geo.variable} relative`}
+        className={`antialiased font-sans bg-zinc-950 text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
       >
         <AnimatedSmokeBackground />
         <div className="relative z-10">

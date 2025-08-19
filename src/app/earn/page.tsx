@@ -113,7 +113,7 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
         )}
       </td>
       <td className="py-3 px-6 text-right">{baseAPR}</td>
-      <td className="py-3 px-6 text-right">+ {boostAPR}</td>
+      <td className="py-3 px-6 text-right">{boostAPR}</td>
       <td className="py-3 px-6 text-right">{formatAmount(pool.rewards)}</td>
       <td className="py-3 px-6 text-right">${pool.tvlUSD.toFixed(2)}</td>
     </tr>
@@ -206,6 +206,9 @@ export default function Earn() {
       }
 
       if (claimAndStake && totalRewardsToStake > 0n) {
+        if (!publicClient) {
+          throw new Error("Public client is not available");
+        }
         const allowance = await publicClient.readContract({
           address: steamTokenAddress,
           abi: erc20ABI,
@@ -246,7 +249,7 @@ export default function Earn() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 flex flex-col gap-2">
-            <p className="text-[#F5F5F5]/50 text-sm flex items-center gap-2">
+            <p className="text-md font-bold text-white tracking-wide flex items-center gap-2">
               <Image
                 src={Money}
                 alt="Money"
@@ -267,7 +270,7 @@ export default function Earn() {
             </p>
           </div>
           <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 flex flex-col gap-2">
-            <p className="text-[#F5F5F5]/50 text-sm flex items-center gap-2">
+            <p className="text-md font-bold text-white tracking-wide flex items-center gap-2">
               <Image
                 src={Gift}
                 alt="Gift"
@@ -289,7 +292,7 @@ export default function Earn() {
           </div>
           <div className="lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <h3 className="text-md font-bold text-white tracking-wide flex items-center gap-2">
                 <Image
                   src={CheckDouble}
                   alt="CheckDouble"
@@ -335,7 +338,7 @@ export default function Earn() {
           {groupedPools.map(([groupName, poolsInGroup]) => (
             <div
               key={groupName}
-              className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto"
+              className="shadow-lg relative group bg-zinc-900/50 outline pb-2 outline-1 outline-emerald-500/10 hover:outline-emerald-500/30 transition-all duration-300 overflow-x-auto"
             >
               <h2 className="text-2xl font-medium p-6 pb-2 font-geo">
                 {groupName}
@@ -352,7 +355,7 @@ export default function Earn() {
                         Pool APR
                       </th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
-                        Boost APR
+                        Your Deposit
                       </th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
                         Rewards

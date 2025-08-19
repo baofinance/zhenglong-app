@@ -419,124 +419,137 @@ export default function Admin() {
   // Return a placeholder during server-side rendering
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-black text-white max-w-[1300px] mx-auto">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">
-            Admin Panel
-          </h1>
-          <div className="text-center">
-            <p className="mb-4 text-[#F5F5F5]/70">
+      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
+          <div className="mb-6">
+            <h1
+              className={`text-4xl font-medium font-geo text-left text-white`}
+            >
+              ADMIN
+            </h1>
+          </div>
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+            <p className="mb-4 text-white/70">
               Please connect your wallet to access admin functions
             </p>
-            <ConnectButton />
+            <div className="inline-block">
+              <ConnectButton />
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white max-w-[1300px] mx-auto">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8 text-[#4A7C59]">Admin Panel</h1>
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
+        <div className="mb-6">
+          <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
+            ADMIN
+          </h1>
+        </div>
 
         {!isConnected ? (
-          <div className="text-center">
-            <p className="mb-4 text-[#F5F5F5]/70">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+            <p className="mb-4 text-white/70">
               Please connect your wallet to access admin functions
             </p>
-            <ConnectButton />
+            <div className="inline-block">
+              <ConnectButton />
+            </div>
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+          <div className="space-y-4">
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 System Controls
               </h2>
               <Link href="/admin/genesis">
-                <button className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white">
+                <button className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors">
                   Genesis Admin
                 </button>
               </Link>
             </div>
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Fee Receiver
               </h2>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={feeReceiver}
                   onChange={(e) => setFeeReceiver(e.target.value)}
                   placeholder="Enter new fee receiver address"
-                  className="flex-1 bg-[#202020] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdateFeeReceiver}
                   disabled={isUpdatingFeeReceiver}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingFeeReceiver ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Reserve Pool
               </h2>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={reservePool}
                   onChange={(e) => setReservePool(e.target.value)}
                   placeholder="Enter new reserve pool address"
-                  className="flex-1 bg-[#202020] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdateReservePool}
                   disabled={isUpdatingReservePool}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingReservePool ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Price Oracle
               </h2>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={priceOracle}
                   onChange={(e) => setPriceOracle(e.target.value)}
                   placeholder="Enter new price oracle address"
-                  className="flex-1 bg-[#202020] px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdatePriceOracle}
                   disabled={isUpdatingPriceOracle}
-                  className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingPriceOracle ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-2xl font-bold mb-4 text-[#4A7C59]">
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Free Functions
               </h2>
-              <div className="space-y-4">
-                <div className="bg-[#202020] p-4">
-                  <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+              <div className="space-y-6">
+                <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                  <h4 className="text-base font-medium mb-3 text-white/80">
                     Receiver Address
                   </h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1 text-[#F5F5F5]/70">
+                      <label className="block text-sm font-medium mb-1 text-white/70">
                         Address
                       </label>
                       <input
@@ -544,26 +557,26 @@ export default function Admin() {
                         value={receiverAddress}
                         onChange={(e) => setReceiverAddress(e.target.value)}
                         placeholder="Enter receiver address"
-                        className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                        className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Minting Operations */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-[#4A7C59]">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white font-geo">
                     Minting Operations
                   </h3>
 
                   {/* Add Approval Section */}
-                  <div className="bg-[#202020] p-4">
-                    <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                  <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <h4 className="text-base font-medium mb-3 text-white/80">
                       Approve Collateral Token
                     </h4>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-[#F5F5F5]/70">
+                        <label className="block text-sm font-medium mb-1 text-white/70">
                           Amount to Approve
                         </label>
                         <input
@@ -571,19 +584,19 @@ export default function Admin() {
                           value={approvalAmount}
                           onChange={(e) => setApprovalAmount(e.target.value)}
                           placeholder="Enter amount to approve"
-                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleApprove}
                           disabled={isApprovingWrite || !approvalAmount}
-                          className="bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isApprovingWrite ? "Approving..." : "Approve"}
                         </button>
                         {allowance && (
-                          <span className="text-sm text-[#F5F5F5]/70">
+                          <span className="text-sm text-white/70">
                             Current allowance: {formatEther(allowance)}
                           </span>
                         )}
@@ -592,13 +605,13 @@ export default function Admin() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-[#202020] p-4">
-                      <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                      <h4 className="text-base font-medium mb-3 text-white/80">
                         Mint Pegged Token
                       </h4>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-[#F5F5F5]/70">
+                          <label className="block text-sm font-medium mb-1 text-white/70">
                             Required Collateral Amount
                           </label>
                           <input
@@ -608,7 +621,7 @@ export default function Admin() {
                               setFreeMintCollateralAmount(e.target.value)
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                            className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                           />
                         </div>
                         <button
@@ -619,7 +632,7 @@ export default function Admin() {
                               allowance ||
                             isMintingPegged
                           }
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {!allowance
                             ? "Approve First"
@@ -630,7 +643,7 @@ export default function Admin() {
                             ? "Minting..."
                             : "Mint Pegged Token"}
                         </button>
-                        <p className="text-sm text-[#F5F5F5]/70">
+                        <p className="text-sm text-white/70">
                           Note: The collateral amount will be converted to
                           pegged tokens based on the current oracle price (e.g.,
                           1 ETH at $2000/ETH = 2000 pegged tokens)
@@ -638,13 +651,13 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="bg-[#202020] p-4">
-                      <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                      <h4 className="text-base font-medium mb-3 text-white/80">
                         Mint Leveraged Token
                       </h4>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-[#F5F5F5]/70">
+                          <label className="block text-sm font-medium mb-1 text-white/70">
                             Required Collateral Amount
                           </label>
                           <input
@@ -656,7 +669,7 @@ export default function Admin() {
                               )
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                            className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                           />
                         </div>
                         <button
@@ -667,7 +680,7 @@ export default function Admin() {
                               allowance ||
                             isMintingLeveraged
                           }
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {!allowance
                             ? "Approve First"
@@ -679,7 +692,7 @@ export default function Admin() {
                             ? "Minting..."
                             : "Mint Leveraged Token"}
                         </button>
-                        <p className="text-sm text-[#F5F5F5]/70">
+                        <p className="text-sm text-white/70">
                           Note: The value of leveraged tokens is the difference
                           between collateral value and pegged token value. For
                           example, if 1 ETH ($2000) is used to mint $1000 worth
@@ -692,13 +705,13 @@ export default function Admin() {
                 </div>
 
                 {/* Redeeming Operations */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-[#4A7C59]">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white font-geo">
                     Redeeming Operations
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-[#202020] p-4">
-                      <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                      <h4 className="text-base font-medium mb-3 text-white/80">
                         Redeem Pegged Token
                       </h4>
                       <div className="space-y-3">
@@ -707,12 +720,12 @@ export default function Admin() {
                           value={freeRedeemAmount}
                           onChange={(e) => setFreeRedeemAmount(e.target.value)}
                           placeholder="Amount to redeem"
-                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeRedeemPeggedToken}
                           disabled={isRedeemingPegged}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isRedeemingPegged
                             ? "Redeeming..."
@@ -721,8 +734,8 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="bg-[#202020] p-4">
-                      <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                      <h4 className="text-base font-medium mb-3 text-white/80">
                         Swap Pegged for Leveraged
                       </h4>
                       <div className="space-y-3">
@@ -731,12 +744,12 @@ export default function Admin() {
                           value={freeSwapAmount}
                           onChange={(e) => setFreeSwapAmount(e.target.value)}
                           placeholder="Amount to swap"
-                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeSwapPeggedForLeveraged}
                           disabled={isSwapping}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSwapping
                             ? "Swapping..."
@@ -745,8 +758,8 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="bg-[#202020] p-4">
-                      <h4 className="text-lg font-medium mb-3 text-[#F5F5F5]/70">
+                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                      <h4 className="text-base font-medium mb-3 text-white/80">
                         Redeem Leveraged Token
                       </h4>
                       <div className="space-y-3">
@@ -757,12 +770,12 @@ export default function Admin() {
                             setFreeRedeemLeveragedAmount(e.target.value)
                           }
                           placeholder="Amount to redeem"
-                          className="w-full bg-zinc-900/50 px-4 py-2 text-[#F5F5F5]/70 placeholder-[#F5F5F5]/30"
+                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeRedeemLeveragedToken}
                           disabled={isRedeemingLeveraged}
-                          className="w-full bg-[#4A7C59] px-4 py-2 hover:bg-[#4A7C59]/80 text-white disabled:opacity-50"
+                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isRedeemingLeveraged
                             ? "Redeeming..."
@@ -775,22 +788,22 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Add Price Feed Update Button */}
-            <div className="bg-zinc-900/50/95 p-6 shadow-[0_0_15px_rgba(74,124,89,0.1)]">
-              <h2 className="text-xl font-semibold mb-4 text-[#4A7C59]">
+            {/* Price Feed Update */}
+            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Price Feed Management
               </h2>
               <button
                 onClick={handleUpdatePriceFeed}
                 disabled={!isConnected || isUpdatingPrice}
-                className="bg-[#4A7C59] hover:bg-[#4A7C59]/80 text-white font-bold py-2 px-4 disabled:opacity-50"
+                className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUpdatingPrice ? "Updating..." : "Update Price Feed"}
               </button>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
