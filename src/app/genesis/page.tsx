@@ -28,6 +28,7 @@ import GenesisWithdrawModal from "../../components/GenesisWithdrawModal";
 import GenesisClaimStatusModal from "../../components/GenesisClaimStatusModal";
 import GenesisSummaryModal from "../../components/GenesisSummaryModal";
 import { minterABI } from "../../abis/minter";
+import GenesisAPRCalculator from "../../components/GenesisAPRCalculator";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -332,9 +333,12 @@ export default function Genesis() {
   // Create individual hooks for each market
   const ethMarketWrites = useMarketContractWrites("eth-usd");
 
-  // Track transaction receipt for claim success
+  // Track transaction receipt for claim success (narrow hash type to avoid deep TS instantiation)
+  const claimTxHash = (ethMarketWrites.claim.data ?? undefined) as
+    | `0x${string}`
+    | undefined;
   const { isSuccess: claimSuccess } = useWaitForTransactionReceipt({
-    hash: ethMarketWrites.claim.data,
+    hash: claimTxHash,
   });
 
   // Show modal when claim transaction is submitted
@@ -374,6 +378,8 @@ export default function Genesis() {
       activeMarkets.push(id);
     }
   });
+
+  // Note: APR calculator will read per-row totals directly from table offsets
 
   // Get token info for all valid Genesis markets
   const { data: allTokenData, refetch: refetchTokenData } = useContractReads({
@@ -421,11 +427,10 @@ export default function Genesis() {
 
   // Function to refresh all contract data
   const refetchAllData = async () => {
-    await Promise.all([
-      refetchMarketsData(),
-      refetchTokenData(),
-      refetchMinterData(),
-    ]);
+    // Sequential to avoid deep generic instantiation in Promise.all
+    await refetchMarketsData();
+    await refetchTokenData();
+    await refetchMinterData();
   };
 
   // Refresh data when claim is successful
@@ -691,6 +696,7 @@ export default function Genesis() {
           >
             GENESIS
           </h1>
+          <div className="ml-auto"></div>
         </div>
 
         {/* Active Markets */}
@@ -764,6 +770,7 @@ export default function Genesis() {
                     return (
                       <Fragment key={marketId}>
                         <tr
+                          id={`genesis-row-${marketId}`}
                           onClick={() => toggleMarket(marketId)}
                           className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
                         >
@@ -825,7 +832,7 @@ export default function Genesis() {
                           <tr>
                             <td colSpan={6}>
                               <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                   {/* Left Column: User Stats & Claimable Tokens */}
                                   <div className="flex w-full">
                                     {/* Your Stats */}
@@ -956,6 +963,32 @@ export default function Genesis() {
                                         </span>
                                       </div>
                                     </div>
+                                  </div>
+
+                                  {/* APR Calculator */}
+                                  <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
+                                    <h3 className="text-lg font-medium text-white mb-4">
+                                      APR Calculator
+                                    </h3>
+                                    <GenesisAPRCalculator
+                                      marketId={marketId}
+                                      rewardTokenSymbol={
+                                        market.rewardToken.symbol
+                                      }
+                                      rewardPoolAmount={Number(
+                                        market.rewardToken.amount
+                                      )}
+                                      totalDeposits={
+                                        (allTokenData?.[tokenDataOffset + 1]
+                                          ?.result as bigint | undefined) ??
+                                        undefined
+                                      }
+                                      collateralSymbol={
+                                        (allTokenData?.[tokenDataOffset]
+                                          ?.result as string | undefined) ??
+                                        "COLL"
+                                      }
+                                    />
                                   </div>
                                 </div>
                               </div>

@@ -9,8 +9,6 @@ export default function Navigation() {
   const navLinks = [
     { href: "/", label: "Mint & Redeem" },
     { href: "/earn", label: "Earn" },
-    { href: "/staking", label: "Staking" },
-    { href: "https://snapshot.box", label: "Vote" },
     { href: "/genesis", label: "Genesis" },
   ];
 
