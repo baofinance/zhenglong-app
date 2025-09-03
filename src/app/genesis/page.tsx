@@ -23,8 +23,8 @@ import Image from "next/image";
 import Info from "pixelarticons/svg/info-box.svg";
 import Navigation from "../../components/Navigation";
 import GenesisClaim from "../../components/GenesisClaim";
-import GenesisDepositModal from "../../components/GenesisDepositModal";
-import GenesisWithdrawModal from "../../components/GenesisWithdrawModal";
+import { GenesisDepositModal } from "../../components/GenesisDepositModal";
+import { GenesisWithdrawModal } from "../../components/GenesisWithdrawModal";
 import GenesisClaimStatusModal from "../../components/GenesisClaimStatusModal";
 import GenesisSummaryModal from "../../components/GenesisSummaryModal";
 import { minterABI } from "../../abis/minter";
@@ -223,7 +223,6 @@ function useCountdown(endDate: string) {
 
 export default function Genesis() {
   const { address, isConnected } = useAccount();
-  const [mounted, setMounted] = useState(false);
   const [marketStates, setMarketStates] = useState<Record<string, MarketState>>(
     () => {
       // Initialize market states with default values
@@ -256,10 +255,6 @@ export default function Genesis() {
     useState<string>("");
 
   const publicClient = usePublicClient();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   type MarketWrites = {
     approve: ReturnType<typeof useWriteContract>;
@@ -656,21 +651,6 @@ export default function Genesis() {
     }));
   };
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b text-[#F5F5F5] font-sans relative">
-        <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
-          <div className="text-center">
-            <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-              GENESIS
-            </h1>
-            <p className="text-[#F5F5F5]/60 text-lg mt-4">Loading...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
@@ -702,7 +682,7 @@ export default function Genesis() {
         {/* Active Markets */}
         <div className="space-y-4">
           <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
-            <h2 className={`text-2xl text-white mb-2 font-geo p-6 pb-2`}>
+            <h2 className={`text-xl text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}>
               Active Markets
             </h2>
             {activeMarkets.length === 0 ? (
@@ -710,9 +690,9 @@ export default function Genesis() {
                 <p className="text-white/60">No active markets available</p>
               </div>
             ) : (
-              <table className="min-w-full text-left font-geo text-xl table-fixed">
+              <table className="min-w-full text-left text-lg font-space-grotesk table-fixed">
                 <thead>
-                  <tr className="border-b border-white/10 uppercase text-base">
+                  <tr className="border-b border-white/10 uppercase font-space-grotesk font-bold text-xs">
                     <th className="py-4 px-8 font-normal">Market</th>
                     <th className="w-48 py-3 px-6 text-right font-normal">
                       Collateral
@@ -772,9 +752,9 @@ export default function Genesis() {
                         <tr
                           id={`genesis-row-${marketId}`}
                           onClick={() => toggleMarket(marketId)}
-                          className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
+                          className="transition hover:bg-grey-light/20 text-sm cursor-pointer border-t border-white/10"
                         >
-                          <td className="py-1 px-8 whitespace-nowrap">
+                          <td className="py-2 px-8 whitespace-nowrap">
                             <div className="flex items-center gap-4">
                               <Image
                                 src={market.chain.logo}
@@ -790,27 +770,27 @@ export default function Genesis() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             <a
                               href={`https://etherscan.io/address/${market.addresses.collateralToken}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={`text-lg font-medium ${geo.className} text-white hover:text-grey-light transition-colors underline decoration-dotted`}
+                              className={`text-sm font-medium text-white hover:text-grey-light transition-colors underline decoration-dotted`}
                             >
                               {collateralSymbol}
                             </a>
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             {totalDeposits && typeof totalDeposits === "bigint"
                               ? formatEther(totalDeposits)
                               : "0"}{" "}
                             {collateralSymbol}
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             {Number(market.rewardToken.amount).toLocaleString()}{" "}
                             {market.rewardToken.symbol}
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             {isConnected &&
                             userBalance &&
                             typeof userBalance === "bigint"
@@ -818,11 +798,11 @@ export default function Genesis() {
                               : "0"}{" "}
                             {collateralSymbol}
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             <span
                               className={`text-sm inline-block px-3 py-1 border font-bold ${
-                                geo.className
-                              } ${phaseStyles[genesisStatus.phase]}`}
+                                phaseStyles[genesisStatus.phase]
+                              }`}
                             >
                               {phaseInfo.title}
                             </span>
@@ -830,168 +810,161 @@ export default function Genesis() {
                         </tr>
                         {marketStates[marketId].isExpanded && (
                           <tr>
-                            <td colSpan={6}>
-                              <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                  {/* Left Column: User Stats & Claimable Tokens */}
-                                  <div className="flex w-full">
-                                    {/* Your Stats */}
-                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
-                                      <h3 className="text-lg font-medium text-white mb-4">
-                                        Your Stats
-                                      </h3>
-                                      <div className="space-y-3">
-                                        <div className="flex justify-between items-center text-sm">
-                                          <span className="text-[#F5F5F5]/70">
-                                            Your Deposit
-                                          </span>
-                                          <span className="font-mono text-white">
-                                            {isConnected &&
-                                            userBalance &&
-                                            typeof userBalance === "bigint"
-                                              ? formatEther(userBalance)
-                                              : "0"}{" "}
-                                            {collateralSymbol}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                          <span className="text-[#F5F5F5]/70">
-                                            Your Reward Share
-                                          </span>
-                                          <span className="font-mono text-white">
-                                            {(() => {
-                                              if (
-                                                !isConnected ||
-                                                !claimableAmounts ||
-                                                !totalRewards
-                                              )
-                                                return "0%";
-
-                                              const totalRewardSupply =
-                                                Array.isArray(totalRewards) &&
-                                                totalRewards.length >= 2
-                                                  ? (
-                                                      totalRewards as [
-                                                        bigint,
-                                                        bigint
-                                                      ]
-                                                    )[0] +
-                                                    (
-                                                      totalRewards as [
-                                                        bigint,
-                                                        bigint
-                                                      ]
-                                                    )[1]
-                                                  : BigInt(0);
-                                              if (totalRewardSupply === 0n)
-                                                return "0%";
-
-                                              const userClaimableSum =
-                                                Array.isArray(
-                                                  claimableAmounts
-                                                ) &&
-                                                claimableAmounts.length >= 2
-                                                  ? (
-                                                      claimableAmounts as [
-                                                        bigint,
-                                                        bigint
-                                                      ]
-                                                    )[0] +
-                                                    (
-                                                      claimableAmounts as [
-                                                        bigint,
-                                                        bigint
-                                                      ]
-                                                    )[1]
-                                                  : BigInt(0);
-
-                                              const percentage =
-                                                (Number(userClaimableSum) /
-                                                  Number(totalRewardSupply)) *
-                                                100;
-                                              return `${percentage.toFixed(
-                                                2
-                                              )}%`;
-                                            })()}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
+                            <td colSpan={6} className="bg-black/20 p-6">
+                              {/* Stats strip */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Your Deposit</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {isConnected && userBalance && typeof userBalance === "bigint"
+                                      ? formatEther(userBalance)
+                                      : "0"} {collateralSymbol}
                                   </div>
-
-                                  {/* Claimable Tokens */}
-                                  <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
-                                    <h3 className="text-lg font-medium text-white mb-4">
-                                      Claimable Tokens
-                                    </h3>
-                                    <div className="space-y-3">
-                                      <div className="flex justify-between items-center text-sm">
-                                        <span className="text-[#F5F5F5]/70">
-                                          {market.peggedToken.name}
-                                        </span>
-                                        <span className="font-mono text-white">
-                                          {Array.isArray(claimableAmounts) &&
-                                          claimableAmounts[0] &&
-                                          typeof claimableAmounts[0] ===
-                                            "bigint"
-                                            ? formatEther(claimableAmounts[0])
-                                            : "0"}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-sm">
-                                        <span className="text-[#F5F5F5]/70">
-                                          {market.leveragedToken.name}
-                                        </span>
-                                        <span className="font-mono text-white">
-                                          {Array.isArray(claimableAmounts) &&
-                                          claimableAmounts[1] &&
-                                          typeof claimableAmounts[1] ===
-                                            "bigint"
-                                            ? formatEther(claimableAmounts[1])
-                                            : "0"}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between items-center text-sm">
-                                        <span className="text-[#F5F5F5]/70">
-                                          Rewards
-                                        </span>
-                                        <span className="font-mono text-white">
-                                          {Number(
-                                            market.rewardToken.amount
-                                          ).toLocaleString()}{" "}
-                                          {market.rewardToken.symbol}
-                                        </span>
-                                      </div>
-                                    </div>
+                                </div>
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Total Deposits</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {totalDeposits && typeof totalDeposits === "bigint" ? formatEther(totalDeposits) : "0"} {collateralSymbol}
                                   </div>
-
-                                  {/* APR Calculator */}
-                                  <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 w-full">
-                                    <h3 className="text-lg font-medium text-white mb-4">
-                                      APR Calculator
-                                    </h3>
-                                    <GenesisAPRCalculator
-                                      marketId={marketId}
-                                      rewardTokenSymbol={
-                                        market.rewardToken.symbol
-                                      }
-                                      rewardPoolAmount={Number(
-                                        market.rewardToken.amount
-                                      )}
-                                      totalDeposits={
-                                        (allTokenData?.[tokenDataOffset + 1]
-                                          ?.result as bigint | undefined) ??
-                                        undefined
-                                      }
-                                      collateralSymbol={
-                                        (allTokenData?.[tokenDataOffset]
-                                          ?.result as string | undefined) ??
-                                        "COLL"
-                                      }
-                                    />
+                                </div>
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Rewards</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Status</div>
+                                  <div className="mt-1">
+                                    <span className={`text-xs inline-block px-2 py-0.5 border font-bold ${phaseStyles[genesisStatus.phase]}`}>{phaseInfo.title}</span>
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Actions */}
+                              <div className="flex flex-wrap gap-3 mb-6">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMarketStates((prev) => ({
+                                      ...prev,
+                                      [marketId]: { ...prev[marketId], depositModalOpen: true },
+                                    }));
+                                  }}
+                                  className="px-4 py-2 bg-[#4A7C59] hover:bg-[#3A6147] text-white text-sm"
+                                >
+                                  Deposit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMarketStates((prev) => ({
+                                      ...prev,
+                                      [marketId]: { ...prev[marketId], withdrawModalOpen: true },
+                                    }));
+                                  }}
+                                  className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm"
+                                >
+                                  Withdraw
+                                </button>
+                                {isConnected && genesisStatus.canClaim ? (
+                                  (() => {
+                                    const hasClaimableTokens =
+                                      Array.isArray(claimableAmounts) &&
+                                      claimableAmounts[0] &&
+                                      claimableAmounts[1] &&
+                                      typeof claimableAmounts[0] === "bigint" &&
+                                      typeof claimableAmounts[1] === "bigint" &&
+                                      (claimableAmounts[0] > 0n || claimableAmounts[1] > 0n);
+
+                                    return (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleClaim(marketId);
+                                        }}
+                                        disabled={!hasClaimableTokens}
+                                        className={`px-4 py-2 text-sm ${hasClaimableTokens ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-zinc-700 text-zinc-400 cursor-not-allowed"}`}
+                                      >
+                                        {hasClaimableTokens ? "Claim" : "No Tokens"}
+                                      </button>
+                                    );
+                                  })()
+                                ) : (
+                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">{genesisStatus.canClaim ? "Connect wallet to claim" : "Claiming not available"}</div>
+                                )}
+                              </div>
+
+                              {/* Claimable list */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.peggedToken.name}</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Array.isArray(claimableAmounts) && claimableAmounts[0] && typeof claimableAmounts[0] === "bigint"
+                                      ? formatEther(claimableAmounts[0])
+                                      : "0"}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.leveragedToken.name}</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Array.isArray(claimableAmounts) && claimableAmounts[1] && typeof claimableAmounts[1] === "bigint"
+                                      ? formatEther(claimableAmounts[1])
+                                      : "0"}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Reward Pool</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* APR Calculator collapsible */}
+                              <details className="group">
+                                <summary className="list-none cursor-pointer select-none text-xs uppercase text-white/60 tracking-wider">
+                                  <span className="group-open:hidden">Show APR Calculator</span>
+                                  <span className="hidden group-open:inline">Hide APR Calculator</span>
+                                </summary>
+                                <div className="mt-3">
+                                  <GenesisAPRCalculator
+                                    marketId={marketId}
+                                    rewardTokenSymbol={market.rewardToken.symbol}
+                                    rewardPoolAmount={Number(market.rewardToken.amount)}
+                                    totalDeposits={(allTokenData?.[tokenDataOffset + 1]?.result as bigint | undefined) ?? undefined}
+                                    collateralSymbol={(allTokenData?.[tokenDataOffset]?.result as string | undefined) ?? "COLL"}
+                                  />
+                                </div>
+                              </details>
+
+                              {/* Modals */}
+                              <GenesisDepositModal
+                                isOpen={marketStates[marketId].depositModalOpen}
+                                onClose={() =>
+                                  setMarketStates((prev) => ({
+                                    ...prev,
+                                    [marketId]: { ...prev[marketId], depositModalOpen: false },
+                                  }))
+                                }
+                                genesisAddress={market.addresses.genesis}
+                                collateralAddress={market.addresses.collateralToken}
+                                collateralSymbol={collateralSymbol as string}
+                                onSuccess={refetchAllData}
+                              />
+                              <GenesisWithdrawModal
+                                isOpen={marketStates[marketId].withdrawModalOpen}
+                                onClose={() =>
+                                  setMarketStates((prev) => ({
+                                    ...prev,
+                                    [marketId]: { ...prev[marketId], withdrawModalOpen: false },
+                                  }))
+                                }
+                                genesisAddress={market.addresses.genesis}
+                                collateralSymbol={collateralSymbol as string}
+                                userDeposit={(userBalance as bigint) || 0n}
+                                onSuccess={refetchAllData}
+                              />
                             </td>
                           </tr>
                         )}
@@ -1007,7 +980,7 @@ export default function Genesis() {
         {/* Completed Markets */}
         <div className="space-y-4">
           <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
-            <h2 className={`text-2xl text-white mb-2 font-geo p-6 pb-2`}>
+            <h2 className={`text-lg text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}>
               Completed Markets
             </h2>
             {completedMarkets.length === 0 ? (
@@ -1070,7 +1043,7 @@ export default function Genesis() {
                           onClick={() => toggleMarket(marketId)}
                           className="transition hover:bg-grey-light/20 text-md cursor-pointer border-t border-white/10"
                         >
-                          <td className="py-1 px-8 whitespace-nowrap">
+                          <td className="py-2 px-8 whitespace-nowrap">
                             <div className="flex items-center gap-4">
                               <Image
                                 src={market.chain.logo}
@@ -1086,7 +1059,7 @@ export default function Genesis() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             {isConnected &&
                             userBalance &&
                             typeof userBalance === "bigint"
@@ -1094,7 +1067,7 @@ export default function Genesis() {
                               : "0"}{" "}
                             {collateralSymbol}
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             {(() => {
                               if (!isConnected || !claimableAmounts)
                                 return "0%";
@@ -1111,11 +1084,11 @@ export default function Genesis() {
                               return percentage.toFixed(2) + "%";
                             })()}
                           </td>
-                          <td className="py-3 px-6 text-right">
+                          <td className="py-2 px-6 text-right">
                             <span
                               className={`text-sm inline-block px-3 py-1 border font-bold ${
-                                geo.className
-                              } ${phaseStyles[genesisStatus.phase]}`}
+                                phaseStyles[genesisStatus.phase]
+                              }`}
                             >
                               {phaseInfo.title}
                             </span>
@@ -1123,99 +1096,86 @@ export default function Genesis() {
                         </tr>
                         {marketStates[marketId].isExpanded && (
                           <tr>
-                            <td colSpan={4}>
-                              <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  {/* Left Column: Claimable Tokens */}
-                                  <div className="space-y-6">
-                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-                                      <h3 className="text-lg font-medium text-white mb-4">
-                                        Claimable Tokens
-                                      </h3>
-                                      <div className="space-y-3">
-                                        <div className="flex justify-between items-center text-sm">
-                                          <span className="text-[#F5F5F5]/70">
-                                            {market.peggedToken.name}
-                                          </span>
-                                          <span className="font-mono text-white">
-                                            {Array.isArray(claimableAmounts) &&
-                                            claimableAmounts[0] &&
-                                            typeof claimableAmounts[0] ===
-                                              "bigint"
-                                              ? formatEther(claimableAmounts[0])
-                                              : "0"}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                          <span className="text-[#F5F5F5]/70">
-                                            {market.leveragedToken.name}
-                                          </span>
-                                          <span className="font-mono text-white">
-                                            {Array.isArray(claimableAmounts) &&
-                                            claimableAmounts[1] &&
-                                            typeof claimableAmounts[1] ===
-                                              "bigint"
-                                              ? formatEther(claimableAmounts[1])
-                                              : "0"}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                          <span className="text-[#F5F5F5]/70">
-                                            Rewards
-                                          </span>
-                                          <span className="font-mono text-white">
-                                            {Number(
-                                              market.rewardToken.amount
-                                            ).toLocaleString()}{" "}
-                                            {market.rewardToken.symbol}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
+                            <td colSpan={4} className="bg-black/20 p-6">
+                              {/* Stats strip */}
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Your Deposit</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {isConnected && userBalance && typeof userBalance === "bigint" ? formatEther(userBalance) : "0"} {collateralSymbol}
                                   </div>
+                                </div>
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Claimable Total</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {(() => {
+                                      const sum = Array.isArray(claimableAmounts)
+                                        ? ((claimableAmounts[0] || 0n) + (claimableAmounts[1] || 0n))
+                                        : 0n;
+                                      return Number(sum) === 0 ? "0" : formatEther(sum as bigint);
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/40 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Status</div>
+                                  <div className="mt-1">
+                                    <span className={`text-xs inline-block px-2 py-0.5 border font-bold ${phaseStyles[genesisStatus.phase]}`}>{phaseInfo.title}</span>
+                                  </div>
+                                </div>
+                              </div>
 
-                                  {/* Right Column: Claim Button */}
-                                  <div className="space-y-6">
-                                    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full flex flex-col justify-center">
-                                      {isConnected && genesisStatus.canClaim ? (
-                                        (() => {
-                                          const hasClaimableTokens =
-                                            Array.isArray(claimableAmounts) &&
-                                            claimableAmounts[0] &&
-                                            claimableAmounts[1] &&
-                                            typeof claimableAmounts[0] ===
-                                              "bigint" &&
-                                            typeof claimableAmounts[1] ===
-                                              "bigint" &&
-                                            (claimableAmounts[0] > 0n ||
-                                              claimableAmounts[1] > 0n);
+                              {/* Actions */}
+                              <div className="flex flex-wrap gap-3 mb-6">
+                                {isConnected && genesisStatus.canClaim ? (
+                                  (() => {
+                                    const hasClaimableTokens =
+                                      Array.isArray(claimableAmounts) &&
+                                      claimableAmounts[0] &&
+                                      claimableAmounts[1] &&
+                                      typeof claimableAmounts[0] === "bigint" &&
+                                      typeof claimableAmounts[1] === "bigint" &&
+                                      (claimableAmounts[0] > 0n || claimableAmounts[1] > 0n);
 
-                                          return hasClaimableTokens ? (
-                                            <button
-                                              onClick={() =>
-                                                handleClaim(marketId)
-                                              }
-                                              className={`w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors`}
-                                            >
-                                              CLAIM TOKENS
-                                            </button>
-                                          ) : (
-                                            <button
-                                              disabled
-                                              className={`w-full py-3 bg-gray-600 text-gray-400 font-medium shadow-lg cursor-not-allowed`}
-                                            >
-                                              NO TOKENS TO CLAIM
-                                            </button>
-                                          );
-                                        })()
-                                      ) : (
-                                        <div className="py-3 text-center text-[#F5F5F5]/50 text-sm">
-                                          {genesisStatus.canClaim
-                                            ? "Connect wallet to claim"
-                                            : "Claiming not available"}
-                                        </div>
-                                      )}
-                                    </div>
+                                    return (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleClaim(marketId);
+                                        }}
+                                        disabled={!hasClaimableTokens}
+                                        className={`px-4 py-2 text-sm ${hasClaimableTokens ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-zinc-700 text-zinc-400 cursor-not-allowed"}`}
+                                      >
+                                        {hasClaimableTokens ? "Claim" : "No Tokens"}
+                                      </button>
+                                    );
+                                  })()
+                                ) : (
+                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">{genesisStatus.canClaim ? "Connect wallet to claim" : "Claiming not available"}</div>
+                                )}
+                              </div>
+
+                              {/* Claimable list */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.peggedToken.name}</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Array.isArray(claimableAmounts) && claimableAmounts[0] && typeof claimableAmounts[0] === "bigint"
+                                      ? formatEther(claimableAmounts[0])
+                                      : "0"}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.leveragedToken.name}</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Array.isArray(claimableAmounts) && claimableAmounts[1] && typeof claimableAmounts[1] === "bigint"
+                                      ? formatEther(claimableAmounts[1])
+                                      : "0"}
+                                  </div>
+                                </div>
+                                <div className="bg-zinc-900/30 border border-white/10 p-3">
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Reward Pool</div>
+                                  <div className="text-sm font-mono text-white mt-1">
+                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
                                   </div>
                                 </div>
                               </div>

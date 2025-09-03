@@ -18,7 +18,7 @@ const geo = Geo({
   display: "swap",
 });
 
-interface GenesisWithdrawModalProps {
+interface GenesisWithdrawalModalProps {
   isOpen: boolean;
   onClose: () => void;
   genesisAddress: string;
@@ -42,14 +42,14 @@ const genesisABI = [
 
 type ModalStep = "input" | "withdrawing" | "success" | "error";
 
-export default function GenesisWithdrawModal({
+export const GenesisWithdrawModal = ({
   isOpen,
   onClose,
   genesisAddress,
   collateralSymbol,
   userDeposit,
   onSuccess,
-}: GenesisWithdrawModalProps) {
+}: GenesisWithdrawalModalProps) => {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<ModalStep>("input");
@@ -381,4 +381,4 @@ export default function GenesisWithdrawModal({
       </div>
     </div>
   );
-}
+};

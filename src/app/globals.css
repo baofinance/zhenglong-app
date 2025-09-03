@@ -16,13 +16,18 @@
   }
 
   body {
-    @apply text-[#F5F5F5] min-h-screen font-geo;
+    @apply bg-black text-[#F5F5F5] min-h-screen;
   }
-}
 
-@layer components {
-  .test-style {
-    @apply bg-red-500 text-white p-4;
+  /* Font family declarations with better fallbacks */
+  .font-geo {
+    font-family: var(--font-geo), 'Geo', 'Arial', ui-sans-serif, system-ui, sans-serif;
+    font-display: swap;
+  }
+
+  .font-space-grotesk {
+    font-family: var(--font-space-grotesk), 'Space Grotesk', 'Arial', ui-sans-serif, system-ui, sans-serif;
+    font-display: swap;
   }
 }
 

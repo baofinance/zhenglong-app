@@ -240,24 +240,24 @@ export default function Earn() {
   };
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
-      <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-3 relative z-10">
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+      <main className="container mx-auto max-w-full pt-[6rem] pb-3 relative z-10">
         <div className="text-center mb-4">
           <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
             EARN
           </h1>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 flex flex-col gap-2">
-            <p className="text-md font-bold text-white tracking-wide flex items-center gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6">
+            <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
               <Image
                 src={Money}
                 alt="Money"
-                className="w-6 h-6 filter invert brightness-0"
+                className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
               />
               Total Deposited
             </p>
-            <p className="text-2xl font-semibold text-white">
+            <p className="text-lg sm:text-xl md:text-2xl font-semibold text-white">
               $
               {poolsWithData
                 .reduce((acc, pool) => {
@@ -269,16 +269,16 @@ export default function Earn() {
                 .toFixed(2)}
             </p>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 flex flex-col gap-2">
-            <p className="text-md font-bold text-white tracking-wide flex items-center gap-2">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6">
+            <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
               <Image
                 src={Gift}
                 alt="Gift"
-                className="w-6 h-6 filter invert brightness-0"
+                className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
               />
               Total Claimable
             </p>
-            <p className="text-2xl font-semibold text-white">
+            <p className="text-lg sm:text-xl md:text-2xl font-semibold text-white">
               {poolsWithData
                 .reduce((acc, pool) => {
                   const rewards = pool.rewards
@@ -290,7 +290,7 @@ export default function Earn() {
               STEAM
             </p>
           </div>
-          <div className="lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
+          <div className="col-span-2 lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-md font-bold text-white tracking-wide flex items-center gap-2">
                 <Image

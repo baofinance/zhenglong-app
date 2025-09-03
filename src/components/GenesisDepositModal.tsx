@@ -30,14 +30,14 @@ interface GenesisDepositModalProps {
 
 type ModalStep = "input" | "approving" | "depositing" | "success" | "error";
 
-export default function GenesisDepositModal({
+export const GenesisDepositModal = ({
   isOpen,
   onClose,
   genesisAddress,
   collateralAddress,
   collateralSymbol,
   onSuccess,
-}: GenesisDepositModalProps) {
+}: GenesisDepositModalProps) => {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<ModalStep>("input");
@@ -485,4 +485,4 @@ export default function GenesisDepositModal({
       </div>
     </div>
   );
-}
+};

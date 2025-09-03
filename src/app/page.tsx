@@ -282,7 +282,7 @@ export default function App() {
         <Image
           src={Dollar}
           alt="Dollar"
-          className="w-6 h-6 filter invert brightness-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
     },
@@ -295,7 +295,7 @@ export default function App() {
         <Image
           src={Money}
           alt="Money"
-          className="w-6 h-6 filter invert brightness-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
     },
@@ -308,7 +308,7 @@ export default function App() {
         <Image
           src={Chart}
           alt="Chart"
-          className="w-6 h-6 filter invert brightness-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
     },
@@ -321,7 +321,7 @@ export default function App() {
         <Image
           src={Shield}
           alt="Shield"
-          className="w-6 h-6 filter invert brightness-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
     },
@@ -332,7 +332,7 @@ export default function App() {
         <Image
           src={LinkIcon}
           alt="Link"
-          className="w-6 h-6 filter invert brightness-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
     },
@@ -350,17 +350,17 @@ export default function App() {
       <div className="max-w-[1300px] px-4 sm:px-10 mx-auto">
         <main className="container mx-auto max-w-full pt-28 pb-20">
           {/* System Health Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-5 gap-2 sm:gap-4 mb-8">
             {healthStats.map((stat) => (
               <div
                 key={stat.label}
-                className="relative group h-full bg-zinc-900/50 outline outline-1 outline-emerald-500/10 p-6 hover:outline-emerald-500/30 transition-all duration-300"
+                className="relative group h-full bg-zinc-900/50 outline outline-1 outline-emerald-500/10 p-3 sm:p-4 md:p-6 hover:outline-emerald-500/30 transition-all duration-300"
               >
-                <p className="text-md font-bold text-white tracking-wide mb-1 flex items-center gap-2">
+                <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
                   {stat.icon}
                   {stat.label}
                 </p>
-                <p className="text-sm text-white/60">{stat.value}</p>
+                <p className="text-xs sm:text-sm text-white/60">{stat.value}</p>
               </div>
             ))}
           </div>
