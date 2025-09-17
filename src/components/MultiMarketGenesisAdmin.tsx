@@ -37,7 +37,7 @@ function MarketAdminCard({
   } = marketData;
 
   const statusColors = {
-    live: "bg-green-900/30 text-green-400 border-green-500/30",
+    live: "bg-blue-900/30 text-blue-400 border-blue-500/30",
     completed: "bg-blue-900/30 text-blue-400 border-blue-500/30",
     scheduled: "bg-yellow-900/30 text-yellow-400 border-yellow-500/30",
     closed: "bg-orange-900/30 text-orange-400 border-orange-500/30",
@@ -93,7 +93,7 @@ function MarketAdminCard({
           </div>
         </div>
         <div className="text-center p-3 outline outline-1 outline-white/10 bg-black/10">
-          <div className={`text-xl font-bold text-green-400 ${geo.className}`}>
+          <div className={`text-xl font-bold text-blue-400 ${geo.className}`}>
             {totalCollateral > 0n ? formatEther(totalCollateral / 2n) : "0"}
           </div>
           <div className="text-xs text-[#F5F5F5]/70">
@@ -276,8 +276,8 @@ export function MultiMarketGenesisAdmin() {
                 onClick={() => setSelectedTab(tab as any)}
                 className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                   selectedTab === tab
-                    ? "bg-[#4A7C59] text-white"
-                    : "text-white/70 hover:text-white hover:bg-[#4A7C59]/20"
+                    ? "bg-blue-600 text-white"
+                    : "text-white/70 hover:text-white hover:bg-blue-600/20"
                 }`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}

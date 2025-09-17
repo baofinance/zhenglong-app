@@ -234,7 +234,7 @@ export default function ContractInfo({
   const StatusIndicator = ({ isError }: { isError: boolean }) => (
     <span
       className={`inline-block w-2 h-2-full ${
-        isError ? "bg-red-500" : "bg-green-500"
+        isError ? "bg-red-500" : "bg-blue-500"
       }`}
     ></span>
   );
@@ -334,7 +334,7 @@ export default function ContractInfo({
           className={`text-lg ${
             Number(mintFeeData?.[0]?.result || 0) > 0
               ? "text-red-400"
-              : "text-green-400"
+              : "text-blue-400"
           }`}
         >
           {formatIncentiveRatio(mintFeeData?.[0]?.result)}

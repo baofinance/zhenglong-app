@@ -46,7 +46,7 @@ export function GenesisAdminPage() {
               <span
                 className={`ml-2 px-3 py-1 text-sm font-medium border ${
                   status === "ACTIVE"
-                    ? "bg-green-900/30 text-green-400 border-green-500/30"
+                    ? "bg-blue-900/30 text-blue-400 border-blue-500/30"
                     : "bg-red-900/30 text-red-400 border-red-500/30"
                 }`}
               >
@@ -90,7 +90,7 @@ export function GenesisAdminPage() {
               )}
             </div>
           ) : (
-            <div className="text-green-400">
+            <div className="text-blue-400">
               <p>
                 ✅ Genesis phase has ended. Users can now claim their tokens or
                 withdraw collateral.
@@ -99,7 +99,7 @@ export function GenesisAdminPage() {
           )}
 
           {isSuccess && (
-            <div className="mt-4 p-4 bg-green-900/30 border border-green-500/30 text-green-400">
+            <div className="mt-4 p-4 bg-blue-900/30 border border-blue-500/30 text-blue-400">
               🎉 Genesis phase ended successfully! Users can now claim their
               tokens.
             </div>

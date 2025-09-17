@@ -466,7 +466,7 @@ export default function Admin() {
                 System Controls
               </h2>
               <Link href="/admin/genesis">
-                <button className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors">
+                <button className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
                   Genesis Admin
                 </button>
               </Link>
@@ -487,7 +487,7 @@ export default function Admin() {
                 <button
                   onClick={handleUpdateFeeReceiver}
                   disabled={isUpdatingFeeReceiver}
-                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingFeeReceiver ? "Updating..." : "Update"}
                 </button>
@@ -509,7 +509,7 @@ export default function Admin() {
                 <button
                   onClick={handleUpdateReservePool}
                   disabled={isUpdatingReservePool}
-                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingReservePool ? "Updating..." : "Update"}
                 </button>
@@ -531,7 +531,7 @@ export default function Admin() {
                 <button
                   onClick={handleUpdatePriceOracle}
                   disabled={isUpdatingPriceOracle}
-                  className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdatingPriceOracle ? "Updating..." : "Update"}
                 </button>
@@ -591,7 +591,7 @@ export default function Admin() {
                         <button
                           onClick={handleApprove}
                           disabled={isApprovingWrite || !approvalAmount}
-                          className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isApprovingWrite ? "Approving..." : "Approve"}
                         </button>
@@ -632,7 +632,7 @@ export default function Admin() {
                               allowance ||
                             isMintingPegged
                           }
-                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {!allowance
                             ? "Approve First"
@@ -680,7 +680,7 @@ export default function Admin() {
                               allowance ||
                             isMintingLeveraged
                           }
-                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {!allowance
                             ? "Approve First"
@@ -725,7 +725,7 @@ export default function Admin() {
                         <button
                           onClick={handleFreeRedeemPeggedToken}
                           disabled={isRedeemingPegged}
-                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isRedeemingPegged
                             ? "Redeeming..."
@@ -749,7 +749,7 @@ export default function Admin() {
                         <button
                           onClick={handleFreeSwapPeggedForLeveraged}
                           disabled={isSwapping}
-                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSwapping
                             ? "Swapping..."
@@ -775,7 +775,7 @@ export default function Admin() {
                         <button
                           onClick={handleFreeRedeemLeveragedToken}
                           disabled={isRedeemingLeveraged}
-                          className="w-full py-2 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isRedeemingLeveraged
                             ? "Redeeming..."
@@ -796,7 +796,7 @@ export default function Admin() {
               <button
                 onClick={handleUpdatePriceFeed}
                 disabled={!isConnected || isUpdatingPrice}
-                className="py-2 px-4 bg-[#4A7C59] text-white font-medium hover:bg-[#4A7C59]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUpdatingPrice ? "Updating..." : "Update Price Feed"}
               </button>

@@ -274,7 +274,8 @@ export default function App() {
   };
   const healthStats = [
     {
-      label: "Total Collateral",
+      id: "total-collateral",
+      name: "Total Collateral",
       value: (
         <SystemHealth.Value type="collateralValue" marketId={selectedMarket} />
       ),
@@ -287,7 +288,8 @@ export default function App() {
       ),
     },
     {
-      label: "Pegged Tokens",
+      id: "pegged-tokens",
+      name: "Pegged Tokens",
       value: (
         <SystemHealth.Value type="peggedTokens" marketId={selectedMarket} />
       ),
@@ -300,7 +302,8 @@ export default function App() {
       ),
     },
     {
-      label: "Leveraged Tokens",
+      id: "leveraged-tokens",
+      name: "Leveraged Tokens",
       value: (
         <SystemHealth.Value type="leveragedTokens" marketId={selectedMarket} />
       ),
@@ -313,7 +316,8 @@ export default function App() {
       ),
     },
     {
-      label: "Collateral Ratio",
+      id: "collateral-ratio",
+      name: "Collateral Ratio",
       value: (
         <SystemHealth.Value type="collateralRatio" marketId={selectedMarket} />
       ),
@@ -321,17 +325,6 @@ export default function App() {
         <Image
           src={Shield}
           alt="Shield"
-          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
-        />
-      ),
-    },
-    {
-      label: "Price Oracle",
-      value: "Chainlink",
-      icon: (
-        <Image
-          src={LinkIcon}
-          alt="Link"
           className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
         />
       ),
@@ -348,22 +341,19 @@ export default function App() {
       </Head>
 
       <div className="max-w-[1300px] px-4 sm:px-10 mx-auto">
-        <main className="container mx-auto max-w-full pt-28 pb-20">
-          {/* System Health Stats */}
-          <div className="grid grid-cols-5 gap-2 sm:gap-4 mb-8">
+        <main className="container mx-auto max-w-full">
+          <dl className="grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-4">
             {healthStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="relative group h-full bg-zinc-900/50 outline outline-1 outline-emerald-500/10 p-3 sm:p-4 md:p-6 hover:outline-emerald-500/30 transition-all duration-300"
-              >
-                <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
-                  {stat.icon}
-                  {stat.label}
-                </p>
-                <p className="text-xs sm:text-sm text-white/60">{stat.value}</p>
+              <div key={stat.id} className="flex flex-col bg-white/5 p-8">
+                <dt className="text-sm/6 font-semibold text-gray-300">
+                  {stat.name}
+                </dt>
+                <dd className="order-first text-3xl font-semibold tracking-tight text-white">
+                  {stat.value}
+                </dd>
               </div>
             ))}
-          </div>
+          </dl>
 
           {/* Market Selector & Token Info */}
           <div className="max-w-7xl mx-auto mb-4 mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

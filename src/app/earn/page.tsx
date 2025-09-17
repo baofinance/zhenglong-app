@@ -62,7 +62,7 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
         (window.location.href = `/earn/${pool.marketId}/${pool.poolType}`)
       }
     >
-      <td className="py-1 px-8 whitespace-nowrap">
+      <td className="py-3 px-8 whitespace-nowrap">
         <div className="flex items-center gap-4">
           <div className="flex w-6 items-center justify-center">
             {pool.assetIcons
@@ -81,30 +81,15 @@ function PoolRow({ pool, formatAmount, formatAPRBreakdown }: PoolRowProps) {
                 />
               ))}
           </div>
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex flex-col items-start gap-0.5">
             <span className="font-medium ">{pool.name}</span>
-            {/* <div className="text-xs text-white/60">
-              <span>{pool.groupName}</span>
-              {pool.groupSubText && (
-                <span className="ml-1">{pool.groupSubText}</span>
-              )}
-            </div> 
-            <div className="flex items-center gap-2 mt-1">
-              <div className="inline-flex items-center gap-2-full border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-sm">
-                <Image
-                  src={pool.chainIcon}
-                  alt={pool.chain}
-                  width={14}
-                  height={14}
-                  className="rounded-full"
-                />
-                <span className="text-xs text-[#A3A3A3]">{pool.chain}</span>
-              </div>
-            </div>*/}
+            <span className="text-xs text-white/60">
+              You: {pool.userDeposit ? formatAmount(pool.userDeposit) : "0.00"}
+            </span>
           </div>
         </div>
       </td>
-      <td className="py-1 px-6 text-right">
+      <td className="py-3 px-6 text-right">
         <span>{pool.type}</span>
         {pool.leverageRatio && (
           <span className="font-bold text-white ml-1">
@@ -163,6 +148,19 @@ export default function Earn() {
       groups[pool.groupName].push(pool);
     }
     return Object.entries(groups);
+  }, [poolsWithData]);
+
+  const headerCounts = useMemo(() => {
+    const totals = { total: allPools.length, collateral: 0, leveraged: 0 };
+    for (const p of allPools) {
+      if (p.type === "Collateral") totals.collateral++;
+      else if (p.type === "Leveraged") totals.leveraged++;
+    }
+    return totals;
+  }, [allPools]);
+
+  const totalTVL = useMemo(() => {
+    return poolsWithData.reduce((acc, p) => acc + (p.tvlUSD || 0), 0);
   }, [poolsWithData]);
 
   // Format helpers
@@ -242,13 +240,23 @@ export default function Earn() {
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
       <main className="container mx-auto max-w-full pt-[6rem] pb-3 relative z-10">
-        <div className="text-center mb-4">
-          <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
-            EARN
-          </h1>
+        <div className="mb-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-medium font-geo text-white">
+                EARN
+              </h1>
+              <p className="mt-1 text-sm text-white/60">
+                {headerCounts.total} pools · TVL $
+                {totalTVL.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4">
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6 rounded-xl">
             <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
               <Image
                 src={Money}
@@ -269,7 +277,7 @@ export default function Earn() {
                 .toFixed(2)}
             </p>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6">
+          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-3 sm:p-4 md:p-6 rounded-xl">
             <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight sm:tracking-normal mb-1 flex items-center gap-2">
               <Image
                 src={Gift}
@@ -290,7 +298,7 @@ export default function Earn() {
               STEAM
             </p>
           </div>
-          <div className="col-span-2 lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
+          <div className="col-span-2 lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-4 rounded-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-md font-bold text-white tracking-wide flex items-center gap-2">
                 <Image
@@ -324,7 +332,7 @@ export default function Earn() {
                 isClaimingAll ||
                 poolsWithData.every((p) => !p.rewards || p.rewards === 0n)
               }
-              className="w-full py-2 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors"
+              className="w-full py-2 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors rounded-lg"
             >
               {isClaimingAll
                 ? "Processing..."
@@ -334,11 +342,36 @@ export default function Earn() {
             </button>
           </div>
         </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="relative w-full md:max-w-sm">
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search pools..."
+              className="w-full rounded-lg bg-zinc-900/60 border border-white/10 px-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilterType(opt.value as typeof filterType)}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  filterType === opt.value
+                    ? "bg-white text-black border-white"
+                    : "bg-zinc-900/60 text-white border-white/10 hover:border-white/20"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="space-y-4">
           {groupedPools.map(([groupName, poolsInGroup]) => (
             <div
               key={groupName}
-              className="shadow-lg relative group bg-zinc-900/50 outline pb-2 outline-1 outline-emerald-500/10 hover:outline-emerald-500/30 transition-all duration-300 overflow-x-auto"
+              className="shadow-lg relative group bg-zinc-900/50 outline pb-2 outline-1 outline-blue-500/10 hover:outline-blue-500/30 transition-all duration-300 overflow-x-auto rounded-xl"
             >
               <h2 className="text-2xl font-medium p-6 pb-2 font-geo">
                 {groupName}
@@ -352,10 +385,10 @@ export default function Earn() {
                         Type
                       </th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
-                        Pool APR
+                        Base APR
                       </th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
-                        Your Deposit
+                        Boost APR
                       </th>
                       <th className="w-40 py-3 px-6 text-right font-normal">
                         Rewards

@@ -22,11 +22,10 @@ export default async function RootLayout({
   const cookies = headersObj.get("cookie");
 
   return (
-    <html lang="en" className={`${geo.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en">
       <body
         className={`antialiased font-sans bg-zinc-950 text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
       >
-        <AnimatedSmokeBackground />
         <div className="relative z-10">
           <ContextProvider cookies={cookies}>
             <Navigation />

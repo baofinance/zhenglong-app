@@ -22,13 +22,14 @@ import Link from "next/link";
 import Image from "next/image";
 import Info from "pixelarticons/svg/info-box.svg";
 import Navigation from "../../components/Navigation";
-import GenesisClaim from "../../components/GenesisClaim";
-import { GenesisDepositModal } from "../../components/GenesisDepositModal";
-import { GenesisWithdrawModal } from "../../components/GenesisWithdrawModal";
+// import GenesisClaim from "../../components/GenesisClaim";
+// Removed modal-based deposit/withdraw components in favor of inline inputs
+// import { GenesisDepositModal } from "../../components/GenesisDepositModal";
+// import { GenesisWithdrawModal } from "../../components/GenesisWithdrawModal";
 import GenesisClaimStatusModal from "../../components/GenesisClaimStatusModal";
 import GenesisSummaryModal from "../../components/GenesisSummaryModal";
 import { minterABI } from "../../abis/minter";
-import GenesisAPRCalculator from "../../components/GenesisAPRCalculator";
+// Removed standalone ROI/APR calculator component in favor of inline calculation
 
 const geo = Geo({
   subsets: ["latin"],
@@ -165,6 +166,24 @@ const erc20ABI = [
   },
 ] as const;
 
+// Minimal Chainlink oracle ABI for price reads
+const chainlinkOracleABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [{ type: "int256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
 interface MarketState {
   isExpanded: boolean;
   depositAmount: string;
@@ -172,6 +191,8 @@ interface MarketState {
   activeTab: "deposit" | "withdraw" | "rewards" | "claim";
   depositModalOpen: boolean;
   withdrawModalOpen: boolean;
+  fdvPreset?: "bear" | "base" | "bull";
+  fdvCustom?: string;
 }
 
 interface ContractReadResult<T = any> {
@@ -234,6 +255,8 @@ export default function Genesis() {
           activeTab: "deposit",
           depositModalOpen: false,
           withdrawModalOpen: false,
+          fdvPreset: "bull",
+          fdvCustom: "50000000",
         };
         return acc;
       }, {} as Record<string, MarketState>);
@@ -420,6 +443,23 @@ export default function Genesis() {
     query: { enabled: genesisMarkets.length > 0 },
   });
 
+  // Read oracle price for each market (decimals + latestAnswer)
+  const { data: allOracleData } = useContractReads({
+    contracts: genesisMarkets.flatMap(([id, market]) => [
+      {
+        address: market.addresses.priceOracle as `0x${string}`,
+        abi: chainlinkOracleABI,
+        functionName: "decimals",
+      },
+      {
+        address: market.addresses.priceOracle as `0x${string}`,
+        abi: chainlinkOracleABI,
+        functionName: "latestAnswer",
+      },
+    ]),
+    query: { enabled: genesisMarkets.length > 0 },
+  });
+
   // Function to refresh all contract data
   const refetchAllData = async () => {
     // Sequential to avoid deep generic instantiation in Promise.all
@@ -551,16 +591,22 @@ export default function Genesis() {
 
     try {
       setIsPending(true);
-      // Get user's balance for withdrawal
+      // Determine withdraw amount from input; fallback to full balance if not set
       const marketIndex = genesisMarkets.findIndex(([id]) => id === marketId);
       const dataOffset = marketIndex * (address ? 5 : 3);
-      const userBalance = allMarketsData?.[dataOffset + 3]?.result;
+      const userBalance = allMarketsData?.[dataOffset + 3]?.result as
+        | bigint
+        | undefined;
+
+      const userTyped = marketStates[marketId]?.withdrawAmount || "";
       const withdrawAmount =
-        userBalance && typeof userBalance === "bigint"
-          ? userBalance // Withdraw user's full balance
+        userTyped && Number(userTyped) > 0
+          ? parseEther(userTyped)
+          : userBalance && typeof userBalance === "bigint"
+          ? userBalance
           : BigInt(
               "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-            ); // MaxUint256 for max
+            );
 
       const write = contractWrites[marketId].withdraw;
 
@@ -682,7 +728,9 @@ export default function Genesis() {
         {/* Active Markets */}
         <div className="space-y-4">
           <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
-            <h2 className={`text-xl text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}>
+            <h2
+              className={`text-xl text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}
+            >
               Active Markets
             </h2>
             {activeMarkets.length === 0 ? (
@@ -719,19 +767,32 @@ export default function Genesis() {
                     );
                     const dataOffset = marketIndex * (address ? 5 : 3);
                     const tokenDataOffset = marketIndex * (address ? 4 : 2);
+                    const oracleOffset = marketIndex * 2;
 
-                    const totalDeposits =
-                      allTokenData?.[tokenDataOffset + 1]?.result;
+                    const totalDeposits = allTokenData?.[tokenDataOffset + 1]
+                      ?.result as bigint | undefined;
                     const totalRewards =
                       allMarketsData?.[dataOffset + 2]?.result;
                     const userBalance = address
-                      ? allMarketsData?.[dataOffset + 3]?.result
+                      ? (allMarketsData?.[dataOffset + 3]?.result as
+                          | bigint
+                          | undefined)
                       : undefined;
                     const claimableAmounts = address
                       ? allMarketsData?.[dataOffset + 4]?.result
                       : undefined;
-                    const collateralSymbol =
-                      allTokenData?.[tokenDataOffset]?.result;
+                    const collateralSymbol = allTokenData?.[tokenDataOffset]
+                      ?.result as string | undefined;
+
+                    const oracleDecimals = allOracleData?.[oracleOffset]
+                      ?.result as number | undefined;
+                    const oraclePriceRaw = allOracleData?.[oracleOffset + 1]
+                      ?.result as bigint | undefined;
+                    const stEthPriceUSD =
+                      oracleDecimals !== undefined &&
+                      oraclePriceRaw !== undefined
+                        ? Number(oraclePriceRaw) / 10 ** Number(oracleDecimals)
+                        : undefined;
 
                     const onChainGenesisEnded =
                       allMarketsData?.[dataOffset]?.result === true;
@@ -742,10 +803,42 @@ export default function Genesis() {
                     const phaseInfo = getGenesisPhaseInfo(genesisStatus.phase);
                     const phaseStyles = {
                       scheduled: "text-blue-400 bg-blue-400/10",
-                      live: "text-green-400 bg-green-400/10",
+                      live: "text-blue-400 bg-blue-400/10",
                       closed: "text-yellow-400 bg-yellow-400/10",
                       completed: "text-purple-400 bg-purple-400/10",
                     };
+
+                    // ROI preview based on typed deposit amount
+                    const typedDeposit = parseFloat(
+                      marketStates[marketId]?.depositAmount || "0"
+                    );
+                    const poolDeposits = Number(totalDeposits ?? 0n) / 1e18;
+                    const maxSupply = 100_000_000;
+                    const rewardPoolTokens = Number(market.rewardToken.amount);
+                    const preset = marketStates[marketId]?.fdvPreset || "bull";
+                    const customFdvStr =
+                      marketStates[marketId]?.fdvCustom || "";
+                    const fdvFromPreset =
+                      preset === "bear"
+                        ? 10_000_000
+                        : preset === "base"
+                        ? 25_000_000
+                        : 50_000_000;
+                    const fdvEffective =
+                      customFdvStr && Number(customFdvStr) > 0
+                        ? Number(customFdvStr)
+                        : fdvFromPreset;
+
+                    const roiPercent = (() => {
+                      const B1 = Math.max(0, rewardPoolTokens);
+                      const B2 = maxSupply;
+                      const B3 = Math.max(0, poolDeposits);
+                      const B4 = Math.max(0, typedDeposit);
+                      const B5 = Math.max(0, fdvEffective);
+                      const B6 = Math.max(0, stEthPriceUSD ?? 0);
+                      if (B3 === 0 || B4 === 0 || B6 === 0) return 0;
+                      return ((B1 * (B4 / B3) * (B5 / B2)) / (B4 * B6)) * 100;
+                    })();
 
                     return (
                       <Fragment key={marketId}>
@@ -811,62 +904,252 @@ export default function Genesis() {
                         {marketStates[marketId].isExpanded && (
                           <tr>
                             <td colSpan={6} className="bg-black/20 p-6">
-                              {/* Stats strip */}
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Your Deposit</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {isConnected && userBalance && typeof userBalance === "bigint"
-                                      ? formatEther(userBalance)
-                                      : "0"} {collateralSymbol}
+                              {/* Inline Actions */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                {/* Deposit column */}
+                                <div className="bg-zinc-900/40 border border-white/10 p-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs uppercase text-white/60 tracking-wider">
+                                      Deposit
+                                    </div>
+                                    <div className="text-[10px] text-white/50">
+                                      Price:{" "}
+                                      {stEthPriceUSD
+                                        ? `$${stEthPriceUSD.toFixed(2)}`
+                                        : "-"}
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <input
+                                        type="number"
+                                        placeholder="0.0"
+                                        value={
+                                          marketStates[marketId].depositAmount
+                                        }
+                                        onChange={(e) =>
+                                          setMarketStates((prev) => ({
+                                            ...prev,
+                                            [marketId]: {
+                                              ...prev[marketId],
+                                              depositAmount: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        className="w-full bg-zinc-800/60 text-white text-sm pr-14 pl-3 py-2 outline outline-1 outline-white/10 focus:outline-white/20"
+                                      />
+                                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/60">
+                                        {collateralSymbol}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMaxDeposit(marketId);
+                                      }}
+                                      className="px-3 py-2 text-xs bg-zinc-700 hover:bg-zinc-600 text-white"
+                                    >
+                                      Max
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-3">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeposit(marketId);
+                                      }}
+                                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm"
+                                    >
+                                      Deposit
+                                    </button>
+                                  </div>
+
+                                  {/* ROI Preview */}
+                                  <div className="mt-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-xs text-white/60">
+                                        Estimated ROI
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <div className="relative group inline-block">
+                                          <span className="text-sm font-semibold text-white">
+                                            {Number.isFinite(roiPercent)
+                                              ? `${roiPercent.toFixed(0)}%`
+                                              : "-"}
+                                          </span>
+                                          <div className="absolute left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block z-20 w-72 bg-zinc-900/95 border border-white/10 p-3 text-xs text-white shadow-lg">
+                                            <div className="font-semibold mb-1">
+                                              Breakdown
+                                            </div>
+                                            <div>
+                                              Reward Pool (B1):{" "}
+                                              {rewardPoolTokens.toLocaleString()}{" "}
+                                              {market.rewardToken.symbol}
+                                            </div>
+                                            <div>
+                                              Max Supply (B2): 100,000,000
+                                            </div>
+                                            <div>
+                                              Total Deposits (B3):{" "}
+                                              {poolDeposits.toLocaleString(
+                                                undefined,
+                                                { maximumFractionDigits: 4 }
+                                              )}{" "}
+                                              {collateralSymbol}
+                                            </div>
+                                            <div>
+                                              Your Deposit (B4):{" "}
+                                              {typedDeposit.toLocaleString(
+                                                undefined,
+                                                { maximumFractionDigits: 4 }
+                                              )}{" "}
+                                              {collateralSymbol}
+                                            </div>
+                                            <div>
+                                              FDV (B5): $
+                                              {fdvEffective.toLocaleString()}
+                                            </div>
+                                            <div>
+                                              stETH Price (B6):{" "}
+                                              {stEthPriceUSD
+                                                ? `$${stEthPriceUSD.toFixed(2)}`
+                                                : "-"}
+                                            </div>
+                                            <div className="mt-2 text-white/70">
+                                              ROI = (B1 * (B4/B3) * (B5/B2)) /
+                                              (B4 * B6) * 100
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* FDV selector */}
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[10px] uppercase text-white/50 tracking-wider">
+                                            FDV
+                                          </span>
+                                          <div className="inline-flex items-center gap-1 rounded bg-zinc-900/50 border border-white/10 px-1 py-1">
+                                            {(
+                                              ["bear", "base", "bull"] as const
+                                            ).map((opt, i) => (
+                                              <button
+                                                key={opt}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setMarketStates((prev) => ({
+                                                    ...prev,
+                                                    [marketId]: {
+                                                      ...prev[marketId],
+                                                      fdvPreset: opt,
+                                                      fdvCustom: "",
+                                                    },
+                                                  }));
+                                                }}
+                                                className={`px-2 py-1 text-[10px] rounded ${
+                                                  (marketStates[marketId]
+                                                    .fdvPreset || "bull") ===
+                                                    opt &&
+                                                  !(
+                                                    marketStates[marketId]
+                                                      .fdvCustom &&
+                                                    Number(
+                                                      marketStates[marketId]
+                                                        .fdvCustom
+                                                    ) > 0
+                                                  )
+                                                    ? "bg-blue-600 text-white"
+                                                    : "text-white/70 hover:text-white hover:bg-zinc-800/60"
+                                                }`}
+                                              >
+                                                {opt === "bear"
+                                                  ? "$10m"
+                                                  : opt === "base"
+                                                  ? "$25m"
+                                                  : "$50m"}
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <div className="relative">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">
+                                              $
+                                            </span>
+                                            <input
+                                              type="number"
+                                              placeholder="Custom"
+                                              value={
+                                                marketStates[marketId].fdvCustom
+                                              }
+                                              onChange={(e) =>
+                                                setMarketStates((prev) => ({
+                                                  ...prev,
+                                                  [marketId]: {
+                                                    ...prev[marketId],
+                                                    fdvCustom: e.target.value,
+                                                  },
+                                                }))
+                                              }
+                                              className="w-28 bg-zinc-800/60 text-white text-[10px] pl-5 pr-2 py-1 outline outline-1 outline-white/10 focus:outline-white/20"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Total Deposits</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {totalDeposits && typeof totalDeposits === "bigint" ? formatEther(totalDeposits) : "0"} {collateralSymbol}
+
+                                {/* Withdraw column */}
+                                <div className="bg-zinc-900/40 border border-white/10 p-4">
+                                  <div className="text-xs uppercase text-white/60 tracking-wider mb-2">
+                                    Withdraw
                                   </div>
-                                </div>
-                                <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Rewards</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <input
+                                        type="number"
+                                        placeholder="0.0"
+                                        value={
+                                          marketStates[marketId].withdrawAmount
+                                        }
+                                        onChange={(e) =>
+                                          setMarketStates((prev) => ({
+                                            ...prev,
+                                            [marketId]: {
+                                              ...prev[marketId],
+                                              withdrawAmount: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        className="w-full bg-zinc-800/60 text-white text-sm pr-14 pl-3 py-2 outline outline-1 outline-white/10 focus:outline-white/20"
+                                      />
+                                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/60">
+                                        {collateralSymbol}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMaxWithdraw(marketId);
+                                      }}
+                                      className="px-3 py-2 text-xs bg-zinc-700 hover:bg-zinc-600 text-white"
+                                    >
+                                      Max
+                                    </button>
                                   </div>
-                                </div>
-                                <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Status</div>
-                                  <div className="mt-1">
-                                    <span className={`text-xs inline-block px-2 py-0.5 border font-bold ${phaseStyles[genesisStatus.phase]}`}>{phaseInfo.title}</span>
+                                  <div className="flex items-center gap-2 mt-3">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleWithdraw(marketId);
+                                      }}
+                                      className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm"
+                                    >
+                                      Withdraw
+                                    </button>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Actions */}
-                              <div className="flex flex-wrap gap-3 mb-6">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMarketStates((prev) => ({
-                                      ...prev,
-                                      [marketId]: { ...prev[marketId], depositModalOpen: true },
-                                    }));
-                                  }}
-                                  className="px-4 py-2 bg-[#4A7C59] hover:bg-[#3A6147] text-white text-sm"
-                                >
-                                  Deposit
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMarketStates((prev) => ({
-                                      ...prev,
-                                      [marketId]: { ...prev[marketId], withdrawModalOpen: true },
-                                    }));
-                                  }}
-                                  className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm"
-                                >
-                                  Withdraw
-                                </button>
+                              {/* Claim controls */}
+                              <div className="flex flex-wrap gap-3 mb-2">
                                 {isConnected && genesisStatus.canClaim ? (
                                   (() => {
                                     const hasClaimableTokens =
@@ -875,7 +1158,8 @@ export default function Genesis() {
                                       claimableAmounts[1] &&
                                       typeof claimableAmounts[0] === "bigint" &&
                                       typeof claimableAmounts[1] === "bigint" &&
-                                      (claimableAmounts[0] > 0n || claimableAmounts[1] > 0n);
+                                      (claimableAmounts[0] > 0n ||
+                                        claimableAmounts[1] > 0n);
 
                                     return (
                                       <button
@@ -884,87 +1168,28 @@ export default function Genesis() {
                                           handleClaim(marketId);
                                         }}
                                         disabled={!hasClaimableTokens}
-                                        className={`px-4 py-2 text-sm ${hasClaimableTokens ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-zinc-700 text-zinc-400 cursor-not-allowed"}`}
+                                        className={`px-4 py-2 text-sm ${
+                                          hasClaimableTokens
+                                            ? "bg-blue-600 hover:bg-blue-500 text-white"
+                                            : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                                        }`}
                                       >
-                                        {hasClaimableTokens ? "Claim" : "No Tokens"}
+                                        {hasClaimableTokens
+                                          ? "Claim"
+                                          : "No Tokens"}
                                       </button>
                                     );
                                   })()
                                 ) : (
-                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">{genesisStatus.canClaim ? "Connect wallet to claim" : "Claiming not available"}</div>
+                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">
+                                    {genesisStatus.canClaim
+                                      ? "Connect wallet to claim"
+                                      : "Claiming not available"}
+                                  </div>
                                 )}
                               </div>
 
-                              {/* Claimable list */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.peggedToken.name}</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Array.isArray(claimableAmounts) && claimableAmounts[0] && typeof claimableAmounts[0] === "bigint"
-                                      ? formatEther(claimableAmounts[0])
-                                      : "0"}
-                                  </div>
-                                </div>
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.leveragedToken.name}</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Array.isArray(claimableAmounts) && claimableAmounts[1] && typeof claimableAmounts[1] === "bigint"
-                                      ? formatEther(claimableAmounts[1])
-                                      : "0"}
-                                  </div>
-                                </div>
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Reward Pool</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* APR Calculator collapsible */}
-                              <details className="group">
-                                <summary className="list-none cursor-pointer select-none text-xs uppercase text-white/60 tracking-wider">
-                                  <span className="group-open:hidden">Show APR Calculator</span>
-                                  <span className="hidden group-open:inline">Hide APR Calculator</span>
-                                </summary>
-                                <div className="mt-3">
-                                  <GenesisAPRCalculator
-                                    marketId={marketId}
-                                    rewardTokenSymbol={market.rewardToken.symbol}
-                                    rewardPoolAmount={Number(market.rewardToken.amount)}
-                                    totalDeposits={(allTokenData?.[tokenDataOffset + 1]?.result as bigint | undefined) ?? undefined}
-                                    collateralSymbol={(allTokenData?.[tokenDataOffset]?.result as string | undefined) ?? "COLL"}
-                                  />
-                                </div>
-                              </details>
-
-                              {/* Modals */}
-                              <GenesisDepositModal
-                                isOpen={marketStates[marketId].depositModalOpen}
-                                onClose={() =>
-                                  setMarketStates((prev) => ({
-                                    ...prev,
-                                    [marketId]: { ...prev[marketId], depositModalOpen: false },
-                                  }))
-                                }
-                                genesisAddress={market.addresses.genesis}
-                                collateralAddress={market.addresses.collateralToken}
-                                collateralSymbol={collateralSymbol as string}
-                                onSuccess={refetchAllData}
-                              />
-                              <GenesisWithdrawModal
-                                isOpen={marketStates[marketId].withdrawModalOpen}
-                                onClose={() =>
-                                  setMarketStates((prev) => ({
-                                    ...prev,
-                                    [marketId]: { ...prev[marketId], withdrawModalOpen: false },
-                                  }))
-                                }
-                                genesisAddress={market.addresses.genesis}
-                                collateralSymbol={collateralSymbol as string}
-                                userDeposit={(userBalance as bigint) || 0n}
-                                onSuccess={refetchAllData}
-                              />
+                              {/* Removed APR/ROI calculator collapsible and modals */}
                             </td>
                           </tr>
                         )}
@@ -980,7 +1205,9 @@ export default function Genesis() {
         {/* Completed Markets */}
         <div className="space-y-4">
           <div className="shadow-lg bg-zinc-900/50 outline pb-2 outline-1 outline-white/10 overflow-x-auto">
-            <h2 className={`text-lg text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}>
+            <h2
+              className={`text-lg text-white mb-2 font-space-grotesk uppercase font-bold p-6 pb-2`}
+            >
               Completed Markets
             </h2>
             {completedMarkets.length === 0 ? (
@@ -1032,7 +1259,7 @@ export default function Genesis() {
                     const phaseInfo = getGenesisPhaseInfo(genesisStatus.phase);
                     const phaseStyles = {
                       scheduled: "text-blue-400 bg-blue-400/10",
-                      live: "text-green-400 bg-green-400/10",
+                      live: "text-blue-400 bg-blue-400/10",
                       closed: "text-yellow-400 bg-yellow-400/10",
                       completed: "text-purple-400 bg-purple-400/10",
                     } as const;
@@ -1100,32 +1327,54 @@ export default function Genesis() {
                               {/* Stats strip */}
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                                 <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Your Deposit</div>
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">
+                                    Your Deposit
+                                  </div>
                                   <div className="text-sm font-mono text-white mt-1">
-                                    {isConnected && userBalance && typeof userBalance === "bigint" ? formatEther(userBalance) : "0"} {collateralSymbol}
+                                    {isConnected &&
+                                    userBalance &&
+                                    typeof userBalance === "bigint"
+                                      ? formatEther(userBalance)
+                                      : "0"}{" "}
+                                    {collateralSymbol}
                                   </div>
                                 </div>
                                 <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Claimable Total</div>
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">
+                                    Claimable Total
+                                  </div>
                                   <div className="text-sm font-mono text-white mt-1">
                                     {(() => {
-                                      const sum = Array.isArray(claimableAmounts)
-                                        ? ((claimableAmounts[0] || 0n) + (claimableAmounts[1] || 0n))
+                                      const sum = Array.isArray(
+                                        claimableAmounts
+                                      )
+                                        ? (claimableAmounts[0] || 0n) +
+                                          (claimableAmounts[1] || 0n)
                                         : 0n;
-                                      return Number(sum) === 0 ? "0" : formatEther(sum as bigint);
+                                      return Number(sum) === 0
+                                        ? "0"
+                                        : formatEther(sum as bigint);
                                     })()}
                                   </div>
                                 </div>
                                 <div className="bg-zinc-900/40 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Status</div>
+                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">
+                                    Status
+                                  </div>
                                   <div className="mt-1">
-                                    <span className={`text-xs inline-block px-2 py-0.5 border font-bold ${phaseStyles[genesisStatus.phase]}`}>{phaseInfo.title}</span>
+                                    <span
+                                      className={`text-xs inline-block px-2 py-0.5 border font-bold ${
+                                        phaseStyles[genesisStatus.phase]
+                                      }`}
+                                    >
+                                      {phaseInfo.title}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Actions */}
-                              <div className="flex flex-wrap gap-3 mb-6">
+                              {/* Claim actions */}
+                              <div className="flex flex-wrap gap-3">
                                 {isConnected && genesisStatus.canClaim ? (
                                   (() => {
                                     const hasClaimableTokens =
@@ -1134,7 +1383,8 @@ export default function Genesis() {
                                       claimableAmounts[1] &&
                                       typeof claimableAmounts[0] === "bigint" &&
                                       typeof claimableAmounts[1] === "bigint" &&
-                                      (claimableAmounts[0] > 0n || claimableAmounts[1] > 0n);
+                                      (claimableAmounts[0] > 0n ||
+                                        claimableAmounts[1] > 0n);
 
                                     return (
                                       <button
@@ -1143,41 +1393,25 @@ export default function Genesis() {
                                           handleClaim(marketId);
                                         }}
                                         disabled={!hasClaimableTokens}
-                                        className={`px-4 py-2 text-sm ${hasClaimableTokens ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-zinc-700 text-zinc-400 cursor-not-allowed"}`}
+                                        className={`px-4 py-2 text-sm ${
+                                          hasClaimableTokens
+                                            ? "bg-blue-600 hover:bg-blue-500 text-white"
+                                            : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                                        }`}
                                       >
-                                        {hasClaimableTokens ? "Claim" : "No Tokens"}
+                                        {hasClaimableTokens
+                                          ? "Claim"
+                                          : "No Tokens"}
                                       </button>
                                     );
                                   })()
                                 ) : (
-                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">{genesisStatus.canClaim ? "Connect wallet to claim" : "Claiming not available"}</div>
+                                  <div className="px-3 py-2 text-xs text-[#F5F5F5]/50">
+                                    {genesisStatus.canClaim
+                                      ? "Connect wallet to claim"
+                                      : "Claiming not available"}
+                                  </div>
                                 )}
-                              </div>
-
-                              {/* Claimable list */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.peggedToken.name}</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Array.isArray(claimableAmounts) && claimableAmounts[0] && typeof claimableAmounts[0] === "bigint"
-                                      ? formatEther(claimableAmounts[0])
-                                      : "0"}
-                                  </div>
-                                </div>
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">{market.leveragedToken.name}</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Array.isArray(claimableAmounts) && claimableAmounts[1] && typeof claimableAmounts[1] === "bigint"
-                                      ? formatEther(claimableAmounts[1])
-                                      : "0"}
-                                  </div>
-                                </div>
-                                <div className="bg-zinc-900/30 border border-white/10 p-3">
-                                  <div className="text-[10px] uppercase text-white/50 font-bold tracking-wider">Reward Pool</div>
-                                  <div className="text-sm font-mono text-white mt-1">
-                                    {Number(market.rewardToken.amount).toLocaleString()} {market.rewardToken.symbol}
-                                  </div>
-                                </div>
                               </div>
                             </td>
                           </tr>

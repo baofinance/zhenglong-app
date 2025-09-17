@@ -1591,7 +1591,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                           onClick={() =>
                             setIsCollateralAtTop(!isCollateralAtTop)
                           }
-                          className="bg-neutral-800 text-white h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 z-10"
+                          className="bg-neutral-800 text-white h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 z-10"
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -1867,7 +1867,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                           onClick={() =>
                             setIsCollateralAtTop(!isCollateralAtTop)
                           }
-                          className="bg-neutral-800 text-white h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 z-10"
+                          className="bg-neutral-800 text-white h-12 w-12 flex items-center justify-center hover:bg-neutral-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 z-10"
                         >
                           <svg
                             viewBox="0 0 24 24"
