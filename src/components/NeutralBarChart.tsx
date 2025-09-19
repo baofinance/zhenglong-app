@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 
 export type NeutralBarPoint = {
@@ -28,6 +29,10 @@ interface NeutralBarChartProps {
   height?: number;
   formatTimestamp?: (ts: number) => string;
   unit?: string;
+  // accent sprinkle controls
+  sprinkleAccent?: boolean;
+  sprinkleRate?: number; // 0..1, default 0.15
+  accentColor?: string; // default indigo-500
 }
 
 const NeutralTooltip: React.FC<{
@@ -69,15 +74,59 @@ const NeutralTooltip: React.FC<{
   );
 };
 
-const NeutralBarChart: React.FC<NeutralBarChartProps> = ({
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!hex) return null;
+  const h = hex.replace("#", "");
+  const str =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const n = parseInt(str, 16);
+  if (Number.isNaN(n) || str.length !== 6) return null;
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbMix(
+  a: { r: number; g: number; b: number },
+  b: { r: number; g: number; b: number },
+  t: number
+) {
+  const cl = (x: number) => Math.round(Math.max(0, Math.min(255, x)));
+  return `rgb(${cl(a.r + (b.r - a.r) * t)} ${cl(a.g + (b.g - a.g) * t)} ${cl(
+    a.b + (b.b - a.b) * t
+  )})`;
+}
+function shouldAccent(index: number, rate: number) {
+  const s = Math.sin(index * 12.9898) * 43758.5453;
+  const f = s - Math.floor(s);
+  return f < rate;
+}
+
+export default function NeutralBarChart({
   data,
   series,
   height = 160,
   formatTimestamp,
   unit,
-}) => {
+  sprinkleAccent = true,
+  sprinkleRate = 0.15,
+  accentColor = "#8b5cf6",
+}: NeutralBarChartProps) {
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch {}
+    }, 60);
+    return () => clearTimeout(id);
+  }, []);
+
+  const accentRgb = hexToRgb(accentColor) || { r: 139, g: 92, b: 246 };
+
   return (
-    <div className="w-full" style={{ height }}>
+    <div className="w-full min-w-0 relative" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           <CartesianGrid
@@ -115,12 +164,24 @@ const NeutralBarChart: React.FC<NeutralBarChartProps> = ({
               name={s.label}
               stackId="a"
               fill={s.fill}
-            />
+            >
+              {data.map((d, idx) => {
+                const baseHex = s.fill;
+                const base = hexToRgb(baseHex) || { r: 161, g: 161, b: 170 };
+                const val =
+                  typeof d[s.key] === "number" ? (d[s.key] as number) : 0;
+                const t =
+                  0.3 + 0.5 * Math.max(0, Math.min(1, val / (val || 1))); // stronger with higher bar
+                const fill =
+                  sprinkleAccent && shouldAccent(idx, sprinkleRate)
+                    ? rgbMix(base, accentRgb, t)
+                    : `rgb(${base.r} ${base.g} ${base.b})`;
+                return <Cell key={`cell-${s.key}-${idx}`} fill={fill} />;
+              })}
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
-};
-
-export default NeutralBarChart;
+}

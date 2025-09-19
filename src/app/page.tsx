@@ -1,262 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Geo } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  useAccount,
-  useContractReads,
-  useContractWrite,
-  useContractRead,
-  useChainId,
-} from "wagmi";
-import { parseEther, formatEther } from "viem";
-import Dollar from "pixelarticons/svg/dollar.svg";
-import Money from "pixelarticons/svg/money.svg";
-import Chart from "pixelarticons/svg/chart.svg";
-import Shield from "pixelarticons/svg/shield.svg";
-import LinkIcon from "pixelarticons/svg/link.svg";
-
-import { markets } from "../config/markets";
-import TradingViewChart from "../components/TradingViewChart";
-import HistoricalDataChart from "@/components/HistoricalDataChart";
-import ConnectButton from "../components/ConnectButton";
-import Navigation from "../components/Navigation";
-import MintRedeemForm from "@/components/MintRedeemForm"; // Adjust path as needed
-import MarketSelector from "@/components/MarketSelector";
+import React, { useMemo, useState } from "react";
 import Head from "next/head";
-import SystemHealthComponent from "@/components/SystemHealth";
-import clsx from "clsx";
+import { useAccount } from "wagmi";
+import { markets } from "../config/markets";
+import MarketSelector from "@/components/MarketSelector";
+import MintRedeemForm from "@/components/MintRedeemForm";
+import HistoricalDataChart from "@/components/HistoricalDataChart";
 
 type TokenType = "LONG" | "STEAMED";
-type TokenAction = "MINT" | "REDEEM";
 
-interface SystemHealthProps {
-  marketId: string;
-  collateralTokenBalance?: string;
-  geoClassName?: string;
-}
-
-interface WagmiContractResult {
-  error?: Error;
-  result?: bigint;
-  status: "success" | "failure";
-}
-
-interface ContractReadResult extends WagmiContractResult {}
-
-interface SystemHealthValueProps {
-  type:
-    | "collateralValue"
-    | "collateralTokens"
-    | "collateralRatio"
-    | "peggedValue"
-    | "peggedTokens"
-    | "leveragedValue"
-    | "leveragedTokens";
-  marketId: string;
-  collateralTokenBalance?: string;
-  collateralAllowance?: { result?: bigint }[];
-  peggedAllowance?: { result?: bigint }[];
-  leveragedAllowance?: { result?: bigint }[];
-  totalCollateralValue?: string;
-  collateralRatio?: string;
-  peggedTokenData?: WagmiContractResult[];
-  leveragedTokenData?: WagmiContractResult[];
-  priceData?: bigint;
-  leveragedTokenPrice?: bigint;
-}
-
-// Helper functions
-const formatValue = (value: string | undefined): string => {
-  if (!value) return "0";
-  // Remove any trailing zeros after decimal point
-  return parseFloat(value).toString();
-};
-
-const formatAllowance = (
-  allowance: { result?: bigint } | undefined
-): string => {
-  if (!allowance || typeof allowance.result === "undefined") {
-    return "0";
-  }
-  return formatEther(allowance.result);
-};
-
-const formatTokenBalance = (balance: bigint | undefined): string => {
-  if (typeof balance === "undefined") {
-    return "0";
-  }
-  return formatEther(balance);
-};
-
-// Calculate output amount based on input
-const calculateOutput = (inputValue: number): string => {
-  return inputValue.toString();
-};
-
-// Calculate input amount based on output
-const calculateInput = (outputValue: number): string => {
-  return outputValue.toString();
-};
-
-// Helper function to safely get bigint result
-const getContractResult = (data: any): bigint | undefined => {
-  if (data?.status === "success" && typeof data?.result === "bigint") {
-    return data.result;
-  }
-  return undefined;
-};
-
-// Helper function to safely get bigint result from contract read
-const getContractReadResult = (
-  data: WagmiContractResult | undefined
-): bigint => {
-  if (!data || data.status !== "success" || !data.result) {
-    return BigInt(0);
-  }
-  return data.result;
-};
-
-const SystemHealthValue: React.FC<SystemHealthValueProps> = ({
-  type,
-  marketId,
-  collateralTokenBalance,
-  collateralAllowance,
-  peggedAllowance,
-  leveragedAllowance,
-  totalCollateralValue,
-  collateralRatio,
-  peggedTokenData,
-  leveragedTokenData,
-  priceData,
-  leveragedTokenPrice,
-}) => {
-  const getValue = (): string => {
-    switch (type) {
-      case "collateralValue":
-        return totalCollateralValue || "$0";
-      case "collateralTokens":
-        return formatValue(collateralTokenBalance);
-      case "collateralRatio":
-        return collateralRatio ? `${collateralRatio}%` : "0%";
-      case "peggedValue":
-      case "peggedTokens": {
-        // Get the pegged token balance from the minter contract
-        const peggedBalance =
-          peggedTokenData?.[0] && getContractResult(peggedTokenData[0]);
-        if (!peggedBalance) return "0";
-
-        // Convert from raw value (with 18 decimals) to actual token amount
-        const formattedValue = Number(formatEther(peggedBalance));
-        // For pegged tokens, value in USD equals token amount (1:1 peg)
-        return type === "peggedValue"
-          ? formattedValue.toFixed(2)
-          : formattedValue.toFixed(4);
-      }
-      case "leveragedValue": {
-        // Get the leveraged token balance from the minter contract
-        const leveragedBalance =
-          leveragedTokenData?.[0] && getContractResult(leveragedTokenData[0]);
-        if (!leveragedBalance || !leveragedTokenPrice) return "0";
-
-        // Correct Calculation: (balance * price) / (10^18 * 10^18)
-        const leveragedValue =
-          (Number(leveragedBalance) * Number(leveragedTokenPrice)) / 1e36;
-        return leveragedValue.toFixed(2);
-      }
-      case "leveragedTokens": {
-        // Get the leveraged token balance from the minter contract
-        const leveragedBalance =
-          leveragedTokenData?.[0] && getContractResult(leveragedTokenData[0]);
-        if (!leveragedBalance) return "0";
-
-        // For token amount display
-        if (type === "leveragedTokens") {
-          const formattedTokens = Number(formatEther(leveragedBalance));
-          console.log("Raw leveraged balance:", leveragedBalance.toString());
-          console.log("Formatted leveraged balance:", formattedTokens);
-          return formattedTokens.toFixed(4);
-        }
-
-        // For value calculation
-        const leveragedOutput =
-          leveragedTokenData?.[1] && getContractResult(leveragedTokenData[1]);
-        if (!leveragedOutput || !priceData) return "0";
-
-        const leveragedValue =
-          (Number(formatEther(leveragedBalance)) *
-            Number(formatEther(leveragedOutput)) *
-            Number(formatEther(priceData))) /
-          1e8;
-        return leveragedValue.toFixed(2);
-      }
-      default:
-        return "0";
-    }
-  };
-
-  return <>{getValue()}</>;
-};
-
-const SystemHealth = Object.assign(SystemHealthComponent, {
-  Value: SystemHealthValue,
-});
-
-// Add TokenType to page.tsx if it was removed, or ensure it's available
-// Assuming tokens constant is available or we define a default for page-level chart
-const pageScopedTokens = {
-  LONG: ["zheUSD"], // Define a sensible default, e.g., the primary pegged token for the market context
-  STEAMED: ["steamedETH"], // Or primary leveraged token
-};
-
-export default function App() {
-  // State hooks
-  const [mounted, setMounted] = useState(false);
+export default function MintRedeemPage() {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
   const [selectedMarket, setSelectedMarket] = useState<string>("eth-usd");
   const [selectedType, setSelectedType] = useState<TokenType>("LONG");
-  const formCardRef = useRef<HTMLDivElement>(null);
-  const chartCardRef = useRef<HTMLDivElement>(null);
 
-  // Effect hooks
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    const formEl = formCardRef.current;
-    const chartEl = chartCardRef.current;
-
-    if (!formEl || !chartEl || !mounted) return;
-
-    const setHeights = () => {
-      if (window.innerWidth >= 1024) {
-        // Tailwind's lg breakpoint
-        const formHeight = formEl.offsetHeight;
-        chartEl.style.height = `${formHeight}px`;
-      } else {
-        chartEl.style.height = "auto";
-      }
-    };
-
-    const observer = new ResizeObserver(setHeights);
-    observer.observe(formEl);
-
-    window.addEventListener("resize", setHeights);
-
-    setHeights(); // Set initial height
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", setHeights);
-    };
-  }, [mounted]);
-
-  // Get the current market info from both configs
   const currentMarket = useMemo(() => {
-    const market = markets[selectedMarket as keyof typeof markets];
-    return market ? { ...market, id: selectedMarket } : null;
+    const m = markets[selectedMarket as keyof typeof markets];
+    return m ? { ...m, id: selectedMarket } : null;
   }, [selectedMarket]);
 
   const currentMarketInfo = useMemo(
@@ -264,134 +25,64 @@ export default function App() {
     [selectedMarket]
   );
 
-  // Define state for PriceChart props at page level
-  // Default to LONG type and its first token for the current market
-  const pageSelectedType: TokenType = "LONG"; // Default to LONG for page-level chart
-  const pageSelectedToken: string = pageScopedTokens[pageSelectedType][0]; // Get the default token for LONG
-
-  const handleMarketChange = (marketId: string) => {
-    setSelectedMarket(marketId);
-  };
-  const healthStats = [
-    {
-      id: "total-collateral",
-      name: "Total Collateral",
-      value: (
-        <SystemHealth.Value type="collateralValue" marketId={selectedMarket} />
-      ),
-      icon: (
-        <Image
-          src={Dollar}
-          alt="Dollar"
-          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
-        />
-      ),
-    },
-    {
-      id: "pegged-tokens",
-      name: "Pegged Tokens",
-      value: (
-        <SystemHealth.Value type="peggedTokens" marketId={selectedMarket} />
-      ),
-      icon: (
-        <Image
-          src={Money}
-          alt="Money"
-          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
-        />
-      ),
-    },
-    {
-      id: "leveraged-tokens",
-      name: "Leveraged Tokens",
-      value: (
-        <SystemHealth.Value type="leveragedTokens" marketId={selectedMarket} />
-      ),
-      icon: (
-        <Image
-          src={Chart}
-          alt="Chart"
-          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
-        />
-      ),
-    },
-    {
-      id: "collateral-ratio",
-      name: "Collateral Ratio",
-      value: (
-        <SystemHealth.Value type="collateralRatio" marketId={selectedMarket} />
-      ),
-      icon: (
-        <Image
-          src={Shield}
-          alt="Shield"
-          className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 filter invert brightness-0"
-        />
-      ),
-    },
-  ];
-
-  // The main return statement of page.tsx
   return (
     <>
       <Head>
-        <title>Zhenglong</title>
-        <meta name="description" content="Zhenglong App" />
-        <link rel="icon" href="/favicon.ico" />
+        <title>Mint / Redeem</title>
+        <meta name="description" content="Mint and Redeem tokens" />
       </Head>
 
-      <div className="max-w-[1300px] px-4 sm:px-10 mx-auto">
-        <main className="container mx-auto max-w-full">
-          <dl className="grid grid-cols-1 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-2 lg:grid-cols-4">
-            {healthStats.map((stat) => (
-              <div key={stat.id} className="flex flex-col bg-white/5 p-8">
-                <dt className="text-sm/6 font-semibold text-gray-300">
-                  {stat.name}
-                </dt>
-                <dd className="order-first text-3xl font-semibold tracking-tight text-white">
-                  {stat.value}
-                </dd>
+      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pb-6">
+          {/* Header */}
+          <section className="mb-6">
+            <div className="outline outline-1 outline-white/10 rounded-sm p-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center justify-between">
+                <h1 className="font-semibold font-mono text-white">
+                  Mint / Redeem
+                </h1>
+                <div className="min-w-[260px]">
+                  <MarketSelector
+                    selectedMarketId={selectedMarket}
+                    onMarketChange={setSelectedMarket}
+                  />
+                </div>
               </div>
-            ))}
-          </dl>
+              <p className="mt-2 text-white/60 text-sm">
+                Use your collateral to mint or redeem pegged and leveraged
+                tokens. Neutral, minimal, and fast.
+              </p>
+            </div>
+          </section>
 
-          {/* Market Selector & Token Info */}
-          <div className="max-w-7xl mx-auto mb-4 mt-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            {/* Left: Market Selector */}
-            <MarketSelector
-              selectedMarketId={selectedMarket}
-              onMarketChange={handleMarketChange}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <div>
-              <div className="flex mb-4 gap-3">
-                <button
-                  onClick={() => setSelectedType("LONG")}
-                  className={clsx(
-                    `py-2 text-2xl font-semibold transition-colors`,
-                    selectedType === "LONG"
-                      ? "text-white"
-                      : "text-zinc-400 hover:text-white"
-                  )}
-                >
-                  Pegged (zheETH)
-                </button>
-                <button
-                  onClick={() => setSelectedType("STEAMED")}
-                  className={clsx(
-                    `py-2 text-2xl font-semibold transition-colors`,
-                    selectedType === "STEAMED"
-                      ? "text-white"
-                      : "text-zinc-400 hover:text-white"
-                  )}
-                >
-                  Leverage (steamed)
-                </button>
-              </div>
-              {mounted && currentMarket ? (
-                <div ref={formCardRef}>
+          {/* Content */}
+          <section>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+              {/* Left: Form */}
+              <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4">
+                <div className="flex mb-3 gap-4">
+                  <button
+                    onClick={() => setSelectedType("LONG")}
+                    className={
+                      selectedType === "LONG"
+                        ? "text-white font-semibold"
+                        : "text-white/60 hover:text-white"
+                    }
+                  >
+                    Pegged
+                  </button>
+                  <button
+                    onClick={() => setSelectedType("STEAMED")}
+                    className={
+                      selectedType === "STEAMED"
+                        ? "text-white font-semibold"
+                        : "text-white/60 hover:text-white"
+                    }
+                  >
+                    Leveraged
+                  </button>
+                </div>
+                {currentMarket ? (
                   <MintRedeemForm
                     currentMarket={currentMarket}
                     isConnected={isConnected}
@@ -399,32 +90,23 @@ export default function App() {
                     marketInfo={currentMarketInfo}
                     selectedType={selectedType}
                   />
-                </div>
-              ) : (
-                <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
-                  <h2 className={`text-2xl text-white mb-4`}>
-                    Loading Form...
-                  </h2>
-                </div>
-              )}
-            </div>
-            <div className="min-h-[480px]">
-              {mounted && currentMarket ? (
-                <div
-                  ref={chartCardRef}
-                  className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col"
-                >
-                  <div className="flex-1 min-h-0">
+                ) : (
+                  <div className="text-white/60 text-sm">Loading…</div>
+                )}
+              </div>
+
+              {/* Right: Chart */}
+              <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4">
+                {currentMarket ? (
+                  <div className="h-[340px] sm:h-[420px]">
                     <HistoricalDataChart marketId={selectedMarket} />
                   </div>
-                </div>
-              ) : (
-                <div className="bg-[rgba(28,28,28,0.8)] backdrop-blur-md border border-zinc-800 p-6 text-center h-full">
-                  Loading Price Chart...
-                </div>
-              )}
+                ) : (
+                  <div className="text-white/60 text-sm">Loading chart…</div>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
         </main>
       </div>
     </>

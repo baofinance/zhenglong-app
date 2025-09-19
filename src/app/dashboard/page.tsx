@@ -1,7 +1,7 @@
 "use client";
 
+import React from "react";
 import { useAccount, useContractReads } from "wagmi";
-import { useState } from "react";
 import Navigation from "../../components/Navigation";
 import SystemHealth from "../../components/SystemHealth";
 import { markets } from "../../config/markets";
@@ -10,7 +10,10 @@ import NeutralBarChart, {
   type NeutralBarPoint,
   type NeutralBarSeries,
 } from "../../components/NeutralBarChart";
-import { STABILITY_POOL_MANAGER_ABI } from "../../config/contracts";
+// safety stats removed; no extra ABI needed
+import { useCurrency } from "@/contexts/CurrencyContext";
+import GlobalHeatmap from "../../components/GlobalHeatmap";
+import CountUp from "../../components/CountUp";
 
 const chainlinkOracleABI = [
   {
@@ -137,6 +140,7 @@ function IconToken() {
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
+  const { formatFiat, selected } = useCurrency();
 
   const genesisMarkets = Object.entries(markets);
 
@@ -200,23 +204,9 @@ export default function DashboardPage() {
   const userR = (userReads as unknown as any[]) || [];
   const oracleR = (oracleReads as unknown as any[]) || [];
   const minterR = (minterReads as unknown as any[]) || [];
-  // Safety reads: collateralRatio and rebalanceThreshold per market
-  const { data: safetyReads } = useContractReads({
-    contracts: genesisMarkets.flatMap(([_, m]) => [
-      {
-        address: m.addresses.minter as `0x${string}`,
-        abi: minterABI,
-        functionName: "collateralRatio",
-      },
-      {
-        address: m.addresses.stabilityPoolManager as `0x${string}`,
-        abi: STABILITY_POOL_MANAGER_ABI,
-        functionName: "rebalanceThreshold",
-      },
-    ]),
-    allowFailure: true,
-  });
-  const safetyR = (safetyReads as unknown as any[]) || [];
+  const isSingleMarket = genesisMarkets.length === 1;
+
+  // Currency selector removed from Portfolio; using global currency context
 
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
@@ -228,13 +218,13 @@ export default function DashboardPage() {
               <div
                 className={`outline outline-1 outline-white/10 rounded-sm p-4 w-full h-full flex flex-col`}
               >
-                <div className="relative inline-block mb-3">
+                <div className="relative inline-block mb-6">
                   <h2 className={`font-semibold font-mono text-white`}>
                     Rewards & Airdrops
                   </h2>
                 </div>
                 <div
-                  className={`grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-fr flex-1`}
+                  className={`grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-fr flex-1 w-full`}
                 >
                   {genesisMarkets.map(([id, m], idx) => {
                     const userOffset = idx * 2;
@@ -286,13 +276,15 @@ export default function DashboardPage() {
                       }
                     );
                     const series: NeutralBarSeries[] = [
-                      { key: "rewards", label: "Rewards", fill: "#A3A3A3" },
+                      { key: "rewards", label: "Rewards", fill: "#4f46e5" },
                     ];
 
                     return (
                       <div
                         key={id}
-                        className={` hover:outline-white/20 transition-colors rounded-sm h-full w-full`}
+                        className={` hover:outline-white/20 transition-colors rounded-sm h-full w-full min-w-0 ${
+                          isSingleMarket ? "md:col-span-2" : ""
+                        }`}
                       >
                         <div
                           className={`text-[11px] sm:text-xs text-white/70 uppercase tracking-wider mb-2`}
@@ -303,6 +295,7 @@ export default function DashboardPage() {
                           data={data}
                           series={series}
                           height={160}
+                          sprinkleAccent={false}
                           formatTimestamp={(ts) =>
                             new Date(ts).toLocaleDateString(undefined, {
                               month: "short",
@@ -322,63 +315,371 @@ export default function DashboardPage() {
               >
                 <div className="relative inline-block mb-3">
                   <h2 className={`font-semibold font-mono text-white`}>
-                    Safety Stats
+                    Portfolio
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 gap-3 auto-rows-fr flex-1">
-                  {genesisMarkets.map(([id, m], idx) => {
-                    const ratioRaw = safetyR?.[idx * 2]?.result as
-                      | bigint
-                      | undefined;
-                    const threshRaw = safetyR?.[idx * 2 + 1]?.result as
-                      | bigint
-                      | undefined;
-                    const ratioPct = ratioRaw
-                      ? Number(ratioRaw) / 1e16
-                      : undefined;
-                    const threshPct = threshRaw
-                      ? Number(threshRaw) / 1e16
-                      : undefined;
-                    const dropToRebalance =
-                      ratioPct && threshPct && ratioPct > 0
-                        ? Math.max(0, 1 - threshPct / ratioPct) * 100
-                        : undefined;
-                    const dropToParity =
-                      ratioPct && ratioPct > 0
-                        ? Math.max(0, 1 - 100 / ratioPct) * 100
-                        : undefined;
+                {/* Total holdings in large text */}
+                <div className="flex-1 flex items-center justify-center py-6">
+                  <div className="text-center">
+                    <div
+                      className="text-white font-semibold"
+                      style={{ fontSize: "clamp(1.75rem, 5.5vw, 3.25rem)" }}
+                    >
+                      {(() => {
+                        const totalUSD = genesisMarkets.reduce(
+                          (sum, [id, m], idx) => {
+                            const userOffset = idx * 2;
+                            const balanceRaw = userR[userOffset]
+                              ?.result as unknown;
+                            const balance =
+                              (balanceRaw as bigint | undefined) ?? undefined;
+                            const deposit = balance
+                              ? Number(balance) / 1e18
+                              : 0;
+                            const oracleOffset = idx * 2;
+                            const decRaw = oracleR[oracleOffset]
+                              ?.result as unknown;
+                            const priceRaw = oracleR[oracleOffset + 1]
+                              ?.result as unknown;
+                            const dec = (decRaw as number | undefined) ?? 8;
+                            const price = (priceRaw as bigint | undefined)
+                              ? Number(priceRaw as bigint) / 10 ** dec
+                              : 0;
+                            return sum + deposit * price;
+                          },
+                          440000
+                        );
+                        const converted = totalUSD * selected.rate;
+                        return (
+                          <span>
+                            <span className="mr-2 text-white/80">
+                              {selected.symbol}
+                            </span>
+                            <CountUp to={converted} separator="," />
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div className="mt-1">
+                      {(() => {
+                        const seed =
+                          Math.sin(genesisMarkets.length * 1.23) * 0.5 + 0.5; // 0..1 deterministic
+                        const pct = (seed - 0.5) * 6; // -3..+3
+                        const isUp = pct >= 0;
+                        return (
+                          <span
+                            className={
+                              isUp
+                                ? "text-emerald-400 text-sm"
+                                : "text-rose-400 text-sm"
+                            }
+                          >
+                            {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}% 24h
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+                {/* Minimal breakdown */}
+                <div className="px-2 pb-4">
+                  <div className="flex items-center justify-center gap-4 text-xs sm:text-sm text-white/70">
+                    {(() => {
+                      const totals = genesisMarkets.reduce(
+                        (acc, [id, m], idx) => {
+                          const userOffset = idx * 2;
+                          const balanceRaw = userR[userOffset]
+                            ?.result as unknown;
+                          const balance =
+                            (balanceRaw as bigint | undefined) ?? undefined;
+                          const deposit = balance ? Number(balance) / 1e18 : 0;
+                          const oracleOffset = idx * 2;
+                          const decRaw = oracleR[oracleOffset]
+                            ?.result as unknown;
+                          const priceRaw = oracleR[oracleOffset + 1]
+                            ?.result as unknown;
+                          const dec = (decRaw as number | undefined) ?? 8;
+                          const price = (priceRaw as bigint | undefined)
+                            ? Number(priceRaw as bigint) / 10 ** dec
+                            : 0;
+                          const marketUSD = deposit * price;
+                          acc.total += marketUSD;
+                          acc.pegged += marketUSD * 0.5;
+                          acc.lev += marketUSD * 0.5;
+                          return acc;
+                        },
+                        { total: 0, pegged: 0, lev: 0 }
+                      );
+                      const peggedShare =
+                        totals.total > 0
+                          ? (totals.pegged / totals.total) * 100
+                          : 0;
+                      const levShare =
+                        totals.total > 0
+                          ? (totals.lev / totals.total) * 100
+                          : 0;
+                      return (
+                        <>
+                          <span>
+                            Pegged:{" "}
+                            <span className="text-white font-mono">
+                              <span className="mr-1 text-white/70">
+                                {selected.symbol}
+                              </span>
+                              <CountUp
+                                to={totals.pegged * selected.rate}
+                                separator=","
+                              />
+                            </span>{" "}
+                            ({peggedShare.toFixed(1)}%)
+                          </span>
+                          <span className="text-white/30">•</span>
+                          <span>
+                            Leveraged:{" "}
+                            <span className="text-white font-mono">
+                              <span className="mr-1 text-white/70">
+                                {selected.symbol}
+                              </span>
+                              <CountUp
+                                to={totals.lev * selected.rate}
+                                separator=","
+                              />
+                            </span>{" "}
+                            ({levShare.toFixed(1)}%)
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-                    const fmt = (v?: number) =>
-                      v === undefined ? "-" : `${v.toFixed(1)}%`;
+        {/* Activity + Buybacks */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
+            <div className="md:order-2 md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-semibold font-mono text-white">Activity</h2>
+                <div className="text-xs text-white/60">Last 3 months</div>
+              </div>
+              <GlobalHeatmap
+                mode="github"
+                weeks={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  return Math.ceil((startWeekday + dayCount) / 7);
+                })()}
+                startDate={(() => {
+                  const now = new Date();
+                  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                })()}
+                gapPx={6}
+                dates={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const out: Date[] = Array(total);
+                  for (let idx = 0; idx < total; idx++) {
+                    const d = new Date(start);
+                    d.setDate(start.getDate() + (idx - startWeekday));
+                    out[idx] = d;
+                  }
+                  return out;
+                })()}
+                actives={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  return Array.from({ length: total }, (_, idx) => {
+                    const d = new Date(start);
+                    d.setDate(start.getDate() + (idx - startWeekday));
+                    return d >= start && d <= end;
+                  });
+                })()}
+                values={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const vals = Array(total).fill(0);
+                  for (let idx = 0; idx < total; idx++) {
+                    const dt = new Date(start);
+                    dt.setDate(start.getDate() + (idx - startWeekday));
+                    if (dt >= start && dt <= end) {
+                      const dnum = Math.floor(
+                        (dt.getTime() - start.getTime()) / 86400000
+                      );
+                      const seed = Math.sin((dnum + 1) * 1.37) * 0.5 + 0.5; // 0..1
+                      vals[idx] = Math.max(0, Math.min(1, seed));
+                    }
+                  }
+                  return vals as number[];
+                })()}
+                amounts={(() => {
+                  // Base TVL approximation from deposits * price (fallback to mocks)
+                  const totalUSD = genesisMarkets.reduce(
+                    (sum, [id, m], idx) => {
+                      const userOffset = idx * 2;
+                      const balanceRaw = userR[userOffset]?.result as unknown;
+                      const balance =
+                        (balanceRaw as bigint | undefined) ?? undefined;
+                      const deposit = balance
+                        ? Number(balance) / 1e18
+                        : MOCKS.depositWstEth;
+                      const oracleOffset = idx * 2;
+                      const decRaw = oracleR[oracleOffset]?.result as unknown;
+                      const priceRaw = oracleR[oracleOffset + 1]
+                        ?.result as unknown;
+                      const dec = (decRaw as number | undefined) ?? 8;
+                      const price = (priceRaw as bigint | undefined)
+                        ? Number(priceRaw as bigint) / 10 ** dec
+                        : MOCKS.stethPrice;
+                      return sum + deposit * price;
+                    },
+                    0
+                  );
 
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const arr = Array(total).fill(0);
+                  for (let idx = 0; idx < total; idx++) {
+                    const dt = new Date(start);
+                    dt.setDate(start.getDate() + (idx - startWeekday));
+                    if (dt >= start && dt <= end) {
+                      const dnum = Math.floor(
+                        (dt.getTime() - start.getTime()) / 86400000
+                      );
+                      const noise = Math.sin((dnum + 3.14) * 0.73) * 0.5 + 0.5; // 0..1
+                      const factor = 0.005 + noise * 0.025; // 0.5%..3.0% of TVL
+                      arr[idx] = Math.max(0, totalUSD * factor);
+                    }
+                  }
+                  return arr as number[];
+                })()}
+                formatAmount={(n) => formatFiat(n)}
+              />
+            </div>
+            <div className="outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="font-semibold font-mono text-white">Buybacks</h2>
+                <div className="text-xs text-white/50">Last 30 days</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {(() => {
+                  const total30d = 125000; // mock
+                  const total7d = 42000; // mock
+                  return (
+                    <>
+                      <div className="outline outline-1 outline-white/10 p-2">
+                        <div className="text-white/60 text-xs">
+                          30d Buybacks
+                        </div>
+                        <div className="text-white font-mono text-base">
+                          {formatFiat(total30d)}
+                        </div>
+                      </div>
+                      <div className="outline outline-1 outline-white/10 p-2">
+                        <div className="text-white/60 text-xs">7d Buybacks</div>
+                        <div className="text-white font-mono text-base">
+                          {formatFiat(total7d)}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="text-white/60 text-xs mb-1">Recent</div>
+              <div className="flex-1 overflow-auto">
+                <div className="space-y-1">
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    const amount = 2000 + i * 350;
+                    const ts = new Date(Date.now() - i * 36 * 60 * 60 * 1000);
                     return (
                       <div
-                        key={id}
-                        className={`outline outline-1 outline-white/10 hover:outline-white/20 transition-colors rounded-sm p-3 h-full w-full`}
+                        key={i}
+                        className="flex items-center justify-between text-xs outline outline-1 outline-white/10 p-2"
                       >
-                        <div
-                          className={`text-[11px] sm:text-xs text-white/70 uppercase tracking-wider mb-2`}
-                        >
-                          {m.name}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <div className="text-white/70 text-xs">
-                              Drop to rebalance
-                            </div>
-                            <div className="text-white font-mono text-lg">
-                              {fmt(dropToRebalance)}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-white/70 text-xs">
-                              Drop to 100%
-                            </div>
-                            <div className="text-white font-mono text-lg">
-                              {fmt(dropToParity)}
-                            </div>
-                          </div>
-                        </div>
+                        <span className="text-white/80">
+                          {ts.toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <span className="text-white font-mono">
+                          {formatFiat(amount)}
+                        </span>
                       </div>
                     );
                   })}

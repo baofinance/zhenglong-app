@@ -6,6 +6,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { mainnet, arbitrum } from "@reown/appkit/networks";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
+import { CurrencyProvider } from "./CurrencyContext";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -37,10 +38,10 @@ const modal = createAppKit({
 function ContextProvider({
   children,
   cookies,
-}: {
-  children: ReactNode;
+}: Readonly<{
+  children: React.ReactNode;
   cookies: string | null;
-}) {
+}>) {
   const initialState = cookieToInitialState(
     wagmiAdapter.wagmiConfig as Config,
     cookies
@@ -51,7 +52,9 @@ function ContextProvider({
       config={wagmiAdapter.wagmiConfig as Config}
       initialState={initialState}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <CurrencyProvider>{children}</CurrencyProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

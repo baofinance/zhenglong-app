@@ -1,3 +1,4 @@
+"use client";
 import {
   Disclosure,
   DisclosureButton,
@@ -8,52 +9,49 @@ import {
   MenuItems,
 } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import CurrencySelect from "./CurrencySelect";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function Example() {
+  const { code, setCode, options } = useCurrency();
   return (
     <Disclosure<"nav">
       as="nav"
-      className="relative bg-zinc-950 after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px  mb-6"
+      className="relative bg-[#111213] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px mb-6"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <div className="shrink-0 flex items-center">
+            <div className="shrink-0">
               <img
-                alt="Harbor"
+                alt="Your Company"
                 src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-                className="h-6 my-auto w-auto font-medium mr-2"
+                className="h-8 w-auto"
               />
-              <a
-                href="/dashboard"
-                className="rounded-md bg-gray-950/50 py-2 text-base font-mono font-bold text-white"
-              >
-                Harbor
-              </a>
             </div>
             <div className="hidden sm:ml-4 sm:block">
-              <div className="flex">
+              <div className="flex space-x-2">
                 <a
                   href="/dashboard"
-                  className="rounded-md bg-gray-950/50 px-3 py-2 text-sm font-medium font-mono text-white"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-white"
                 >
                   Dashboard
                 </a>
                 <a
                   href="/"
-                  className="rounded-md px-3 py-2 text-sm font-medium font-mono text-gray-400 hover:bg-white/5 hover:text-white"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
                 >
                   Mint + Redeem
                 </a>
                 <a
                   href="/genesis"
-                  className="rounded-md px-3 py-2 text-sm font-medium font-mono text-gray-400 hover:bg-white/5 hover:text-white"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
                 >
                   Genesis
                 </a>
                 <a
                   href="/earn"
-                  className="rounded-md px-3 py-2 text-sm font-medium font-mono text-gray-400 hover:bg-white/5 hover:text-white"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
                 >
                   Earn
                 </a>
@@ -61,7 +59,12 @@ export default function Example() {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:block">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <CurrencySelect
+                value={code}
+                onValueChange={setCode}
+                options={options as any}
+              />
               <appkit-account-button balance="hide" />
             </div>
           </div>

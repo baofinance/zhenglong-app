@@ -7,6 +7,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { geo, spaceGrotesk } from "@/utils/fonts";
 import AnimatedSmokeBackground from "@/components/AnimatedSmokeBackground";
+import FadeContent from "@/components/FadeContent";
 
 export const metadata: Metadata = {
   title: "zhenglong",
@@ -24,12 +25,19 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`antialiased font-sans bg-zinc-950 text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
+        className={`antialiased font-sans bg-[#111213] text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
       >
         <div className="relative z-10">
           <ContextProvider cookies={cookies}>
             <Navigation />
-            {children}
+            <FadeContent
+              blur={false}
+              duration={500}
+              easing="ease-out"
+              initialOpacity={0}
+            >
+              {children}
+            </FadeContent>
           </ContextProvider>
         </div>
         <script
