@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@bijection/smoke": "^1.0.2",
+    "@headlessui/react": "^2.2.8",
+    "@heroicons/react": "^2.2.0",
     "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-select": "^2.1.6",
     "@reown/appkit": "^1.7.15",
