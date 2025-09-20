@@ -11,6 +11,7 @@ import {
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import CurrencySelect from "./CurrencySelect";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import WalletButton from "./WalletButton";
 
 export default function Example() {
   const { code, setCode, options } = useCurrency();
@@ -23,11 +24,7 @@ export default function Example() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <div className="shrink-0">
-              <img
-                alt="Your Company"
-                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-                className="h-8 w-auto"
-              />
+              <div className="h-8 w-8 bg-indigo-600 " />
             </div>
             <div className="hidden sm:ml-4 sm:block">
               <div className="flex space-x-2">
@@ -65,7 +62,7 @@ export default function Example() {
                 onValueChange={setCode}
                 options={options as any}
               />
-              <appkit-account-button balance="hide" />
+              <WalletButton />
             </div>
           </div>
           <div className="-mr-2 flex sm:hidden">
@@ -87,83 +84,44 @@ export default function Example() {
       </div>
 
       <DisclosurePanel className="sm:hidden">
-        <div className="space-y-1 px-2 pt-2 pb-3">
-          {/* Current: "bg-gray-950/50 text-white", Default: "text-gray-300 hover:bg-white/5 hover:text-white" */}
+        <div className="px-2 pt-2 pb-3 space-y-1">
           <DisclosureButton
             as="a"
-            href="#"
-            className="block rounded-md bg-gray-950/50 px-3 py-2 text-base font-medium text-white"
+            href="/dashboard"
+            className="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-white/5"
           >
             Dashboard
           </DisclosureButton>
           <DisclosureButton
             as="a"
-            href="#"
+            href="/"
             className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
           >
-            Team
+            Mint + Redeem
           </DisclosureButton>
           <DisclosureButton
             as="a"
-            href="#"
+            href="/genesis"
             className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
           >
-            Projects
+            Genesis
           </DisclosureButton>
           <DisclosureButton
             as="a"
-            href="#"
+            href="/earn"
             className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
           >
-            Calendar
+            Earn
           </DisclosureButton>
         </div>
-        <div className="border-t border-white/10 pt-4 pb-3">
-          <div className="flex items-center px-5">
-            <div className="shrink-0">
-              <img
-                alt=""
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                className="size-10 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
-              />
-            </div>
-            <div className="ml-3">
-              <div className="text-base font-medium text-white">Tom Cook</div>
-              <div className="text-sm font-medium text-gray-400">
-                tom@example.com
-              </div>
-            </div>
-            <button
-              type="button"
-              className="relative ml-auto shrink-0 rounded-full p-1 text-gray-400 hover:text-white focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
-            >
-              <span className="absolute -inset-1.5" />
-              <span className="sr-only">View notifications</span>
-              <BellIcon aria-hidden="true" className="size-6" />
-            </button>
-          </div>
-          <div className="mt-3 space-y-1 px-2">
-            <DisclosureButton
-              as="a"
-              href="#"
-              className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-            >
-              Your profile
-            </DisclosureButton>
-            <DisclosureButton
-              as="a"
-              href="#"
-              className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-            >
-              Settings
-            </DisclosureButton>
-            <DisclosureButton
-              as="a"
-              href="#"
-              className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-            >
-              Sign out
-            </DisclosureButton>
+        <div className="border-t border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <CurrencySelect
+              value={code}
+              onValueChange={setCode}
+              options={options as any}
+            />
+            <WalletButton />
           </div>
         </div>
       </DisclosurePanel>

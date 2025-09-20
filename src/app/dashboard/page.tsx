@@ -14,6 +14,7 @@ import NeutralBarChart, {
 import { useCurrency } from "@/contexts/CurrencyContext";
 import GlobalHeatmap from "../../components/GlobalHeatmap";
 import CountUp from "../../components/CountUp";
+import InfoTooltip from "../../components/InfoTooltip";
 
 const chainlinkOracleABI = [
   {
@@ -218,10 +219,16 @@ export default function DashboardPage() {
               <div
                 className={`outline outline-1 outline-white/10 rounded-sm p-4 w-full h-full flex flex-col`}
               >
-                <div className="relative inline-block mb-6">
-                  <h2 className={`font-semibold font-mono text-white`}>
-                    Rewards & Airdrops
-                  </h2>
+                <div className="relative mb-6">
+                  <div className="inline-flex items-center gap-2">
+                    <h2 className={`font-semibold font-mono text-white`}>
+                      Rewards & Airdrops
+                    </h2>
+                    <InfoTooltip
+                      label="Cumulative rewards and airdrops over time by market."
+                      side="top"
+                    />
+                  </div>
                 </div>
                 <div
                   className={`grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-fr flex-1 w-full`}
@@ -313,10 +320,16 @@ export default function DashboardPage() {
               <div
                 className={`outline outline-1 outline-white/10 rounded-sm p-3 h-full flex flex-col`}
               >
-                <div className="relative inline-block mb-3">
-                  <h2 className={`font-semibold font-mono text-white`}>
-                    Portfolio
-                  </h2>
+                <div className="relative mb-3">
+                  <div className="inline-flex items-center gap-2">
+                    <h2 className={`font-semibold font-mono text-white`}>
+                      Portfolio
+                    </h2>
+                    <InfoTooltip
+                      label="Total portfolio value and 24h change with breakdown."
+                      side="top"
+                    />
+                  </div>
                 </div>
                 {/* Total holdings in large text */}
                 <div className="flex-1 flex items-center justify-center py-6">
@@ -377,6 +390,96 @@ export default function DashboardPage() {
                             {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}% 24h
                           </span>
                         );
+                      })()}
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      {(() => {
+                        const rows: {
+                          key: string;
+                          name: string;
+                          usd: number;
+                          amount: number;
+                        }[] = [];
+                        // Collect actual deposits
+                        genesisMarkets.forEach(([id, m], idx) => {
+                          const userOffset = idx * 2;
+                          const balanceRaw = userR[userOffset]
+                            ?.result as unknown;
+                          const balance =
+                            (balanceRaw as bigint | undefined) ?? undefined;
+                          const deposit = balance ? Number(balance) / 1e18 : 0;
+                          const oracleOffset = idx * 2;
+                          const decRaw = oracleR[oracleOffset]
+                            ?.result as unknown;
+                          const priceRaw = oracleR[oracleOffset + 1]
+                            ?.result as unknown;
+                          const dec = (decRaw as number | undefined) ?? 8;
+                          const price = (priceRaw as bigint | undefined)
+                            ? Number(priceRaw as bigint) / 10 ** dec
+                            : 0;
+                          const usd = deposit * price * selected.rate;
+                          if (deposit > 0) {
+                            rows.push({
+                              key: String(id),
+                              name: m.name,
+                              usd,
+                              amount: deposit,
+                            });
+                          }
+                        });
+                        // Add demo holdings if none
+                        if (rows.length === 0) {
+                          const demoAmts = [1.25, 0.75, 2.5];
+                          if (genesisMarkets.length > 0) {
+                            genesisMarkets
+                              .slice(0, 3)
+                              .forEach(([id, m], idx) => {
+                                const oracleOffset = idx * 2;
+                                const decRaw = oracleR[oracleOffset]
+                                  ?.result as unknown;
+                                const priceRaw = oracleR[oracleOffset + 1]
+                                  ?.result as unknown;
+                                const dec = (decRaw as number | undefined) ?? 8;
+                                const price = (priceRaw as bigint | undefined)
+                                  ? Number(priceRaw as bigint) / 10 ** dec
+                                  : 2000;
+                                const amount = demoAmts[idx % demoAmts.length];
+                                const usd = amount * price * selected.rate;
+                                rows.push({
+                                  key: `demo-${String(id)}`,
+                                  name: m.name,
+                                  usd,
+                                  amount,
+                                });
+                              });
+                          } else {
+                            const amount = 1.25;
+                            const usd = amount * 2000 * selected.rate;
+                            rows.push({
+                              key: "demo-eth",
+                              name: "ETH Pool",
+                              usd,
+                              amount,
+                            });
+                          }
+                        }
+                        return rows.map((r) => (
+                          <div
+                            key={r.key}
+                            className="flex items-center justify-between text-xs outline outline-1 outline-white/10 px-2 py-1"
+                          >
+                            <span className="text-white/80">{r.name}</span>
+                            <span className="text-white font-mono">
+                              <span className="mr-1 text-white/70">
+                                {selected.symbol}
+                              </span>
+                              <CountUp to={r.usd} separator="," />
+                              <span className="ml-2 text-white/50">
+                                ({r.amount.toFixed(4)})
+                              </span>
+                            </span>
+                          </div>
+                        ));
                       })()}
                     </div>
                   </div>
@@ -462,7 +565,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
             <div className="md:order-2 md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-semibold font-mono text-white">Activity</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Activity
+                  </h2>
+                  <InfoTooltip
+                    label="Daily liquidity movement across the protocol (last 3 months)."
+                    side="top"
+                  />
+                </div>
                 <div className="text-xs text-white/60">Last 3 months</div>
               </div>
               <GlobalHeatmap
@@ -633,7 +744,15 @@ export default function DashboardPage() {
             </div>
             <div className="outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="font-semibold font-mono text-white">Buybacks</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Buybacks
+                  </h2>
+                  <InfoTooltip
+                    label="Recent and aggregate protocol buyback amounts."
+                    side="top"
+                  />
+                </div>
                 <div className="text-xs text-white/50">Last 30 days</div>
               </div>
               <div className="grid grid-cols-2 gap-2 mb-3">

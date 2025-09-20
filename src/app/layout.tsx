@@ -5,8 +5,6 @@ import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { geo, spaceGrotesk } from "@/utils/fonts";
-import AnimatedSmokeBackground from "@/components/AnimatedSmokeBackground";
 import FadeContent from "@/components/FadeContent";
 
 export const metadata: Metadata = {
@@ -40,11 +38,6 @@ export default async function RootLayout({
             </FadeContent>
           </ContextProvider>
         </div>
-        <script
-          src="https://appkit-api.gokgs.com/appkit.js"
-          defer
-          async
-        ></script>
       </body>
     </html>
   );

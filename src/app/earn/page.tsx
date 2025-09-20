@@ -239,7 +239,7 @@ export default function Earn() {
 
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
-      <main className="container mx-auto max-w-full pt-[6rem] pb-3 relative z-10">
+      <main className="container mx-auto max-w-full  pb-3 relative z-10">
         <div className="mb-4">
           <div className="flex items-end justify-between">
             <div>

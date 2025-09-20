@@ -1,39 +1,13 @@
 "use client";
 
-import { wagmiAdapter, projectId } from "@/config";
+import { wagmiConfig } from "@/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createAppKit } from "@reown/appkit/react";
-import { mainnet, arbitrum } from "@reown/appkit/networks";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { CurrencyProvider } from "./CurrencyContext";
 
 // Set up queryClient
 const queryClient = new QueryClient();
-
-if (!projectId) {
-  throw new Error("Project ID is not defined");
-}
-
-// Set up metadata
-const metadata = {
-  name: "zhenglong-app",
-  description: "Create tokens pegged to real-world data feeds",
-  url: "https://app.zhenglong.finance", // origin must match your domain & subdomain
-  icons: ["https://avatars.githubusercontent.com/u/179229932"],
-};
-
-// Create the modal
-const modal = createAppKit({
-  adapters: [wagmiAdapter],
-  projectId,
-  networks: [mainnet, arbitrum],
-  defaultNetwork: mainnet,
-  metadata: metadata,
-  features: {
-    analytics: true, // Optional - defaults to your Cloud configuration
-  },
-});
 
 function ContextProvider({
   children,
@@ -43,13 +17,13 @@ function ContextProvider({
   cookies: string | null;
 }>) {
   const initialState = cookieToInitialState(
-    wagmiAdapter.wagmiConfig as Config,
+    wagmiConfig as unknown as Config,
     cookies
   );
 
   return (
     <WagmiProvider
-      config={wagmiAdapter.wagmiConfig as Config}
+      config={wagmiConfig as unknown as Config}
       initialState={initialState}
     >
       <QueryClientProvider client={queryClient}>
