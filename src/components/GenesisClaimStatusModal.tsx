@@ -95,8 +95,8 @@ export default function GenesisClaimStatusModal({
     switch (status) {
       case "pending":
         return (
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-400/10 border border-blue-400/20 flex items-center justify-center-full">
-            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent-full animate-spin"></div>
+          <div className="w-16 h-16 mx-auto mb-4 bg-harbor/10 border border-harbor/20 flex items-center justify-center-full">
+            <div className="w-8 h-8 border-2 border-harbor border-t-transparent-full animate-spin"></div>
           </div>
         );
       case "completed":

@@ -17,6 +17,7 @@ import {
 } from "wagmi";
 import { markets } from "../config/markets";
 import MintRedeemStatusModal from "./MintRedeemStatusModal";
+import type { Market as MarketCfg } from "../config/markets";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -303,7 +304,7 @@ interface MintRedeemFormProps {
   currentMarket: Market;
   isConnected: boolean;
   userAddress: string | undefined;
-  marketInfo?: any;
+  marketInfo?: MarketCfg;
   selectedType: TokenType;
   // publicClient: any; // Not passing publicClient, component will get its own
 }
@@ -1484,7 +1485,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             {/* Front Side (PEGGED) */}
             <div className="col-start-1 row-start-1 bg-transparent">
               <div
-                className={`relative transition-opacity duration-50 delay-[145ms] ${
+                className={`relative transition-opacity duration-200 ${
                   selectedType === "LONG"
                     ? "opacity-100 z-10 pointer-events-auto"
                     : "opacity-0 z-0 pointer-events-none"
@@ -1528,7 +1529,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={inputAmount}
                             onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className="w-full text-4xl font-semibold bg-transparent text-white focus:outline-none pr-24"
+                            className="w-full text-2xl sm:text-3xl font-semibold bg-transparent text-white focus:outline-none pr-24"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -1644,8 +1645,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={outputAmount}
                             onChange={handleOutputAmountChange}
                             placeholder="0.0"
-                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            aria-readonly={true}
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -1677,14 +1677,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-zinc-400">Fee:</span>
                         <div className="text-right">
-                          <div className="text-[#4A7C59] font-medium">
+                          <div className="text-indigo-400 font-medium">
                             {inputAmount && parseFloat(inputAmount) > 0
                               ? selectedType === "LONG"
                                 ? formatFeeToken(dryRunFee)
                                 : dryRunFeeRatio
                                 ? `${formatFeeToken(
                                     dryRunFee
-                                  )} (${formatFeeRatio(dryRunFeeRatio)}%)`
+                                  )} (${formatFeeRatio(dryRunFeeRatio)})`
                                 : formatFeeToken(dryRunFee)
                               : "-"}
                           </div>
@@ -1761,7 +1761,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             {/* Back Side (LEVERAGE) */}
             <div className="col-start-1 row-start-1 bg-transparent">
               <div
-                className={`relative transition-opacity duration-50 delay-[145ms] ${
+                className={`relative transition-opacity duration-200 ${
                   selectedType === "STEAMED"
                     ? "opacity-100 z-10 pointer-events-auto"
                     : "opacity-0 z-0 pointer-events-none"
@@ -1806,7 +1806,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={inputAmount}
                             onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
@@ -1923,8 +1923,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             value={outputAmount}
                             onChange={handleOutputAmountChange}
                             placeholder="0.0"
-                            className="w-full bg-transparent text-4xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            aria-readonly={true}
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -1956,7 +1955,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-zinc-400">Fee:</span>
                         <div className="text-right">
-                          <div className="text-[#4A7C59] font-medium">
+                          <div className="text-indigo-400 font-medium">
                             {inputAmount && parseFloat(inputAmount) > 0
                               ? formatFeeToken(dryRunFee)
                               : "-"}
@@ -1979,7 +1978,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             inputAmount &&
                             parseFloat(inputAmount) > 0 ? (
                             <div className="text-xs text-zinc-500">
-                              {formatFeeRatio(dryRunFeeRatio)}%
+                              {formatFeeRatio(dryRunFeeRatio)}
                             </div>
                           ) : (
                             <div className="text-xs text-zinc-500">-</div>
@@ -2069,7 +2068,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   Cancel
                 </button>
                 <button
-                  className="px-4 py-2 bg-[#4A7C59] text-white hover:bg-[#5A8C69] font-bold"
+                  className="px-4 py-2 outline outline-1 outline-white/10 hover:outline-white/20 text-white font-bold"
                   // TODO: Wire up to actual mint
                 >
                   Confirm

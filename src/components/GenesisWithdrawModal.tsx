@@ -349,14 +349,14 @@ export const GenesisWithdrawModal = ({
 
           {/* Success Message */}
           {step === "success" && (
-            <div className="p-3 bg-blue-900/20 border border-blue-500/30 text-blue-400 text-sm text-center">
+            <div className="p-3 bg-harbor/10 border border-harbor/30 text-harbor text-sm text-center">
               ✅ Withdrawal successful!
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-[#2563EB]/20">
+        <div className="flex gap-3 p-6 border-t border-harbor/20">
           <button
             onClick={handleClose}
             className={`flex-1 py-2 px-4 text-[#F5F5F5]/70 hover:text-[#F5F5F5] transition-colors ${geo.className}`}

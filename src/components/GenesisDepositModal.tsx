@@ -358,7 +358,7 @@ export const GenesisDepositModal = ({
 
           {/* Transaction Preview */}
           {amount && parseFloat(amount) > 0 && (
-            <div className="p-3 bg-[#0F0F0F]/90 border border-[#2563EB]/10 space-y-2 text-sm">
+            <div className="p-3 bg-[#0F0F0F]/90 border border-harbor/20 space-y-2 text-sm">
               <div className="font-medium text-[#F5F5F5]">
                 Transaction Preview:
               </div>
@@ -370,14 +370,14 @@ export const GenesisDepositModal = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-[#F5F5F5]/70">+ Deposit Amount:</span>
-                <span className="text-blue-400">
+                <span className="text-harbor">
                   +{amount} {collateralSymbol}
                 </span>
               </div>
-              <div className="border-t border-[#2563EB]/20 pt-2">
+              <div className="border-t border-harbor/30 pt-2">
                 <div className="flex justify-between font-medium">
                   <span className="text-[#F5F5F5]">New Total Deposit:</span>
-                  <span className="text-[#2563EB]">
+                  <span className="text-harbor">
                     {formatEther(newTotalDeposit)} {collateralSymbol}
                   </span>
                 </div>
@@ -399,15 +399,13 @@ export const GenesisDepositModal = ({
                 <div
                   className={`w-2 h-2-full ${
                     step === "approving"
-                      ? "bg-[#2563EB] animate-pulse"
-                      : "bg-blue-500"
+                      ? "bg-harbor animate-pulse"
+                      : "bg-harbor"
                   }`}
                 />
                 <span
                   className={
-                    step === "approving"
-                      ? "text-[#2563EB]"
-                      : "text-[#F5F5F5]/70"
+                    step === "approving" ? "text-harbor" : "text-[#F5F5F5]/70"
                   }
                 >
                   Step 1: Approve {collateralSymbol}
@@ -417,17 +415,15 @@ export const GenesisDepositModal = ({
                 <div
                   className={`w-2 h-2-full ${
                     step === "depositing"
-                      ? "bg-[#2563EB] animate-pulse"
+                      ? "bg-harbor animate-pulse"
                       : step === "approving"
                       ? "bg-zinc-600"
-                      : "bg-blue-500"
+                      : "bg-harbor"
                   }`}
                 />
                 <span
                   className={
-                    step === "depositing"
-                      ? "text-[#2563EB]"
-                      : "text-[#F5F5F5]/70"
+                    step === "depositing" ? "text-harbor" : "text-[#F5F5F5]/70"
                   }
                 >
                   Step 2: Deposit to Genesis
@@ -453,14 +449,14 @@ export const GenesisDepositModal = ({
 
           {/* Success Message */}
           {step === "success" && (
-            <div className="p-3 bg-blue-900/20 border border-blue-500/30 text-blue-400 text-sm text-center">
+            <div className="p-3 bg-harbor/10 border border-harbor/30 text-harbor text-sm text-center">
               ✅ Deposit successful!
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-[#2563EB]/20">
+        <div className="flex gap-3 p-6 border-t border-harbor/20">
           <button
             onClick={handleClose}
             className={`flex-1 py-2 px-4 text-[#F5F5F5]/70 hover:text-[#F5F5F5] transition-colors ${geo.className}`}

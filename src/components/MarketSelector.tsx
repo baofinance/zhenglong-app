@@ -45,8 +45,8 @@ export default function MarketSelector({
 
   const getStatusBadge = (status: string) => {
     const statusStyles = {
-      live: "text-blue-400 bg-blue-400/10",
-      genesis: "text-blue-400 bg-blue-400/10",
+      live: "text-harbor bg-harbor/10",
+      genesis: "text-harbor bg-harbor/10",
       coming_soon: "text-yellow-400 bg-yellow-400/10",
       archived: "text-gray-400 bg-gray-400/10",
     };

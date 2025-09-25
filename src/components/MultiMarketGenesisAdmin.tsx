@@ -37,7 +37,7 @@ function MarketAdminCard({
   } = marketData;
 
   const statusColors = {
-    live: "bg-blue-900/30 text-blue-400 border-blue-500/30",
+    live: "bg-harbor/10 text-harbor border-harbor/30",
     completed: "bg-blue-900/30 text-blue-400 border-blue-500/30",
     scheduled: "bg-yellow-900/30 text-yellow-400 border-yellow-500/30",
     closed: "bg-orange-900/30 text-orange-400 border-orange-500/30",

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
 
 export type CurrencyCode = "USD" | "EUR" | "JPY" | "GBP";
 
@@ -30,8 +36,28 @@ const CurrencyContext = createContext<CurrencyContextValue | undefined>(
   undefined
 );
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [code, setCode] = useState<CurrencyCode>("USD");
+function setCookie(name: string, value: string, days = 365) {
+  if (typeof document === "undefined") return;
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(
+    value
+  )}; path=/; expires=${expires}; SameSite=Lax`;
+}
+
+export function CurrencyProvider({
+  children,
+  initialCode,
+}: {
+  children: React.ReactNode;
+  initialCode?: CurrencyCode;
+}) {
+  const [code, setCode] = useState<CurrencyCode>(initialCode ?? "USD");
+
+  // Persist on change
+  useEffect(() => {
+    setCookie("currency", code, 365);
+  }, [code]);
+
   const selected = useMemo(
     () => currencyOptions.find((c) => c.code === code) ?? currencyOptions[0],
     [code]

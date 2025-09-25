@@ -12,6 +12,11 @@ import {
 } from "recharts";
 import TimeRangeSelector from "./TimeRangeSelector";
 import { TimeRange } from "../config/types";
+import type { TooltipProps } from "recharts";
+import type {
+  ValueType,
+  NameType,
+} from "recharts/types/component/DefaultTooltipContent";
 
 const generateData = (
   timeRange: TimeRange,
@@ -19,7 +24,7 @@ const generateData = (
   marketId: string
 ) => {
   const now = new Date();
-  let data = [];
+  const data: { timestamp: number; value: number }[] = [];
   let numPoints = 0;
   let interval = 1000 * 60 * 60; // 1 hour
 
@@ -50,7 +55,7 @@ const generateData = (
     .split("")
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const random = () => {
-    var x = Math.sin(seed++) * 10000;
+    const x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
   };
 
@@ -69,10 +74,15 @@ const generateData = (
   return data;
 };
 
-const CustomTooltip = ({ active, payload, label, dataType }: any) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  dataType,
+}: TooltipProps<ValueType, NameType> & { dataType: string }) => {
   if (active && payload && payload.length) {
-    const value = payload[0].value;
-    const formattedDate = new Date(label).toLocaleString("en-US", {
+    const value = Number(payload[0].value);
+    const formattedDate = new Date(Number(label)).toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -83,7 +93,7 @@ const CustomTooltip = ({ active, payload, label, dataType }: any) => {
     return (
       <div className="bg-[#0c0c0c] p-4 border border-white/10 shadow-lg">
         <p className="text-sm text-white/80">{formattedDate}</p>
-        <p className="text-lg font-bold text-[#4A7C59]">
+        <p className="text-lg font-bold text-[#00df82]">
           {dataType === "apr"
             ? `${value.toFixed(2)}%`
             : `$${(value / 1_000_000).toFixed(2)}M`}
@@ -179,14 +189,14 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
         >
           <defs>
             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4A7C59" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#4A7C59" stopOpacity={0} />
+              <stop offset="5%" stopColor="#00df82" stopOpacity={0.45} />
+              <stop offset="95%" stopColor="#00df82" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="#4A7C59"
-            opacity={0.1}
+            stroke="#4f46e5"
+            opacity={0.12}
             vertical={false}
           />
           <XAxis
@@ -194,7 +204,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
             stroke="#F5F5F5"
             opacity={0.5}
             tick={{ fontSize: 12, fill: "#A3A3A3" }}
-            tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+            tickLine={{ stroke: "#4f46e5", opacity: 0.25 }}
             tickFormatter={formatXAxis}
             padding={{ left: 20, right: 20 }}
           />
@@ -202,7 +212,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
             stroke="#F5F5F5"
             opacity={0.5}
             tick={{ fontSize: 12, fill: "#A3A3A3" }}
-            tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+            tickLine={{ stroke: "#4f46e5", opacity: 0.25 }}
             tickFormatter={formatYAxis}
             domain={["auto", "auto"]}
           />
@@ -210,7 +220,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#4A7C59"
+            stroke="#00df82"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorValue)"
@@ -218,8 +228,8 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
             activeDot={{
               r: 5,
               strokeWidth: 2,
-              fill: "#0c0c0c",
-              stroke: "#4A7C59",
+              fill: "#00df82",
+              stroke: "#00df82",
             }}
           />
         </AreaChart>

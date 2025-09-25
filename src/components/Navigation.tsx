@@ -12,9 +12,32 @@ import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import CurrencySelect from "./CurrencySelect";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import WalletButton from "./WalletButton";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function Example() {
   const { code, setCode, options } = useCurrency();
+  const pathname = usePathname();
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname?.startsWith(href);
+  };
+
+  const linkClass = (href: string) =>
+    `rounded-md px-3 py-2 text-sm font-medium ${
+      isActive(href)
+        ? "text-white bg-white/5"
+        : "text-gray-300 hover:bg-white/5 hover:text-white"
+    }`;
+
+  const optionsForSelect = options.map((o) => ({
+    code: o.code,
+    label: o.label,
+    symbol: o.symbol,
+  }));
+
   return (
     <Disclosure<"nav">
       as="nav"
@@ -23,35 +46,45 @@ export default function Example() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <div className="shrink-0">
-              <div className="h-8 w-8 bg-indigo-600 " />
-            </div>
-            <div className="hidden sm:ml-4 sm:block">
+            <Link href="/" className="w-12 h-12 relative mr-4">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </Link>
+            <div className="hidden sm:block">
               <div className="flex space-x-2">
-                <a
-                  href="/dashboard"
-                  className="rounded-md px-3 py-2 text-sm font-medium text-white"
+                <Link
+                  href="/"
+                  className={linkClass("/")}
+                  aria-current={isActive("/") ? "page" : undefined}
                 >
                   Dashboard
-                </a>
-                <a
+                </Link>
+                {/* <Link
                   href="/"
-                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+                  className={linkClass("/")}
+                  aria-current={isActive("/") ? "page" : undefined}
                 >
                   Mint + Redeem
-                </a>
-                <a
+                </Link> */}
+                <Link
                   href="/genesis"
-                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+                  className={linkClass("/genesis")}
+                  aria-current={isActive("/genesis") ? "page" : undefined}
                 >
                   Genesis
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/earn"
-                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+                  className={linkClass("/earn")}
+                  aria-current={isActive("/earn") ? "page" : undefined}
                 >
                   Earn
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -60,14 +93,14 @@ export default function Example() {
               <CurrencySelect
                 value={code}
                 onValueChange={setCode}
-                options={options as any}
+                options={optionsForSelect}
               />
               <WalletButton />
             </div>
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500">
+            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-harbor">
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -86,30 +119,34 @@ export default function Example() {
       <DisclosurePanel className="sm:hidden">
         <div className="px-2 pt-2 pb-3 space-y-1">
           <DisclosureButton
-            as="a"
+            as={Link}
             href="/dashboard"
-            className="block rounded-md px-3 py-2 text-base font-medium text-white hover:bg-white/5"
+            className={linkClass("/dashboard")}
+            aria-current={isActive("/dashboard") ? "page" : undefined}
           >
             Dashboard
           </DisclosureButton>
           <DisclosureButton
-            as="a"
+            as={Link}
             href="/"
-            className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+            className={linkClass("/")}
+            aria-current={isActive("/") ? "page" : undefined}
           >
             Mint + Redeem
           </DisclosureButton>
           <DisclosureButton
-            as="a"
+            as={Link}
             href="/genesis"
-            className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+            className={linkClass("/genesis")}
+            aria-current={isActive("/genesis") ? "page" : undefined}
           >
             Genesis
           </DisclosureButton>
           <DisclosureButton
-            as="a"
+            as={Link}
             href="/earn"
-            className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+            className={linkClass("/earn")}
+            aria-current={isActive("/earn") ? "page" : undefined}
           >
             Earn
           </DisclosureButton>
@@ -119,7 +156,7 @@ export default function Example() {
             <CurrencySelect
               value={code}
               onValueChange={setCode}
-              options={options as any}
+              options={optionsForSelect}
             />
             <WalletButton />
           </div>

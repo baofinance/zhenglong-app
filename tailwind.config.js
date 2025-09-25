@@ -11,8 +11,11 @@ module.exports = {
         mono: ["var(--font-geist-mono)", ...fontFamily.mono],
       },
       colors: {
-        "custom-green": "#4A7C59",
-        "custom-background": "#1C1C1C",
+        "custom-green": "#00df82",
+        "custom-background": "#ff8b7b",
+        // Added brand highlight color
+        harbor: "#00df82",
+        "harbor-green": "#00df82",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

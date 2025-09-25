@@ -32,7 +32,7 @@ interface NeutralBarChartProps {
   // accent sprinkle controls
   sprinkleAccent?: boolean;
   sprinkleRate?: number; // 0..1, default 0.15
-  accentColor?: string; // default indigo-500
+  accentColor?: string; // default #ff8b7b
 }
 
 const NeutralTooltip: React.FC<{
@@ -112,7 +112,7 @@ export default function NeutralBarChart({
   unit,
   sprinkleAccent = true,
   sprinkleRate = 0.15,
-  accentColor = "#8b5cf6",
+  accentColor = "#ff8b7b",
 }: NeutralBarChartProps) {
   useEffect(() => {
     const id = setTimeout(() => {
@@ -123,7 +123,7 @@ export default function NeutralBarChart({
     return () => clearTimeout(id);
   }, []);
 
-  const accentRgb = hexToRgb(accentColor) || { r: 139, g: 92, b: 246 };
+  const accentRgb = hexToRgb(accentColor) || { r: 255, g: 139, b: 123 };
 
   return (
     <div className="w-full min-w-0 relative" style={{ height }}>

@@ -1,41 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useAccount, useContractReads, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
 import { usePools } from "@/hooks/usePools";
-import Navigation from "@/components/Navigation";
-import { Geo } from "next/font/google";
 import Link from "next/link";
-import Image from "next/image";
-import dynamic from "next/dynamic";
 import TokenIcon from "@/components/TokenIcon";
-import TimeRangeSelector from "@/components/TimeRangeSelector";
 import { usePoolData } from "@/hooks/usePoolData";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { rewardsABI } from "@/abis/rewards";
 import { erc20ABI } from "@/abis/erc20";
-import { clsx } from "clsx";
-import Dollar from "pixelarticons/svg/dollar.svg";
-import Money from "pixelarticons/svg/money.svg";
-import Trending from "pixelarticons/svg/trending.svg";
-import Moon from "pixelarticons/svg/moon.svg";
-import ArrowDown from "pixelarticons/svg/arrow-down.svg";
-import ArrowUp from "pixelarticons/svg/arrow-up.svg";
-import Gift from "pixelarticons/svg/gift.svg";
+import InfoTooltip from "@/components/InfoTooltip";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
+import type { Pool } from "@/config/pools";
+import type { MarketConfig } from "@/config/contracts";
 
-const RechartsChart = dynamic(() => import("@/components/RechartsChart"), {
-  ssr: false,
-});
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
-
-// Etherscan Link helper
 interface EtherscanLinkProps {
   label: string;
   address?: string;
@@ -43,11 +23,10 @@ interface EtherscanLinkProps {
 
 function EtherscanLink({ label, address }: EtherscanLinkProps) {
   if (!address) return null;
-
   const etherscanBaseUrl = "https://etherscan.io/address/";
   return (
-    <div className="flex justify-between items-center text-sm py-3 border-b border-white/10 last:border-b-0">
-      <span className="text-[#F5F5F5]/70">{label}</span>
+    <div className="flex justify-between items-center text-sm py-2 border-b border-white/10 last:border-b-0">
+      <span className="text-white/70">{label}</span>
       <a
         href={`${etherscanBaseUrl}${address}`}
         target="_blank"
@@ -74,15 +53,20 @@ function EtherscanLink({ label, address }: EtherscanLinkProps) {
   );
 }
 
-// Contract Info section
-function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
+function ContractInfoSection({
+  pool,
+  market,
+}: {
+  pool: Pool | undefined;
+  market: MarketConfig | undefined;
+}) {
   if (!pool || !market) {
     return (
-      <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full">
-        <h2 className="text-lg font-medium mb-4">Contract Info</h2>
-        <p className="text-sm text-[#F5F5F5]/70">
-          Pool information not available.
-        </p>
+      <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full">
+        <h2 className="font-semibold font-mono text-white mb-2">
+          Contract Info
+        </h2>
+        <p className="text-sm text-white/70">Pool information not available.</p>
       </div>
     );
   }
@@ -93,20 +77,20 @@ function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
       : market.addresses.peggedToken;
 
   return (
-    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 h-full">
-      <h2 className="text-lg font-medium mb-4">Contract Info</h2>
-      <div className="space-y-2">
+    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full">
+      <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
+      <div className="divide-y divide-white/10">
         <EtherscanLink label={pool.name} address={pool.address} />
         <EtherscanLink
           label={`Deposit Token (${pool.tokenSymbol})`}
           address={assetAddress}
         />
         <EtherscanLink
-          label={`Collateral (${market.collateralSymbol})`}
+          label="Collateral Token"
           address={market.addresses.collateralToken}
         />
         <EtherscanLink
-          label={`Pegged Token (${market.peggedSymbol})`}
+          label="Pegged Token"
           address={market.addresses.peggedToken}
         />
         <EtherscanLink label="Minter" address={market.addresses.minter} />
@@ -117,59 +101,41 @@ function ContractInfoSection({ pool, market }: { pool: any; market: any }) {
 
 type PoolAction = "deposit" | "withdraw" | "rewards";
 
-// Tab Button Component
-interface TabButtonProps {
-  isActive: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}
+type ContractReadResult = { result?: bigint };
 
-function TabButton({ isActive, onClick, children }: TabButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        "text-md font-medium transition-colors px-3 py-2 flex items-center",
-        isActive
-          ? "text-white bg-white/10"
-          : "text-white/60 hover:bg-white/10 hover:text-white"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-// Input Field Component
-interface InputFieldProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  maxButton?: {
-    onClick: () => void;
-    label: string;
-  };
-}
+type PoolWithData = Pool & {
+  tvl?: bigint;
+  tvlUSD: number;
+  userDeposit?: bigint;
+  aprBreakdown: { collateral: number; steam: number };
+  rewards?: bigint;
+  leverageRatio?: bigint;
+};
 
 function InputField({
   value,
   onChange,
   placeholder,
   maxButton,
-}: InputFieldProps) {
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  maxButton?: { onClick: () => void; label: string };
+}) {
   return (
-    <div className="flex items-center space-x-4 border border-zinc-700/50 p-4">
+    <div className="flex items-center gap-2 outline outline-1 outline-white/10 p-3 rounded-sm">
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full text-4xl font-semibold bg-transparent text-white focus:outline-none pr-4"
+        className="w-full text-2xl sm:text-3xl font-semibold bg-transparent text-white focus:outline-none pr-2"
       />
       {maxButton && (
         <button
           onClick={maxButton.onClick}
-          className="text-md font-medium text-[#4A7C59] hover:text-[#3A6147] transition-colors"
+          className="text-xs text-white/80 hover:text-white outline outline-1 outline-white/10 px-2 py-1 rounded-sm"
         >
           {maxButton.label}
         </button>
@@ -178,64 +144,47 @@ function InputField({
   );
 }
 
-// Action Button Component
-interface ActionButtonProps {
-  onClick: () => void;
-  disabled: boolean;
-  isLoading: boolean;
-  children: React.ReactNode;
-  loadingText?: string;
-}
-
 function ActionButton({
   onClick,
   disabled,
   isLoading,
   children,
   loadingText,
-}: ActionButtonProps) {
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  isLoading: boolean;
+  children: React.ReactNode;
+  loadingText?: string;
+}) {
   return (
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90 transition-colors"
+      className="w-full py-2 text-sm rounded-sm outline outline-1 outline-white/10 hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isLoading ? loadingText || "Processing..." : children}
     </button>
   );
 }
 
-// Balance Display Component
-interface BalanceDisplayProps {
+function BalanceDisplay({
+  label,
+  value,
+  token,
+}: {
   label: string;
   value: string;
   token?: string;
-}
-
-function BalanceDisplay({ label, value, token }: BalanceDisplayProps) {
+}) {
   return (
-    <div className="flex justify-between items-center mb-2">
-      <p className="text-sm text-[#F5F5F5]/50">{label}</p>
-      <p className="text-sm text-[#F5F5F5] font-mono">
+    <div className="flex justify-between items-center mb-1">
+      <p className="text-xs text-white/60">{label}</p>
+      <p className="text-sm text-white font-mono">
         {value} {token}
       </p>
     </div>
   );
-}
-
-// Deposit Tab Component
-interface DepositTabProps {
-  depositAmount: string;
-  setDepositAmount: (value: string) => void;
-  tokenBalance: any;
-  tokenSymbol: string;
-  error: string | null;
-  isConnected: boolean;
-  isDepositLoading: boolean;
-  isApproveLoading: boolean;
-  handleDeposit: () => void;
-  handleMaxDeposit: () => void;
-  formatAmount: (value: bigint | undefined) => string;
 }
 
 function DepositTab({
@@ -250,9 +199,21 @@ function DepositTab({
   handleDeposit,
   handleMaxDeposit,
   formatAmount,
-}: DepositTabProps) {
+}: {
+  depositAmount: string;
+  setDepositAmount: (value: string) => void;
+  tokenBalance: ReadonlyArray<ContractReadResult> | undefined;
+  tokenSymbol: string;
+  error: string | null;
+  isConnected: boolean;
+  isDepositLoading: boolean;
+  isApproveLoading: boolean;
+  handleDeposit: () => void;
+  handleMaxDeposit: () => void;
+  formatAmount: (value: bigint | undefined) => string;
+}) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <BalanceDisplay
         label="Wallet Balance"
         value={formatAmount(tokenBalance?.[0]?.result)}
@@ -262,12 +223,9 @@ function DepositTab({
         value={depositAmount}
         onChange={setDepositAmount}
         placeholder="0.0"
-        maxButton={{
-          onClick: handleMaxDeposit,
-          label: "MAX",
-        }}
+        maxButton={{ onClick: handleMaxDeposit, label: "MAX" }}
       />
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
       <ActionButton
         onClick={handleDeposit}
         disabled={!isConnected || !depositAmount}
@@ -277,20 +235,6 @@ function DepositTab({
       </ActionButton>
     </div>
   );
-}
-
-// Withdraw Tab Component
-interface WithdrawTabProps {
-  withdrawAmount: string;
-  setWithdrawAmount: (value: string) => void;
-  poolWithData: any;
-  tokenSymbol: string;
-  error: string | null;
-  isConnected: boolean;
-  isWithdrawLoading: boolean;
-  handleWithdraw: () => void;
-  handleMaxWithdraw: () => void;
-  formatAmount: (value: bigint | undefined) => string;
 }
 
 function WithdrawTab({
@@ -304,9 +248,20 @@ function WithdrawTab({
   handleWithdraw,
   handleMaxWithdraw,
   formatAmount,
-}: WithdrawTabProps) {
+}: {
+  withdrawAmount: string;
+  setWithdrawAmount: (value: string) => void;
+  poolWithData: PoolWithData | undefined;
+  tokenSymbol: string;
+  error: string | null;
+  isConnected: boolean;
+  isWithdrawLoading: boolean;
+  handleWithdraw: () => void;
+  handleMaxWithdraw: () => void;
+  formatAmount: (value: bigint | undefined) => string;
+}) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <BalanceDisplay
         label="Pool Balance"
         value={formatAmount(poolWithData?.userDeposit)}
@@ -316,12 +271,9 @@ function WithdrawTab({
         value={withdrawAmount}
         onChange={setWithdrawAmount}
         placeholder="0.0"
-        maxButton={{
-          onClick: handleMaxWithdraw,
-          label: "MAX",
-        }}
+        maxButton={{ onClick: handleMaxWithdraw, label: "MAX" }}
       />
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
       <ActionButton
         onClick={handleWithdraw}
         disabled={!isConnected || !withdrawAmount}
@@ -333,16 +285,6 @@ function WithdrawTab({
   );
 }
 
-// Rewards Tab Component
-interface RewardsTabProps {
-  poolWithData: any;
-  error: string | null;
-  isConnected: boolean;
-  isClaimLoading: boolean;
-  handleClaimRewards: () => void;
-  formatAmount: (value: bigint | undefined) => string;
-}
-
 function RewardsTab({
   poolWithData,
   error,
@@ -350,16 +292,23 @@ function RewardsTab({
   isClaimLoading,
   handleClaimRewards,
   formatAmount,
-}: RewardsTabProps) {
+}: {
+  poolWithData: PoolWithData | undefined;
+  error: string | null;
+  isConnected: boolean;
+  isClaimLoading: boolean;
+  handleClaimRewards: () => void;
+  formatAmount: (value: bigint | undefined) => string;
+}) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <p className="text-sm text-[#F5F5F5]/50 mb-1">Claimable Rewards</p>
+        <p className="text-xs text-white/60 mb-1">Claimable Rewards</p>
         <p className="text-lg font-medium text-white font-mono">
           {formatAmount(poolWithData?.rewards)} STEAM
         </p>
       </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
       <ActionButton
         onClick={handleClaimRewards}
         disabled={!isConnected || !poolWithData?.rewards}
@@ -369,31 +318,6 @@ function RewardsTab({
       </ActionButton>
     </div>
   );
-}
-
-// Main Action Tabs Component
-interface ActionTabsProps {
-  activeTab: PoolAction;
-  setActiveTab: (tab: PoolAction) => void;
-  depositAmount: string;
-  setDepositAmount: (value: string) => void;
-  withdrawAmount: string;
-  setWithdrawAmount: (value: string) => void;
-  tokenBalance: any;
-  poolWithData: any;
-  tokenSymbol: string;
-  error: string | null;
-  isConnected: boolean;
-  isDepositLoading: boolean;
-  isApproveLoading: boolean;
-  isWithdrawLoading: boolean;
-  isClaimLoading: boolean;
-  handleDeposit: () => void;
-  handleWithdraw: () => void;
-  handleClaimRewards: () => void;
-  handleMaxDeposit: () => void;
-  handleMaxWithdraw: () => void;
-  formatAmount: (value: bigint | undefined) => string;
 }
 
 function ActionTabs({
@@ -418,44 +342,52 @@ function ActionTabs({
   handleMaxDeposit,
   handleMaxWithdraw,
   formatAmount,
-}: ActionTabsProps) {
+}: {
+  activeTab: PoolAction;
+  setActiveTab: (tab: PoolAction) => void;
+  depositAmount: string;
+  setDepositAmount: (value: string) => void;
+  withdrawAmount: string;
+  setWithdrawAmount: (value: string) => void;
+  tokenBalance: ReadonlyArray<ContractReadResult> | undefined;
+  poolWithData: PoolWithData | undefined;
+  tokenSymbol: string;
+  error: string | null;
+  isConnected: boolean;
+  isDepositLoading: boolean;
+  isApproveLoading: boolean;
+  isWithdrawLoading: boolean;
+  isClaimLoading: boolean;
+  handleDeposit: () => void;
+  handleWithdraw: () => void;
+  handleClaimRewards: () => void;
+  handleMaxDeposit: () => void;
+  handleMaxWithdraw: () => void;
+  formatAmount: (value: bigint | undefined) => string;
+}) {
   return (
-    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 h-full flex flex-col">
+    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full flex flex-col">
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6">
-        <TabButton
-          isActive={activeTab === "deposit"}
-          onClick={() => setActiveTab("deposit")}
-        >
-          <Image
-            src={ArrowUp}
-            alt="ArrowUp"
-            className="mr-2 w-6 h-6 filter invert brightness-0"
-          />
-          Deposit
-        </TabButton>
-        <TabButton
-          isActive={activeTab === "withdraw"}
-          onClick={() => setActiveTab("withdraw")}
-        >
-          <Image
-            src={ArrowDown}
-            alt="ArrowDown"
-            className="mr-2 w-6 h-6 filter invert brightness-0"
-          />
-          Withdraw
-        </TabButton>
-        <TabButton
-          isActive={activeTab === "rewards"}
-          onClick={() => setActiveTab("rewards")}
-        >
-          <Image
-            src={Gift}
-            alt="Gift"
-            className="mr-2 w-6 h-6 filter invert brightness-0"
-          />
-          Rewards
-        </TabButton>
+      <div className="flex gap-2 mb-3">
+        {(
+          [
+            ["deposit", "Deposit"],
+            ["withdraw", "Withdraw"],
+            ["rewards", "Rewards"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-3 py-1.5 text-sm rounded-sm outline outline-1 transition-colors ${
+              activeTab === key
+                ? "text-white outline-white/80"
+                : "text-white/80 outline-white/10 hover:outline-white/20"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}
@@ -506,39 +438,6 @@ function ActionTabs({
   );
 }
 
-// Chart and Description Component
-interface PoolInfoProps {
-  pool: any;
-  market: any;
-  baseAPR: string;
-  boostAPR: string;
-}
-
-function PoolInfo({ pool, market, baseAPR, boostAPR }: PoolInfoProps) {
-  const totalAPR =
-    (parseFloat(baseAPR) + parseFloat(boostAPR)).toFixed(2) + "%";
-
-  return (
-    <div className="lg:col-span-2 bg-zinc-900/50 outline outline-1 outline-white/10 p-6">
-      <h2 className="text-xl font-bold text-white mb-4">APR Breakdown</h2>
-      <div className="space-y-3">
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-[#F5F5F5]/70">Base APR</span>
-          <span className="font-mono text-white">{baseAPR}</span>
-        </div>
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-[#F5F5F5]/70">STEAM Boost APR</span>
-          <span className="font-mono text-white">{boostAPR}</span>
-        </div>
-        <div className="flex justify-between items-center text-base font-bold border-t border-white/10 pt-3 mt-3">
-          <span className="text-white">Total APR</span>
-          <span className="font-mono text-white">{totalAPR}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 interface PoolClientProps {
   marketId: string;
   poolType: "collateral" | "leveraged";
@@ -556,15 +455,17 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   const [isClaimLoading, setIsClaimLoading] = useState(false);
   const [isApproveLoading, setIsApproveLoading] = useState(false);
   const { getPoolsByMarket, getMarketByPool } = usePools();
+  const { formatFiat } = useCurrency();
 
   const pools = getPoolsByMarket(marketId);
   const pool = pools.find((p) => p.poolType === poolType);
 
   const { poolData } = usePoolData(pool ? [pool] : []);
-  const poolWithData = poolData?.[0];
+  const poolWithData = poolData?.[0] as PoolWithData | undefined;
 
   const market = getMarketByPool(
-    pool?.address ?? "0x0000000000000000000000000000000000000000"
+    (pool?.address as `0x${string}`) ??
+      "0x0000000000000000000000000000000000000000"
   );
 
   const assetAddress =
@@ -635,7 +536,8 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
       if (
         assetAddress &&
-        (!allowance?.[0]?.result || allowance[0].result < amount)
+        (!allowance?.[0]?.result ||
+          (allowance[0].result as unknown as bigint) < amount)
       ) {
         setIsApproveLoading(true);
         await writeContractAsync({
@@ -655,9 +557,9 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         args: [amount, address as `0x${string}`, 0n],
       });
       setDepositAmount("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Deposit failed:", error);
-      setError(error.message || "Deposit failed");
+      setError(error instanceof Error ? error.message : "Deposit failed");
     } finally {
       setIsDepositLoading(false);
       setIsApproveLoading(false);
@@ -677,9 +579,9 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         args: [amount, address as `0x${string}`, 0n],
       });
       setWithdrawAmount("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Withdraw failed:", error);
-      setError(error.message || "Withdraw failed");
+      setError(error instanceof Error ? error.message : "Withdraw failed");
     } finally {
       setIsWithdrawLoading(false);
     }
@@ -695,17 +597,20 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         abi: rewardsABI,
         functionName: "claimRewards",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Claim rewards failed:", error);
-      setError(error.message || "Claim rewards failed");
+      setError(error instanceof Error ? error.message : "Claim rewards failed");
     } finally {
       setIsClaimLoading(false);
     }
   };
 
   const handleMaxDeposit = () => {
-    if (tokenBalance?.[0]?.result) {
-      setDepositAmount(formatAmount(tokenBalance[0].result));
+    const bal = (
+      tokenBalance as ReadonlyArray<ContractReadResult> | undefined
+    )?.[0]?.result;
+    if (bal !== undefined) {
+      setDepositAmount(formatAmount(bal));
     }
   };
 
@@ -716,7 +621,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   };
 
   const { collateral: baseAPR, steam: boostAPR } = formatAPRBreakdown(
-    poolWithData?.aprBreakdown
+    poolWithData?.aprBreakdown as { collateral: number; steam: number }
   );
 
   const tvlUSD = poolWithData?.tvlUSD ?? 0;
@@ -724,9 +629,11 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   if (!pool) {
     return (
       <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
-        <main className="container mx-auto max-w-full pt-[6rem] pb-20 relative z-10">
+        <main className="container mx-auto max-w-full pb-10 relative z-10">
           <div className="text-center">
-            <h1 className={`text-4xl text-white `}>Pool Not Found</h1>
+            <h1 className="text-3xl text-white font-semibold font-mono">
+              Pool Not Found
+            </h1>
           </div>
         </main>
       </div>
@@ -735,14 +642,15 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
-      <main className="container mx-auto max-w-full pt-[6rem] pb-20 relative z-10">
-        <div className="mb-4">
+      <main className="container mx-auto max-w-full pb-8 relative z-10">
+        {/* Breadcrumb */}
+        <div className="mb-3">
           <Link
             href="/earn"
-            className="inline-flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors"
+            className="inline-flex items-center gap-2 text-white/60 hover:text-white"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -758,7 +666,9 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             Earn
           </Link>
         </div>
-        <div className="text-left mb-8">
+
+        {/* Header */}
+        <div className="mb-4">
           <div className="flex items-center gap-3">
             <div className="flex w-7 items-center justify-center">
               {pool.assetIcons
@@ -769,83 +679,82 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
                     key={index}
                     src={icon}
                     alt="token icon"
-                    width={32}
-                    height={32}
-                    className={`rounded-full border-1 antialiased border-white/50 ${
-                      index > 0 ? "-ml-4" : ""
+                    width={28}
+                    height={28}
+                    className={`rounded-full border border-white/40 ${
+                      index > 0 ? "-ml-3" : ""
                     }`}
                   />
                 ))}
             </div>
-            <h1 className={`text-4xl text-white font-medium`}>{pool.name}</h1>
+            <h1 className="text-2xl text-white font-semibold font-mono">
+              {poolName}
+            </h1>
           </div>
-          <p className="text-sm text-zinc-400 mt-2">
-            <span className="font-mono">{pool.address}</span>
-          </p>
+          <p className="text-xs text-white/50 mt-1 font-mono">{pool.address}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
-              <Image
-                src={Dollar}
-                alt="Dollar"
-                className="w-6 h-6 filter invert brightness-0"
+        {/* Overview stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold font-mono text-white">
+                Total Value Locked
+              </h3>
+              <InfoTooltip
+                label="USD value of assets in this pool."
+                side="top"
               />
-              Total Value Locked
-            </p>
-            <p className="text-2xl font-semibold text-white">
-              ${tvlUSD.toFixed(2)}
-            </p>
+            </div>
+            <div className="text-white font-mono text-lg">
+              {formatFiat(tvlUSD)}
+            </div>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
-              <Image
-                src={Money}
-                alt="Money"
-                className="w-6 h-6 filter invert brightness-0"
-              />
-              Your Deposit
-            </p>
-            <p className="text-2xl font-semibold text-white">
-              {formatAmount(poolWithData?.userDeposit)} {tokenSymbol}
-            </p>
+          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold font-mono text-white">
+                Your Deposit
+              </h3>
+              <InfoTooltip label="Your current deposit amount." side="top" />
+            </div>
+            <div className="text-white font-mono text-lg">
+              {formatAmount(poolWithData?.userDeposit)}{" "}
+              <span className="text-white/70">{tokenSymbol}</span>
+            </div>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
-              <Image
-                src={Trending}
-                alt="Trending"
-                className="w-6 h-6 filter invert brightness-0"
+          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold font-mono text-white">Base APR</h3>
+              <InfoTooltip
+                label="Estimated base APR for this pool."
+                side="top"
               />
-              Base APR
-            </p>
-            <p className="text-2xl font-semibold text-white">{baseAPR}</p>
+            </div>
+            <div className="text-white font-mono text-lg">{baseAPR}</div>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4">
-            <p className="text-[#F5F5F5]/50 text-sm mb-1 flex items-center gap-2">
-              <Image
-                src={Moon}
-                alt="Moon"
-                className="w-6 h-6 filter invert brightness-0"
+          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold font-mono text-white">Boost APR</h3>
+              <InfoTooltip
+                label="Additional APR from STEAM boosts."
+                side="top"
               />
-              Boost APR
-            </p>
-            <p className="text-2xl font-semibold text-white">{boostAPR}</p>
+            </div>
+            <div className="text-white font-mono text-lg">{boostAPR}</div>
           </div>
         </div>
 
         {/* Chart */}
-        <div className="mt-4">
-          <div className="shadow-lg outline outline-1 outline-white/10 p-2 w-full h-full flex flex-col">
-            <div className="flex-1 min-h-[480px]">
+        <div className="mt-2">
+          <div className="outline outline-1 outline-white/10 p-2 rounded-sm w-full">
+            <div className="h-[340px] sm:h-[420px]">
               <HistoricalDataChart marketId={marketId} />
             </div>
           </div>
         </div>
 
-        {/* Action Tabs and Info sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        {/* Actions + Contract info */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
           <div className="lg:col-span-2 h-full">
             <ActionTabs
               activeTab={activeTab}
@@ -854,7 +763,9 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               setDepositAmount={setDepositAmount}
               withdrawAmount={withdrawAmount}
               setWithdrawAmount={setWithdrawAmount}
-              tokenBalance={tokenBalance}
+              tokenBalance={
+                tokenBalance as ReadonlyArray<ContractReadResult> | undefined
+              }
               poolWithData={poolWithData}
               tokenSymbol={tokenSymbol || ""}
               error={error}

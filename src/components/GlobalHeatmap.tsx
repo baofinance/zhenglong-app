@@ -28,8 +28,8 @@ export interface GlobalHeatmapProps {
   actives?: boolean[]; // mark in-month cells for dimming and tooltips
 }
 
-const NEUTRAL_PALETTE = ["#1e1b4b", "#3730a3", "#4f46e5", "#818cf8", "#c7d2fe"]; // indigo tones
-const BLUE_ACCENT = "#8b5cf6"; // indigo-500 (bluish purple)
+const NEUTRAL_PALETTE = ["#004d2d", "#006d40", "#00a65e", "#00c770", "#00df82"]; // harbor tones
+const BLUE_ACCENT = "#00df82";
 
 function levelColor(value01: number): string {
   const v = Math.max(0, Math.min(1, value01));
@@ -139,7 +139,9 @@ export default function GlobalHeatmap({
     const columnStyle = { width: `${cellSizePx}px` } as React.CSSProperties;
 
     // Tooltip state
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const wrapRef = useRef<HTMLDivElement | null>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [tip, setTip] = useState<{
       x: number;
       y: number;

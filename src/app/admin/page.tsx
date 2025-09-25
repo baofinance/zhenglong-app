@@ -466,7 +466,7 @@ export default function Admin() {
                 System Controls
               </h2>
               <Link href="/admin/genesis">
-                <button className="py-2 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+                <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
                   Genesis Admin
                 </button>
               </Link>
