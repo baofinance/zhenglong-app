@@ -46,12 +46,12 @@ export default function Example() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="w-12 h-12 relative mr-4">
+            <Link href="/" className="w-8 h-8 relative mr-4">
               <Image
                 src="/logo.png"
                 alt="Logo"
                 fill
-                className="object-contain"
+                className="object-contain invert"
                 priority
               />
             </Link>

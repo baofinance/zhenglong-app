@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Head from "next/head";
 import { useAccount } from "wagmi";
-import { markets } from "../config/markets";
+import { markets } from "@/config/markets";
 import MarketSelector from "@/components/MarketSelector";
 import MintRedeemForm from "@/components/MintRedeemForm";
 import HistoricalDataChart from "@/components/HistoricalDataChart";

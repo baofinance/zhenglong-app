@@ -1,7 +1,7 @@
 import React from "react";
 
 export type InfoTooltipProps = {
-  label: string;
+  label: React.ReactNode;
   className?: string;
   side?: "top" | "bottom" | "left" | "right";
 };
