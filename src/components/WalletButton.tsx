@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useAccount,
   useConnect,
@@ -31,6 +31,11 @@ export default function WalletButton() {
 
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const available = useMemo(
     () => connectors.filter((c) => c.ready),
@@ -62,18 +67,22 @@ export default function WalletButton() {
         }
       >
         <Wallet className="h-4 w-4 text-white/70" />
-        {isConnected ? (
-          <DecryptedText
-            text={displayAddr}
-            parentClassName="inline-block"
-            className=""
-            encryptedClassName="text-white/40"
-            animateOn="view"
-            useOriginalCharsOnly
-            speed={60}
-          />
+        {isMounted ? (
+          isConnected ? (
+            <DecryptedText
+              text={displayAddr}
+              parentClassName="inline-block"
+              className=""
+              encryptedClassName="text-white/40"
+              animateOn="view"
+              useOriginalCharsOnly
+              speed={60}
+            />
+          ) : (
+            <span>Connect</span>
+          )
         ) : (
-          <span>Connect</span>
+          <span suppressHydrationWarning />
         )}
         {wrongNetwork && (
           <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />

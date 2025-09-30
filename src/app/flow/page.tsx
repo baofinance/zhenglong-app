@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { useAccount, useContractReads } from "wagmi";
+import React, { useMemo, useState, useEffect } from "react";
+import { useAccount, useContractReads, usePublicClient } from "wagmi";
 
-// Proxy at 0xb00b4fFDccDD4593b5c433a57c3a0bcB0c568D15
-const proxyAddress = "0xb00b4fFDccDD4593b5c433a57c3a0bcB0c568D15" as const;
+// Proxy price feeds
+const proxyFeeds = [
+  { label: "fxSAVE/ETH", address: "0xb00b4fFDccDD4593b5c433a57c3a0bcB0c568D15" as const },
+  { label: "fxSAVE/BTC", address: "0x81eD16B508A8866079872db73335e1496A99e8D1" as const },
+  { label: "fxSAVE/EUR", address: "0xbf77C0707680427c27bf7C065b521331C0F052EA" as const },
+  { label: "fxSAVE/MCAP", address: "0xc1C61df639d7a0A71D4cdC2A506F8153DE2Ae9f5" as const },
+  { label: "fxSAVE/XAU", address: "0x4FDAB525D937F374eAbC6882CC0A3e7508cc8871" as const },
+];
 
-// Minimal ABI for required reads
+// Minimal ABI for proxy feeds (same as fxSAVE/ETH proxy)
 const proxyAbi = [
   { inputs: [], name: "getPrice", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   {
@@ -26,12 +32,39 @@ const proxyAbi = [
   { inputs: [{ name: "id", type: "uint8" }], name: "feedIdentifiers", outputs: [{ type: "bytes32" }], stateMutability: "view", type: "function" },
 ] as const;
 
-// Minimal Chainlink aggregator ABI for description()
+// Minimal Chainlink aggregator ABI for description/decimals/latestRoundData/latestAnswer
 const aggregatorAbi = [
   {
     inputs: [],
     name: "description",
     outputs: [{ internalType: "string", name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestRoundData",
+    outputs: [
+      { internalType: "uint80", name: "roundId", type: "uint80" },
+      { internalType: "int256", name: "answer", type: "int256" },
+      { internalType: "uint256", name: "startedAt", type: "uint256" },
+      { internalType: "uint256", name: "updatedAt", type: "uint256" },
+      { internalType: "uint80", name: "answeredInRound", type: "uint80" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [{ internalType: "int256", name: "", type: "int256" }],
     stateMutability: "view",
     type: "function",
   },
@@ -65,6 +98,59 @@ function formatPercent18(value?: bigint, maxFrac = 2) {
   return `${pct.toFixed(maxFrac)}%`;
 }
 
+function formatUnit(value?: bigint, decimals?: number, maxFrac = 6) {
+  if (value === undefined || decimals === undefined) return "-";
+  const n = Number(value) / 10 ** decimals;
+  return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
+}
+
+function unitForLabel(label: string): string {
+  if (label.includes("ETH")) return "ETH";
+  if (label.includes("BTC")) return "BTC";
+  if (label.includes("EUR")) return "EUR";
+  if (label.includes("XAU")) return "GOLD";
+  if (label.includes("MCAP")) return "MCAP";
+  return "";
+}
+
+function formatFxSaveDisplay(label: string, price: string | undefined): string {
+  if (!price || price === "-") return "-";
+  return `1 fxSAVE = ${price} ${unitForLabel(label)}`;
+}
+
+function fxSaveEstimateLabel(label: string, raw?: bigint, priceStr?: string): string | undefined {
+  let p: number | undefined;
+  if (raw !== undefined) {
+    p = Number(raw) / 1e18;
+  } else if (priceStr) {
+    const parsed = parseFloat((priceStr || "").toString().replace(/,/g, ""));
+    if (!Number.isNaN(parsed)) p = parsed;
+  }
+  if (!p || p <= 0) return undefined;
+  const inv = 1 / p;
+  const unit = unitForLabel(label);
+  return `${inv.toLocaleString(undefined, { maximumFractionDigits: 6 })} fxSAVE for 1 ${unit}`;
+}
+
+function etherscanAddressUrl(address?: `0x${string}` | string): string | undefined {
+  if (!address) return undefined;
+  return `https://etherscan.io/address/${address}`;
+}
+
+function ExternalLinkIcon({ className = "inline-block w-4 h-4 align-[-2px] ml-1" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z" />
+      <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z" />
+    </svg>
+  );
+}
+
 function decodeBytes32ToAscii(bytes?: `0x${string}`): string {
   if (!bytes) return "";
   try {
@@ -95,18 +181,18 @@ function bytes32ToAddress(bytes?: `0x${string}`): `0x${string}` | undefined {
 }
 
 export default function FlowPage() {
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [expanded, setExpanded] = useState<null | { kind: "eth" } | { kind: "extra"; idx: number }>(null);
   const ids = useMemo(() => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const, []);
   const ZERO_BYTES32 =
     "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
   const { data } = useContractReads({
     contracts: [
-      { address: proxyAddress, abi: proxyAbi, functionName: "getPrice" },
-      { address: proxyAddress, abi: proxyAbi, functionName: "latestAnswer" },
+      { address: proxyFeeds[0].address, abi: proxyAbi, functionName: "getPrice" },
+      { address: proxyFeeds[0].address, abi: proxyAbi, functionName: "latestAnswer" },
       ...ids.flatMap((id) => ([
-        { address: proxyAddress, abi: proxyAbi, functionName: "getConstraints", args: [id] as const },
-        { address: proxyAddress, abi: proxyAbi, functionName: "feedIdentifiers", args: [id] as const },
+        { address: proxyFeeds[0].address, abi: proxyAbi, functionName: "getConstraints", args: [id] as const },
+        { address: proxyFeeds[0].address, abi: proxyAbi, functionName: "feedIdentifiers", args: [id] as const },
       ])),
     ],
   });
@@ -123,13 +209,23 @@ export default function FlowPage() {
     return out.filter((a): a is `0x${string}` => Boolean(a));
   }, [data, ids]);
 
-  // Fetch descriptions for derived aggregator addresses
+  // Fetch descriptions for derived aggregator addresses (optional)
   const { data: descReads } = useContractReads({
     contracts: aggregatorAddresses.map((addr) => ({
       address: addr,
       abi: aggregatorAbi,
       functionName: "description" as const,
     })),
+    query: { enabled: aggregatorAddresses.length > 0 },
+  });
+
+  // Fetch decimals and latestAnswer for aggregator addresses to compute per-row prices
+  const { data: aggDecReads } = useContractReads({
+    contracts: aggregatorAddresses.map((addr) => ({ address: addr, abi: aggregatorAbi, functionName: "decimals" as const })),
+    query: { enabled: aggregatorAddresses.length > 0 },
+  });
+  const { data: aggAnsReads } = useContractReads({
+    contracts: aggregatorAddresses.map((addr) => ({ address: addr, abi: aggregatorAbi, functionName: "latestAnswer" as const })),
     query: { enabled: aggregatorAddresses.length > 0 },
   });
 
@@ -144,6 +240,107 @@ export default function FlowPage() {
     return map;
   }, [aggregatorAddresses, descReads]);
 
+  // Fetch price for proxyFeeds[1..] using proxy ABI getPrice()
+  const { data: extraReads } = useContractReads({
+    contracts: proxyFeeds.slice(1).map((f) => ({ address: f.address, abi: proxyAbi, functionName: "getPrice" as const })),
+    query: { enabled: proxyFeeds.length > 1 },
+  });
+
+  // Read latestAnswer() tuples for non-ETH feeds to show details in expanded view
+  const { data: extraLatest } = useContractReads({
+    contracts: proxyFeeds.slice(1).map((f) => ({ address: f.address, abi: proxyAbi, functionName: "latestAnswer" as const })),
+    query: { enabled: proxyFeeds.length > 1 },
+  });
+
+  const extraFeedPrices = useMemo(() => {
+    const out: string[] = [];
+    for (let i = 0; i < proxyFeeds.length - 1; i += 1) {
+      const p = extraReads?.[i]?.result as bigint | undefined;
+      out.push(format18(p));
+    }
+    return out;
+  }, [extraReads]);
+
+  // Fallback fetch via public client to ensure extra feeds resolve on forks
+  const publicClient = usePublicClient();
+  const [extraFallback, setExtraFallback] = useState<Array<{ price: string; decimals: number | undefined; updatedAt: string }>>([]);
+  const [extraTables, setExtraTables] = useState<Record<number, Array<{ id: number; name: string; feed?: `0x${string}`; constraintA?: bigint; constraintB?: bigint; price?: string }>>>({});
+  useEffect(() => {
+    let cancelled = false;
+
+    async function readProxyPrice(addr: `0x${string}`): Promise<bigint | undefined> {
+      try {
+        const p = await publicClient?.readContract({ address: addr, abi: proxyAbi, functionName: "getPrice" });
+        return p as bigint;
+      } catch {}
+      return undefined;
+    }
+
+    (async () => {
+      if (!publicClient) return;
+      const results: Array<{ price: string; decimals: number | undefined; updatedAt: string }> = [];
+      for (const f of proxyFeeds.slice(1)) {
+        if (cancelled) break;
+        const p = await readProxyPrice(f.address);
+        const price = p !== undefined ? format18(p) : "-";
+        results.push({ price, decimals: 18, updatedAt: "-" });
+        setExtraFallback([...results]);
+      }
+      if (!cancelled && results.length === 0) {
+        setExtraFallback(extraFeeds.map(() => ({ price: "-", decimals: undefined, updatedAt: "-" })));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicClient]);
+
+  // On-demand load of constraints + feed identifiers for non-ETH proxies
+  useEffect(() => {
+    async function loadTable(idx: number) {
+      const addr = proxyFeeds.slice(1)[idx]?.address;
+      if (!publicClient || !addr) return;
+      const rows: Array<{ id: number; name: string; feed?: `0x${string}`; constraintA?: bigint; constraintB?: bigint; price?: string }> = [];
+      for (const id of ids) {
+        try {
+          const [cons, feed] = await Promise.all([
+            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "getConstraints", args: [id] }),
+            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "feedIdentifiers", args: [id] }),
+          ]);
+          const c = cons as [bigint, bigint];
+          const f = feed as `0x${string}`;
+          // Try to resolve human-readable name via aggregator description
+          let name = deriveFeedName(f);
+          let price: string | undefined;
+          try {
+            const aggAddr = bytes32ToAddress(f);
+            if (aggAddr) {
+              const desc = await publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "description" });
+              if (typeof desc === "string" && desc.trim().length > 0) {
+                name = desc.trim();
+              }
+              try {
+                const [dec, ans] = await Promise.all([
+                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "decimals" }),
+                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "latestAnswer" }),
+                ]);
+                price = formatUnit(ans as bigint, Number(dec as number));
+              } catch {}
+            }
+          } catch {}
+          rows.push({ id, name, feed: f, constraintA: c?.[0], constraintB: c?.[1], price });
+        } catch {
+          rows.push({ id, name: "-" });
+        }
+      }
+      setExtraTables((prev) => ({ ...prev, [idx]: rows.filter((r) => r.feed) }));
+    }
+    if (expanded && expanded.kind === "extra" && !extraTables[expanded.idx]) {
+      loadTable(expanded.idx);
+    }
+  }, [expanded, ids, publicClient, extraTables]);
+
   const rows = ids
     .map((id, i) => {
       const c = data?.[2 + i * 2]?.result as [bigint, bigint] | undefined;
@@ -157,7 +354,7 @@ export default function FlowPage() {
     .filter((r) => r.feed && r.feed !== ZERO_BYTES32);
 
   const primaryFeedName = rows[0]?.name && rows[0]?.name !== "-" ? rows[0]!.name : "fxSAVE/ETH";
-  const feedLabel = "fxSAVE/ETH";
+  const feedLabel = expanded && expanded.kind === "extra" ? proxyFeeds.slice(1)[expanded.idx]?.label || "fxSAVE/ETH" : "fxSAVE/ETH";
 
   return (
     <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
@@ -181,20 +378,20 @@ export default function FlowPage() {
           <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4 overflow-x-auto">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-semibold text-white/90">Feeds</h2>
-              <div className="text-xs text-white/50">1 feed</div>
+              <div className="text-xs text-white/50">5 feeds</div>
             </div>
             <table className="min-w-full text-left text-sm table-fixed">
               <thead>
                 <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
                   <th className="py-3 px-4 font-normal">Feed</th>
                   <th className="w-40 py-3 px-4 font-normal">Type</th>
-                  <th className="w-48 py-3 px-4 font-normal">Price</th>
+                  <th className="w-60 py-3 px-4 font-normal">Price</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
                   className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
-                  onClick={() => setIsExpanded((v) => !v)}
+                  onClick={() => setExpanded((prev) => (prev?.kind === "eth" ? null : { kind: "eth" }))}
                 >
                   <td className="py-2 px-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -202,33 +399,156 @@ export default function FlowPage() {
                     </div>
                   </td>
                   <td className="py-2 px-4">Chainlink</td>
-                  <td className="py-2 px-4 font-mono">{format18(price)}</td>
+                  <td className="py-2 px-4 font-mono" title={fxSaveEstimateLabel("fxSAVE/ETH", price)}>
+                    {formatFxSaveDisplay("fxSAVE/ETH", format18(price))}
+                  </td>
                 </tr>
+                {proxyFeeds.slice(1).map((f, idx) => (
+                  <tr
+                    key={f.address}
+                    className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
+                    onClick={() => setExpanded((prev) => (prev?.kind === "extra" && prev.idx === idx ? null : { kind: "extra", idx }))}
+                  >
+                    <td className="py-2 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium">{f.label}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4">Chainlink</td>
+                    <td
+                      className="py-2 px-4 font-mono"
+                      title={fxSaveEstimateLabel(
+                        f.label,
+                        (extraReads?.[idx]?.result as bigint | undefined),
+                        (extraFeedPrices[idx] || extraFallback[idx]?.price) as string | undefined
+                      )}
+                    >
+                      {formatFxSaveDisplay(
+                        f.label,
+                        (extraFeedPrices[idx] || extraFallback[idx]?.price || "-") as string
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </section>
 
-        {isExpanded && (
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="outline outline-1 outline-white/10 rounded-sm p-4">
-              <div className="text-white/60 text-xs mb-1">{feedLabel} - Price</div>
-              <div className="text-2xl font-mono">{format18(price)}</div>
-              <div className="text-white/40 text-xs">18 decimals</div>
-            </div>
-            <div className="outline outline-1 outline-white/10 rounded-sm p-4">
-              <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
-              <div className="space-y-1 font-mono">
-                <div>{feedLabel} min price: {format18(tuple?.[0])}</div>
-                <div>{feedLabel} max price: {format18(tuple?.[1])}</div>
-                <div>fxSAVE min rate: {format18(tuple?.[2])}</div>
-                <div>fxSAVE max rate: {format18(tuple?.[3])}</div>
-              </div>
-            </div>
+        {expanded && (
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {expanded.kind === "eth" ? (
+              <>
+                <div className="md:col-span-2 outline outline-1 outline-white/10 rounded-sm p-4">
+                  <div className="text-white/60 text-xs mb-1">{feedLabel} - Price</div>
+                  <div className="text-2xl font-mono">{format18(price)}</div>
+                  <div className="text-white/40 text-xs">18 decimals</div>
+                </div>
+                <div className="outline outline-1 outline-white/10 rounded-sm p-4">
+                  <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
+                  <div className="space-y-1 font-mono">
+                    <div>{feedLabel} min price: {format18(tuple?.[0])}</div>
+                    <div>{feedLabel} max price: {format18(tuple?.[1])}</div>
+                    <div>fxSAVE min rate: {format18(tuple?.[2])}</div>
+                    <div>fxSAVE max rate: {format18(tuple?.[3])}</div>
+                  </div>
+                </div>
+                <div className="md:col-span-3 outline outline-1 outline-white/10 rounded-sm p-4">
+                  <div className="text-white/60 text-xs mb-1">Contract</div>
+                  <a
+                    href={etherscanAddressUrl(proxyFeeds[0].address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
+                  >
+                    {proxyFeeds[0].address}
+                    <ExternalLinkIcon />
+                  </a>
+                </div>
+              </>
+            ) : (
+              (() => {
+                const idx = expanded.idx;
+                const label = proxyFeeds.slice(1)[idx]?.label || "Feed";
+                const priceStr = extraFeedPrices[idx] || extraFallback[idx]?.price || "-";
+                const latest = extraLatest?.[idx]?.result as [bigint, bigint, bigint, bigint] | undefined;
+                const decimalsStr = (extraFallback[idx]?.decimals ?? 18) as number | undefined;
+                const updatedStr = extraFallback[idx]?.updatedAt || "-";
+                return (
+                  <>
+                    <div className="md:col-span-2 outline outline-1 outline-white/10 rounded-sm p-4">
+                      <div className="text-white/60 text-xs mb-1">{label} - Price</div>
+                      <div className="text-2xl font-mono">{priceStr}</div>
+                      <div className="text-white/40 text-xs">{decimalsStr ?? "-"} decimals</div>
+                      {label.includes("MCAP") && (
+                        <div className="text-white/40 text-xs mt-2">Note: MCAP normalized from trillions to dollars (divides by T)</div>
+                      )}
+                    </div>
+                    <div className="outline outline-1 outline-white/10 rounded-sm p-4">
+                      <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
+                      <div className="space-y-1 font-mono">
+                        <div>{label} min price: {format18(latest?.[0])}</div>
+                        <div>{label} max price: {format18(latest?.[1])}</div>
+                        <div>fxSAVE min rate: {format18(latest?.[2])}</div>
+                        <div>fxSAVE max rate: {format18(latest?.[3])}</div>
+                      </div>
+                    </div>
+                    <div className="md:col-span-3 outline outline-1 outline-white/10 rounded-sm p-4">
+                      <div className="text-white/60 text-xs mb-1">Contract</div>
+                      <a
+                        href={etherscanAddressUrl(proxyFeeds.slice(1)[idx]?.address)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:underline"
+                      >
+                        {proxyFeeds.slice(1)[idx]?.address}
+                        <ExternalLinkIcon />
+                      </a>
+                    </div>
+                    <div className="md:col-span-3 outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4 overflow-x-auto">
+                      <table className="min-w-full text-left text-sm table-fixed">
+                        <thead>
+                          <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
+                            <th className="py-3 px-4 font-normal">ID</th>
+                            <th className="py-3 px-4 font-normal">Feed Name / Description</th>
+                            <th className="py-3 px-4 font-normal">Feed Identifier</th>
+                            <th className="py-3 px-4 font-normal">Price</th>
+                            <th className="py-3 px-4 font-normal">Heartbeat Window</th>
+                            <th className="py-3 px-4 font-normal">Deviation Threshold</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(extraTables[idx] || []).map((r) => (
+                            <tr key={r.id} className="border-t border-white/10">
+                              <td className="py-2 px-4 font-mono">{r.id}</td>
+                              <td className="py-2 px-4 font-mono">{r.name}</td>
+                              <td className="py-2 px-4 font-mono">
+                                <a
+                                  href={etherscanAddressUrl(formatFeedIdentifier(r.feed))}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="hover:underline"
+                                >
+                                  {formatFeedIdentifier(r.feed)}
+                                  <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
+                                </a>
+                              </td>
+                              <td className="py-2 px-4 font-mono">{r.price || "-"}</td>
+                              <td className="py-2 px-4 font-mono">{formatHeartbeat(r.constraintA)}</td>
+                              <td className="py-2 px-4 font-mono">{formatPercent18(r.constraintB)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()
+            )}
           </section>
         )}
 
-        {isExpanded && (
+        {expanded && expanded.kind === "eth" && (
           <section>
             <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm table-fixed">
@@ -237,16 +557,35 @@ export default function FlowPage() {
                     <th className="py-3 px-4 font-normal">ID</th>
                     <th className="py-3 px-4 font-normal">Feed Name / Description</th>
                     <th className="py-3 px-4 font-normal">Feed Identifier</th>
+                    <th className="py-3 px-4 font-normal">Price</th>
                     <th className="py-3 px-4 font-normal">Heartbeat Window</th>
                     <th className="py-3 px-4 font-normal">Deviation Threshold</th>
                   </tr>
                 </thead>
                 <tbody>
-                {rows.map((r) => (
+                {rows.map((r, i) => (
                   <tr key={r.id} className="border-t border-white/10">
                     <td className="py-2 px-4 font-mono">{r.id}</td>
                     <td className="py-2 px-4 font-mono">{r.name}</td>
-                    <td className="py-2 px-4 font-mono">{formatFeedIdentifier(r.feed)}</td>
+                    <td className="py-2 px-4 font-mono">
+                      <a
+                        href={etherscanAddressUrl(formatFeedIdentifier(r.feed))}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:underline"
+                      >
+                        {formatFeedIdentifier(r.feed)}
+                        <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
+                      </a>
+                    </td>
+                    <td className="py-2 px-4 font-mono">
+                      {(() => {
+                        const dec = aggDecReads?.[i]?.result as number | undefined;
+                        const ans = aggAnsReads?.[i]?.result as bigint | undefined;
+                        if (dec === undefined || ans === undefined) return "-";
+                        return formatUnit(ans, dec, 6);
+                      })()}
+                    </td>
                     <td className="py-2 px-4 font-mono">{formatHeartbeat(r.constraintA)}</td>
                     <td className="py-2 px-4 font-mono">{formatPercent18(r.constraintB)}</td>
                   </tr>

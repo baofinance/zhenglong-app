@@ -30,11 +30,16 @@ export default function DecryptedText({
   ...props
 }: DecryptedTextProps) {
   const [displayText, setDisplayText] = useState<string>(text);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [isScrambling, setIsScrambling] = useState<boolean>(false);
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set());
   const [hasAnimated, setHasAnimated] = useState<boolean>(false);
   const containerRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -181,16 +186,29 @@ export default function DecryptedText({
         }
       : {};
 
+  if (!isMounted) {
+    return (
+      <motion.span
+        ref={containerRef}
+        suppressHydrationWarning
+        className={`inline-block whitespace-pre-wrap ${parentClassName}`}
+        {...hoverProps}
+        {...props}
+      />
+    );
+  }
+
   return (
     <motion.span
       ref={containerRef}
+      suppressHydrationWarning
       className={`inline-block whitespace-pre-wrap ${parentClassName}`}
       {...hoverProps}
       {...props}
     >
-      <span className="sr-only">{displayText}</span>
+      <span className="sr-only" suppressHydrationWarning>{displayText}</span>
 
-      <span aria-hidden="true">
+      <span aria-hidden="true" suppressHydrationWarning>
         {displayText.split('').map((char, index) => {
           const isRevealedOrDone = revealedIndices.has(index) || !isScrambling || !isHovering;
 
