@@ -79,6 +79,13 @@ export default function Example() {
                   Genesis
                 </Link>
                 <Link
+                  href="/flow"
+                  className={linkClass("/flow")}
+                  aria-current={isActive("/flow") ? "page" : undefined}
+                >
+                  Flow
+                </Link>
+                <Link
                   href="/earn"
                   className={linkClass("/earn")}
                   aria-current={isActive("/earn") ? "page" : undefined}
@@ -141,6 +148,14 @@ export default function Example() {
             aria-current={isActive("/genesis") ? "page" : undefined}
           >
             Genesis
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/flow"
+            className={linkClass("/flow")}
+            aria-current={isActive("/flow") ? "page" : undefined}
+          >
+            Flow
           </DisclosureButton>
           <DisclosureButton
             as={Link}
