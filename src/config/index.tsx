@@ -7,7 +7,7 @@ const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 
 const connectors = [
   injected(),
-  coinbaseWallet({ appName: "zhenglong" }),
+  coinbaseWallet({ appName: "harbor" }),
   ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
 ];
 
