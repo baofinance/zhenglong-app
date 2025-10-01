@@ -51,7 +51,7 @@ export default function Example() {
                 src="/logo.png"
                 alt="Logo"
                 fill
-                className="object-contain invert"
+                className="object-contain"
                 priority
               />
             </Link>

@@ -21,16 +21,16 @@ import type { Market as MarketCfg } from "../config/markets";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
-  LONG: ["zheUSD", "longBTC", "longETH", "longTSLA", "longSP500"],
+  LONG: ["haUSD", "longBTC", "longETH", "longTSLA", "longSP500"],
   STEAMED: [
-    "steamedETH",
-    "steamedBTC",
-    "steamedTSLA",
-    "steamedSP500",
-    "steamedETH-DOWN",
-    "steamedBTC-DOWN",
-    "steamedTSLA-DOWN",
-    "steamedSP500-DOWN",
+    "hsETH",
+    "hsBTC",
+    "hsTSLA",
+    "hsSP500",
+    "hsETH-DOWN",
+    "hsBTC-DOWN",
+    "hsTSLA-DOWN",
+    "hsSP500-DOWN",
   ],
 };
 
@@ -1518,7 +1518,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}{" "}
-                                {marketInfoData?.peggedToken.name || "zheUSD"}
+                                {marketInfoData?.peggedToken.name || "haUSD"}
                               </>
                             )}
                           </span>
@@ -1544,8 +1544,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                               <span className="text-[#F5F5F5]/70">
                                 {isCollateralAtTop
                                   ? "wstETH"
-                                  : marketInfoData?.peggedToken.name ||
-                                    "zheUSD"}
+                                  : marketInfoData?.peggedToken.name || "haUSD"}
                               </span>
                             </div>
                             <div style={{ minHeight: "1rem" }}>
@@ -1625,7 +1624,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}{" "}
-                                {marketInfoData?.peggedToken.name || "zheUSD"}
+                                {marketInfoData?.peggedToken.name || "haUSD"}
                               </>
                             ) : (
                               <>
@@ -1651,7 +1650,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                             <span className="text-[#F5F5F5]/70">
                               {isCollateralAtTop
-                                ? marketInfoData?.peggedToken.name || "zheUSD"
+                                ? marketInfoData?.peggedToken.name || "haUSD"
                                 : "wstETH"}
                             </span>
                           </div>

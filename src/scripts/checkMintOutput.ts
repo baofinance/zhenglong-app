@@ -70,7 +70,7 @@ async function checkMintOutput() {
 
     console.log("Raw Pegged Amount Output (wei):", peggedAmount.toString());
     console.log(
-      "Formatted Pegged Amount Output (zheUSD):",
+      "Formatted Pegged Amount Output (haUSD):",
       formatEther(peggedAmount)
     );
   } catch (error) {
