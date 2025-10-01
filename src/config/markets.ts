@@ -23,13 +23,13 @@ export const markets = {
       wrappedCollateralToken: contracts.collateralToken,
     },
     peggedToken: {
-      name: "zheUSD",
-      symbol: "zheUSD",
+      name: "haUSD",
+      symbol: "haUSD",
       description: "Pegged to ETH price with USD stability",
     },
     leveragedToken: {
-      name: "steamedETH/USD",
-      symbol: "steamedETH/USD",
+      name: "hsETH/USD",
+      symbol: "hsETH/USD",
       description: "Leveraged exposure to ETH price movements",
     },
     rewardToken: {

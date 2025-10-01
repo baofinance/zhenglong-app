@@ -15,6 +15,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import GlobalHeatmap from "@/components/GlobalHeatmap";
 import CountUp from "@/components/CountUp";
 import InfoTooltip from "@/components/InfoTooltip";
+import TokenIcon from "@/components/TokenIcon";
 
 const chainlinkOracleABI = [
   {
@@ -202,9 +203,9 @@ export default function DashboardPage() {
   });
 
   // Loosen types for indexed access to avoid deep TS instantiation
-  const userR = (userReads as unknown as any[]) || [];
-  const oracleR = (oracleReads as unknown as any[]) || [];
-  const minterR = (minterReads as unknown as any[]) || [];
+  const userR = (userReads as unknown as Array<{ result?: unknown }>) ?? [];
+  const oracleR = (oracleReads as unknown as Array<{ result?: unknown }>) ?? [];
+  const minterR = (minterReads as unknown as Array<{ result?: unknown }>) ?? [];
   const isSingleMarket = genesisMarkets.length === 1;
 
   // Currency selector removed from Portfolio; using global currency context
@@ -329,231 +330,13 @@ export default function DashboardPage() {
                       label="Total portfolio value and 24h change with breakdown."
                       side="top"
                     />
+                    <span className="ml-1 text-[10px] text-white/60 border border-white/10 rounded px-1 py-0.5">
+                      Coming Soon
+                    </span>
                   </div>
                 </div>
-                {/* Total holdings in large text */}
-                <div className="flex-1 flex items-center justify-center py-6">
-                  <div className="text-center">
-                    <div
-                      className="text-white font-semibold"
-                      style={{ fontSize: "clamp(1.75rem, 5.5vw, 3.25rem)" }}
-                    >
-                      {(() => {
-                        const totalUSD = genesisMarkets.reduce(
-                          (sum, [id, m], idx) => {
-                            const userOffset = idx * 2;
-                            const balanceRaw = userR[userOffset]
-                              ?.result as unknown;
-                            const balance =
-                              (balanceRaw as bigint | undefined) ?? undefined;
-                            const deposit = balance
-                              ? Number(balance) / 1e18
-                              : 0;
-                            const oracleOffset = idx * 2;
-                            const decRaw = oracleR[oracleOffset]
-                              ?.result as unknown;
-                            const priceRaw = oracleR[oracleOffset + 1]
-                              ?.result as unknown;
-                            const dec = (decRaw as number | undefined) ?? 8;
-                            const price = (priceRaw as bigint | undefined)
-                              ? Number(priceRaw as bigint) / 10 ** dec
-                              : 0;
-                            return sum + deposit * price;
-                          },
-                          440000
-                        );
-                        const converted = totalUSD * selected.rate;
-                        return (
-                          <span>
-                            <span className="mr-2 text-white/80">
-                              {selected.symbol}
-                            </span>
-                            <CountUp to={converted} separator="," />
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div className="mt-1">
-                      {(() => {
-                        const seed =
-                          Math.sin(genesisMarkets.length * 1.23) * 0.5 + 0.5; // 0..1 deterministic
-                        const pct = (seed - 0.5) * 6; // -3..+3
-                        const isUp = pct >= 0;
-                        return (
-                          <span
-                            className={
-                              isUp
-                                ? "text-emerald-400 text-sm"
-                                : "text-rose-400 text-sm"
-                            }
-                          >
-                            {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}% 24h
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div className="mt-3 space-y-1">
-                      {(() => {
-                        const rows: {
-                          key: string;
-                          name: string;
-                          usd: number;
-                          amount: number;
-                        }[] = [];
-                        // Collect actual deposits
-                        genesisMarkets.forEach(([id, m], idx) => {
-                          const userOffset = idx * 2;
-                          const balanceRaw = userR[userOffset]
-                            ?.result as unknown;
-                          const balance =
-                            (balanceRaw as bigint | undefined) ?? undefined;
-                          const deposit = balance ? Number(balance) / 1e18 : 0;
-                          const oracleOffset = idx * 2;
-                          const decRaw = oracleR[oracleOffset]
-                            ?.result as unknown;
-                          const priceRaw = oracleR[oracleOffset + 1]
-                            ?.result as unknown;
-                          const dec = (decRaw as number | undefined) ?? 8;
-                          const price = (priceRaw as bigint | undefined)
-                            ? Number(priceRaw as bigint) / 10 ** dec
-                            : 0;
-                          const usd = deposit * price * selected.rate;
-                          if (deposit > 0) {
-                            rows.push({
-                              key: String(id),
-                              name: m.name,
-                              usd,
-                              amount: deposit,
-                            });
-                          }
-                        });
-                        // Add demo holdings if none
-                        if (rows.length === 0) {
-                          const demoAmts = [1.25, 0.75, 2.5];
-                          if (genesisMarkets.length > 0) {
-                            genesisMarkets
-                              .slice(0, 3)
-                              .forEach(([id, m], idx) => {
-                                const oracleOffset = idx * 2;
-                                const decRaw = oracleR[oracleOffset]
-                                  ?.result as unknown;
-                                const priceRaw = oracleR[oracleOffset + 1]
-                                  ?.result as unknown;
-                                const dec = (decRaw as number | undefined) ?? 8;
-                                const price = (priceRaw as bigint | undefined)
-                                  ? Number(priceRaw as bigint) / 10 ** dec
-                                  : 2000;
-                                const amount = demoAmts[idx % demoAmts.length];
-                                const usd = amount * price * selected.rate;
-                                rows.push({
-                                  key: `demo-${String(id)}`,
-                                  name: m.name,
-                                  usd,
-                                  amount,
-                                });
-                              });
-                          } else {
-                            const amount = 1.25;
-                            const usd = amount * 2000 * selected.rate;
-                            rows.push({
-                              key: "demo-eth",
-                              name: "ETH Pool",
-                              usd,
-                              amount,
-                            });
-                          }
-                        }
-                        return rows.map((r) => (
-                          <div
-                            key={r.key}
-                            className="flex items-center justify-between text-xs outline outline-1 outline-white/10 px-2 py-1"
-                          >
-                            <span className="text-white/80">{r.name}</span>
-                            <span className="text-white font-mono">
-                              <span className="mr-1 text-white/70">
-                                {selected.symbol}
-                              </span>
-                              <CountUp to={r.usd} separator="," />
-                              <span className="ml-2 text-white/50">
-                                ({r.amount.toFixed(4)})
-                              </span>
-                            </span>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                </div>
-                {/* Minimal breakdown */}
-                <div className="px-2 pb-4">
-                  <div className="flex items-center justify-center gap-4 text-xs sm:text-sm text-white/70">
-                    {(() => {
-                      const totals = genesisMarkets.reduce(
-                        (acc, [id, m], idx) => {
-                          const userOffset = idx * 2;
-                          const balanceRaw = userR[userOffset]
-                            ?.result as unknown;
-                          const balance =
-                            (balanceRaw as bigint | undefined) ?? undefined;
-                          const deposit = balance ? Number(balance) / 1e18 : 0;
-                          const oracleOffset = idx * 2;
-                          const decRaw = oracleR[oracleOffset]
-                            ?.result as unknown;
-                          const priceRaw = oracleR[oracleOffset + 1]
-                            ?.result as unknown;
-                          const dec = (decRaw as number | undefined) ?? 8;
-                          const price = (priceRaw as bigint | undefined)
-                            ? Number(priceRaw as bigint) / 10 ** dec
-                            : 0;
-                          const marketUSD = deposit * price;
-                          acc.total += marketUSD;
-                          acc.pegged += marketUSD * 0.5;
-                          acc.lev += marketUSD * 0.5;
-                          return acc;
-                        },
-                        { total: 0, pegged: 0, lev: 0 }
-                      );
-                      const peggedShare =
-                        totals.total > 0
-                          ? (totals.pegged / totals.total) * 100
-                          : 0;
-                      const levShare =
-                        totals.total > 0
-                          ? (totals.lev / totals.total) * 100
-                          : 0;
-                      return (
-                        <>
-                          <span>
-                            Pegged:{" "}
-                            <span className="text-white font-mono">
-                              <span className="mr-1 text-white/70">
-                                {selected.symbol}
-                              </span>
-                              <CountUp
-                                to={totals.pegged * selected.rate}
-                                separator=","
-                              />
-                            </span>{" "}
-                            ({peggedShare.toFixed(1)}%)
-                          </span>
-                          <span className="text-white/30">•</span>
-                          <span>
-                            Leveraged:{" "}
-                            <span className="text-white font-mono">
-                              <span className="mr-1 text-white/70">
-                                {selected.symbol}
-                              </span>
-                              <CountUp
-                                to={totals.lev * selected.rate}
-                                separator=","
-                              />
-                            </span>{" "}
-                            ({levShare.toFixed(1)}%)
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </div>
+                <div className="flex-1 py-3 text-white/60 text-sm">
+                  Portfolio analytics and token holdings will appear here.
                 </div>
               </div>
             </div>
@@ -563,11 +346,11 @@ export default function DashboardPage() {
         {/* Activity + Buybacks */}
         <section className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
-            <div className="md:order-2 md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4">
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold font-mono text-white">
-                    Activity
+                    Protocol Activity
                   </h2>
                   <InfoTooltip
                     label="Daily liquidity movement across the protocol (last 3 months)."
@@ -742,67 +525,89 @@ export default function DashboardPage() {
                 formatAmount={(n) => formatFiat(n)}
               />
             </div>
-            <div className="outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold font-mono text-white">
-                    Buybacks
+                    Pre-TGE Rewards
                   </h2>
                   <InfoTooltip
-                    label="Recent and aggregate protocol buyback amounts."
+                    label="Track reward pools before token generation."
                     side="top"
                   />
                 </div>
-                <div className="text-xs text-white/50">Last 30 days</div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {(() => {
-                  const total30d = 125000; // mock
-                  const total7d = 42000; // mock
-                  return (
-                    <>
+              {(() => {
+                const totalRewardPool = genesisMarkets.reduce(
+                  (sum, [id, m]) => {
+                    const amt = Number(m.rewardToken.amount || 0);
+                    return sum + (isFinite(amt) ? amt : 0);
+                  },
+                  0
+                );
+
+                return (
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="outline outline-1 outline-white/10 p-2">
                         <div className="text-white/60 text-xs">
-                          30d Buybacks
+                          Total Reward Pool
                         </div>
                         <div className="text-white font-mono text-base">
-                          {formatFiat(total30d)}
+                          {totalRewardPool.toLocaleString()}{" "}
+                          {
+                            markets[
+                              Object.keys(markets)[0] as keyof typeof markets
+                            ].rewardToken.symbol
+                          }
                         </div>
                       </div>
                       <div className="outline outline-1 outline-white/10 p-2">
-                        <div className="text-white/60 text-xs">7d Buybacks</div>
+                        <div className="text-white/60 text-xs">Markets</div>
                         <div className="text-white font-mono text-base">
-                          {formatFiat(total7d)}
+                          {genesisMarkets.length}
                         </div>
                       </div>
-                    </>
-                  );
-                })()}
-              </div>
-              <div className="text-white/60 text-xs mb-1">Recent</div>
-              <div className="flex-1 overflow-auto">
-                <div className="space-y-1">
-                  {Array.from({ length: 6 }).map((_, i) => {
-                    const amount = 2000 + i * 350;
-                    const ts = new Date(Date.now() - i * 36 * 60 * 60 * 1000);
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between text-xs outline outline-1 outline-white/10 p-2"
-                      >
-                        <span className="text-white/80">
-                          {ts.toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                        <span className="text-white font-mono">
-                          {formatFiat(amount)}
-                        </span>
-                      </div>
-                    );
-                  })}
+                    </div>
+
+                    <div className="text-white/60 text-xs">
+                      Allocations by Market
+                    </div>
+                    <div className="flex-1 overflow-auto space-y-1">
+                      {genesisMarkets.map(([id, m]) => (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between text-xs outline outline-1 outline-white/10 p-2"
+                        >
+                          <span className="text-white/80">{m.name}</span>
+                          <span className="text-white font-mono">
+                            {Number(m.rewardToken.amount).toLocaleString()}{" "}
+                            {m.rewardToken.symbol}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Market Prices
+                  </h2>
+                  <InfoTooltip
+                    label="Current oracle prices per market."
+                    side="top"
+                  />
+                  <span className="ml-2 text-[10px] text-white/60 border border-white/10 rounded px-1 py-0.5">
+                    Coming Soon
+                  </span>
                 </div>
+              </div>
+              <div className="text-white/60 text-sm">
+                Live market price feed with conversions will appear here.
               </div>
             </div>
           </div>
