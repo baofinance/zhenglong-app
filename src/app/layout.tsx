@@ -1,50 +1,90 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Geo } from "next/font/google";
 import "./globals.css";
-import { Web3Provider } from "../components/Web3Provider";
-import { AddressesProvider } from "../contexts/AddressesContext";
-import { ContractWriteProvider } from "../contexts/ContractWriteContext";
+import ContextProvider from "@/contexts";
+import { headers } from "next/headers";
+import Navigation from "@/components/Navigation";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import FadeContent from "@/components/FadeContent";
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geo = Geo({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-});
+const siteUrl = "https://harbor.finance";
+const title = "Harbor Protocol";
+const description =
+  "A decentralized protocol for creating synthetic assets pegged to any real-world data feed.";
 
 export const metadata: Metadata = {
-  title: "zhenglong",
-  description: "Create tokens pegged to real-world data feeds",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  keywords: [
+    "Harbor",
+    "DeFi",
+    "synthetic assets",
+    "yield",
+    "leverage",
+    "crypto",
+    "blockchain",
+    "STEAM token",
+  ],
+  authors: [{ name: "Harbor Protocol" }],
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    title,
+    description,
+    url: siteUrl,
+    siteName: title,
+    images: [
+      {
+        url: "/demo.png",
+        width: 1200,
+        height: 630,
+        alt: description,
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@HarborFi",
+    site: "@HarborFi",
+    images: [`${siteUrl}/demo.png`],
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersObj = await headers();
+  const cookies = headersObj.get("cookie");
+
   return (
     <html lang="en">
       <body
-        className={`${spaceGrotesk.className} antialiased bg-gradient-to-b from-[#0F0F0F] to-[#080808] text-[#F5F5F5] font-sans relative`}
+        className={`antialiased font-sans bg-[#111213] text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
       >
-        {/* Steam Background */}
-        <div className="fixed inset-0 pointer-events-none z-0">
-          {/* Simplified and more subtle steam background */}
-          <div className="absolute top-[15%] left-[20%] w-[600px] h-[400px] bg-[#4A7C59]/[0.03]"></div>
-          <div className="absolute top-[25%] right-[15%] w-[500px] h-[450px] bg-[#4A7C59]/[0.025]"></div>
-          <div className="absolute top-[22%] left-[10%] w-[300px] h-[250px] bg-[#4A7C59]/[0.03] animate-float-1"></div>
-          <div className="absolute top-[28%] right-[25%] w-[280px] h-[320px] bg-[#4A7C59]/[0.035] animate-float-2"></div>
-          <div className="absolute top-[35%] left-[40%] w-[350px] h-[280px] bg-[#4A7C59]/[0.04] animate-float-3"></div>
-          <div className="absolute top-[20%] left-[45%] w-[120px] h-[120px] bg-[#4A7C59]/[0.045] animate-steam-1"></div>
-          <div className="absolute top-[35%] right-[40%] w-[150px] h-[150px] bg-[#4A7C59]/[0.03] animate-steam-2"></div>
-          <div className="absolute top-[30%] left-[25%] w-[100px] h-[100px] bg-[#4A7C59]/[0.04] animate-steam-3"></div>
-        </div>
         <div className="relative z-10">
-          <Web3Provider>{children}</Web3Provider>
+          <ContextProvider cookies={cookies}>
+            <Navigation />
+            <FadeContent
+              blur={false}
+              duration={500}
+              easing="ease-out"
+              initialOpacity={0}
+            >
+              {children}
+            </FadeContent>
+          </ContextProvider>
         </div>
       </body>
     </html>

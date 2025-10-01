@@ -15,19 +15,22 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
+import { markets } from "../config/markets";
+import MintRedeemStatusModal from "./MintRedeemStatusModal";
+import type { Market as MarketCfg } from "../config/markets";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
-  LONG: ["zheUSD", "longBTC", "longETH", "longTSLA", "longSP500"],
+  LONG: ["haUSD", "longBTC", "longETH", "longTSLA", "longSP500"],
   STEAMED: [
-    "steamedETH",
-    "steamedBTC",
-    "steamedTSLA",
-    "steamedSP500",
-    "steamedETH-DOWN",
-    "steamedBTC-DOWN",
-    "steamedTSLA-DOWN",
-    "steamedSP500-DOWN",
+    "hsETH",
+    "hsBTC",
+    "hsTSLA",
+    "hsSP500",
+    "hsETH-DOWN",
+    "hsBTC-DOWN",
+    "hsTSLA-DOWN",
+    "hsSP500-DOWN",
   ],
 };
 
@@ -132,11 +135,11 @@ const minterABI = [
     name: "mintPeggedTokenDryRun",
     outputs: [
       { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "collateralUsed" },
+      { type: "uint256", name: "wrappedFee" },
+      { type: "uint256", name: "wrappedCollateralTaken" },
       { type: "uint256", name: "peggedMinted" },
-      { type: "uint256", name: "fee" },
-      { type: "uint256", name: "reserveCollateralUsed" },
       { type: "uint256", name: "price" },
+      { type: "uint256", name: "rate" },
     ],
     stateMutability: "view",
     type: "function",
@@ -146,11 +149,12 @@ const minterABI = [
     name: "redeemPeggedTokenDryRun",
     outputs: [
       { type: "int256", name: "incentiveRatio" },
+      { type: "uint256", name: "wrappedFee" },
+      { type: "uint256", name: "wrappedDiscount" },
       { type: "uint256", name: "peggedRedeemed" },
-      { type: "uint256", name: "collateralReturned" },
-      { type: "uint256", name: "fee" },
-      { type: "uint256", name: "reserveCollateralUsed" },
+      { type: "uint256", name: "wrappedCollateralReturned" },
       { type: "uint256", name: "price" },
+      { type: "uint256", name: "rate" },
     ],
     stateMutability: "view",
     type: "function",
@@ -160,11 +164,11 @@ const minterABI = [
     name: "redeemLeveragedTokenDryRun",
     outputs: [
       { type: "int256", name: "incentiveRatio" },
+      { type: "uint256", name: "wrappedFee" },
       { type: "uint256", name: "leveragedRedeemed" },
-      { type: "uint256", name: "collateralReturned" },
-      { type: "uint256", name: "fee" },
-      { type: "uint256", name: "reserveCollateralUsed" },
+      { type: "uint256", name: "wrappedCollateralReturned" },
       { type: "uint256", name: "price" },
+      { type: "uint256", name: "rate" },
     ],
     stateMutability: "view",
     type: "function",
@@ -174,11 +178,12 @@ const minterABI = [
     name: "mintLeveragedTokenDryRun",
     outputs: [
       { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "collateralUsed" },
+      { type: "uint256", name: "wrappedFee" },
+      { type: "uint256", name: "wrappedDiscount" },
+      { type: "uint256", name: "wrappedCollateralUsed" },
       { type: "uint256", name: "leveragedMinted" },
-      { type: "uint256", name: "fee" },
-      { type: "uint256", name: "reserveCollateralUsed" },
       { type: "uint256", name: "price" },
+      { type: "uint256", name: "rate" },
     ],
     stateMutability: "view",
     type: "function",
@@ -217,6 +222,17 @@ const erc20ABI = [
   },
 ] as const;
 
+// Minimal Genesis ABI to check if genesis has ended
+const genesisABI = [
+  {
+    inputs: [],
+    name: "genesisIsEnded",
+    outputs: [{ type: "bool", name: "ended" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
 // Helper Functions (to be moved from page.tsx)
 const formatPercent = (value: bigint | number) => {
   if (typeof value === "bigint") value = Number(value);
@@ -249,13 +265,6 @@ const formatLeverageRatio = (value: bigint | undefined) => {
   if (value > BigInt("1" + "0".repeat(30))) return "-"; // Basic overflow check
   return (Number(value) / 1e18).toFixed(2) + "x";
 };
-const formatFeeRatio = (value: bigint | undefined) => {
-  if (!value) return "-";
-  const ratio = Number(value) / 1e18;
-  return ratio > 0
-    ? `+${(ratio * 100).toFixed(2)}%`
-    : `${(ratio * 100).toFixed(2)}%`;
-};
 const formatBalance = (balance: bigint | undefined) => {
   if (!balance) return "-";
   try {
@@ -263,6 +272,18 @@ const formatBalance = (balance: bigint | undefined) => {
   } catch {
     return "-";
   }
+};
+// Format fee ratio as percentage
+const formatFeeRatio = (value: bigint | undefined) => {
+  if (!value) return "-";
+  const ratio = Number(value) / 1e18;
+  return `${(ratio * 100).toFixed(2)}%`;
+};
+// Format a fee (positive) or discount (negative) amount in wrapped collateral units
+const formatFeeToken = (value: bigint | number | undefined) => {
+  if (value === undefined) return "-";
+  const bi = typeof value === "bigint" ? value : BigInt(value);
+  return `${formatMinimal(bi)} wstETH`;
 };
 
 type Market = {
@@ -280,18 +301,20 @@ type Market = {
 type TokenType = "LONG" | "STEAMED";
 
 interface MintRedeemFormProps {
-  geoClassName: string;
   currentMarket: Market;
   isConnected: boolean;
   userAddress: string | undefined;
+  marketInfo?: MarketCfg;
+  selectedType: TokenType;
   // publicClient: any; // Not passing publicClient, component will get its own
 }
 
 const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
-  geoClassName,
   currentMarket,
   isConnected,
   userAddress,
+  marketInfo,
+  selectedType,
 }) => {
   const [mounted, setMounted] = useState(false);
   const chainId = useChainId();
@@ -300,99 +323,136 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
 
   // State variables previously in App component, now local to MintRedeemForm
   const [isFlipped, setIsFlipped] = useState(false);
-  const [selectedType, setSelectedType] = useState<TokenType>("LONG");
   const [isCollateralAtTop, setIsCollateralAtTop] = useState(true);
   const [inputAmount, setInputAmount] = useState<string>("");
   const [outputAmount, setOutputAmount] = useState<string>("");
   const [isPending, setIsPending] = useState(false);
   const [shakeCollateralNeeded, setShakeCollateralNeeded] = useState(false);
+  const [inputAdjusted, setInputAdjusted] = useState(false);
+  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [outputAdjusted, setOutputAdjusted] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingStep, setPendingStep] = useState<string | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string | undefined>();
+  const [transactionDetails, setTransactionDetails] = useState({
+    type: "mint" as "mint" | "redeem",
+    tokenType: "LONG" as "LONG" | "STEAMED",
+    inputAmount: "",
+    outputAmount: "",
+    inputToken: "",
+    outputToken: "",
+  });
+  const [isMaxClick, setIsMaxClick] = useState(false);
+  // Tracks if the user manually edited the output amount (used for reverse calculation)
+  const [isOutputManual, setIsOutputManual] = useState(false);
+  const [showGenesisBanner, setShowGenesisBanner] = useState(true);
 
   // Default to the first token in the selected type
   const [selectedToken, setSelectedToken] = useState<string>(
     tokens[selectedType][0]
   );
 
+  // Get market info from prop or fallback to config lookup
+  const marketInfoData =
+    marketInfo || markets[currentMarket.id as keyof typeof markets];
+
+  // On-chain check: has genesis been ended?
+  const { data: onChainEnded, refetch: refetchOnChainEnded } = useContractRead({
+    address: marketInfoData?.addresses.genesis as `0x${string}` | undefined,
+    abi: genesisABI,
+    functionName: "genesisIsEnded",
+    query: {
+      enabled: !!marketInfoData?.addresses.genesis,
+    },
+  });
+
+  // Overlay is active only if the config says genesis AND on-chain it hasn't been ended
+  const isGenesisActive =
+    marketInfoData?.status === "genesis" && onChainEnded !== true;
+
   // Wagmi hooks (useContractRead, useContractReads, useContractWrite)
   // These will use currentMarket.addresses directly
 
-  const { data: collateralBalance } = useContractReads({
-    contracts: [
-      {
-        address: currentMarket.addresses.collateralToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "balanceOf",
-        args: userAddress ? [userAddress as `0x${string}`] : undefined,
+  const { data: collateralBalance, refetch: refetchCollateralBalance } =
+    useContractReads({
+      contracts: [
+        {
+          address: currentMarket.addresses.collateralToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "balanceOf",
+          args: userAddress ? [userAddress as `0x${string}`] : undefined,
+        },
+        {
+          address: currentMarket.addresses.collateralToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "allowance",
+          args: userAddress
+            ? [
+                userAddress as `0x${string}`,
+                currentMarket.addresses.minter as `0x${string}`,
+              ]
+            : undefined,
+        },
+      ],
+      query: {
+        enabled: mounted && !!userAddress,
       },
-      {
-        address: currentMarket.addresses.collateralToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "allowance",
-        args: userAddress
-          ? [
-              userAddress as `0x${string}`,
-              currentMarket.addresses.minter as `0x${string}`,
-            ]
-          : undefined,
-      },
-    ],
-    query: {
-      enabled: mounted && !!userAddress,
-    },
-  });
+    });
 
-  const { data: peggedBalance } = useContractReads({
-    contracts: [
-      {
-        address: currentMarket.addresses.peggedToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "balanceOf",
-        args: userAddress ? [userAddress as `0x${string}`] : undefined,
+  const { data: peggedBalance, refetch: refetchPeggedBalance } =
+    useContractReads({
+      contracts: [
+        {
+          address: currentMarket.addresses.peggedToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "balanceOf",
+          args: userAddress ? [userAddress as `0x${string}`] : undefined,
+        },
+        {
+          address: currentMarket.addresses.peggedToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "allowance",
+          args: userAddress
+            ? [
+                userAddress as `0x${string}`,
+                currentMarket.addresses.minter as `0x${string}`,
+              ]
+            : undefined,
+        },
+      ],
+      query: {
+        enabled: mounted && !!userAddress,
       },
-      {
-        address: currentMarket.addresses.peggedToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "allowance",
-        args: userAddress
-          ? [
-              userAddress as `0x${string}`,
-              currentMarket.addresses.minter as `0x${string}`,
-            ]
-          : undefined,
-      },
-    ],
-    query: {
-      enabled: mounted && !!userAddress && selectedType === "LONG",
-    },
-  });
+    });
 
-  const { data: leveragedBalance } = useContractReads({
-    contracts: [
-      {
-        address: currentMarket.addresses.leveragedToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "balanceOf",
-        args: userAddress ? [userAddress as `0x${string}`] : undefined,
+  const { data: leveragedBalance, refetch: refetchLeveragedBalance } =
+    useContractReads({
+      contracts: [
+        {
+          address: currentMarket.addresses.leveragedToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "balanceOf",
+          args: userAddress ? [userAddress as `0x${string}`] : undefined,
+        },
+        {
+          address: currentMarket.addresses.leveragedToken as `0x${string}`,
+          abi: erc20ABI,
+          functionName: "allowance",
+          args: userAddress
+            ? [
+                userAddress as `0x${string}`,
+                currentMarket.addresses.minter as `0x${string}`,
+              ]
+            : undefined,
+        },
+      ],
+      query: {
+        enabled: mounted && !!userAddress,
       },
-      {
-        address: currentMarket.addresses.leveragedToken as `0x${string}`,
-        abi: erc20ABI,
-        functionName: "allowance",
-        args: userAddress
-          ? [
-              userAddress as `0x${string}`,
-              currentMarket.addresses.minter as `0x${string}`,
-            ]
-          : undefined,
-      },
-    ],
-    query: {
-      enabled: mounted && !!userAddress && selectedType === "STEAMED",
-    },
-  });
+    });
 
-  const { data } = useContractReads({
+  const { data, refetch: refetchMarketData } = useContractReads({
     contracts: [
       {
         address: currentMarket.addresses.minter as `0x${string}`,
@@ -431,25 +491,29 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       },
     });
 
-  const { data: redeemPeggedDryRunResult, error: redeemPeggedDryRunError } =
-    useContractRead({
-      address: currentMarket.addresses.minter as `0x${string}`,
-      abi: minterABI,
-      functionName: "redeemPeggedTokenDryRun",
-      args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
-      query: {
-        enabled:
-          mounted &&
-          !isCollateralAtTop &&
-          selectedType === "LONG" &&
-          !!inputAmount &&
-          parseFloat(inputAmount) > 0,
-      },
-    });
+  const {
+    data: redeemPeggedDryRunResult,
+    error: redeemPeggedDryRunError,
+    refetch: refetchRedeemPeggedDryRun,
+  } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "redeemPeggedTokenDryRun",
+    args: [inputAmount ? parseEther(inputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "LONG" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+    },
+  });
 
   const {
     data: redeemLeveragedDryRunResult,
     error: redeemLeveragedDryRunError,
+    refetch: refetchRedeemLeveragedDryRun,
   } = useContractRead({
     address: currentMarket.addresses.minter as `0x${string}`,
     abi: minterABI,
@@ -483,34 +547,350 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     },
   });
 
+  // Reverse calculation contract reads for output → input calculation
+  const { data: reverseMintPeggedDryRunResult } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        isCollateralAtTop &&
+        selectedType === "LONG" &&
+        !!outputAmount &&
+        parseFloat(outputAmount) > 0,
+    },
+  });
+
+  const { data: reverseMintLeveragedDryRunResult } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "mintLeveragedTokenDryRun",
+    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!outputAmount &&
+        parseFloat(outputAmount) > 0,
+    },
+  });
+
+  const { data: reverseRedeemLeveragedDryRunResult } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "redeemLeveragedTokenDryRun",
+    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!outputAmount &&
+        parseFloat(outputAmount) > 0,
+    },
+  });
+
+  const { data: reverseRedeemPeggedDryRunResult } = useContractRead({
+    address: currentMarket.addresses.minter as `0x${string}`,
+    abi: minterABI,
+    functionName: "redeemPeggedTokenDryRun",
+    args: [outputAmount ? parseEther(outputAmount) : BigInt(0)],
+    query: {
+      enabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "LONG" &&
+        !!outputAmount &&
+        parseFloat(outputAmount) > 0,
+    },
+  });
+
+  // Calculate fee ratio for leveraged tokens (index 0 from dry run)
+  const dryRunFeeRatio = useMemo(() => {
+    if (!inputAmount || parseFloat(inputAmount) === 0) return undefined;
+    if (
+      isCollateralAtTop &&
+      selectedType === "STEAMED" &&
+      Array.isArray(mintLeveragedDryRunResult)
+    ) {
+      return mintLeveragedDryRunResult[0] as bigint;
+    }
+    if (
+      !isCollateralAtTop &&
+      selectedType === "STEAMED" &&
+      Array.isArray(redeemLeveragedDryRunResult)
+    ) {
+      return redeemLeveragedDryRunResult[0] as bigint;
+    }
+    return undefined;
+  }, [
+    inputAmount,
+    isCollateralAtTop,
+    selectedType,
+    mintLeveragedDryRunResult,
+    redeemLeveragedDryRunResult,
+  ]);
+
+  // Calculate fee or discount (absolute wrapped collateral amount) based on dry-run results
+  const dryRunFee = useMemo(() => {
+    if (!inputAmount || parseFloat(inputAmount) === 0) return undefined;
+    if (isCollateralAtTop) {
+      if (selectedType === "LONG" && Array.isArray(mintPeggedDryRunResult)) {
+        return mintPeggedDryRunResult[1] as bigint;
+      }
+      if (
+        selectedType === "STEAMED" &&
+        Array.isArray(mintLeveragedDryRunResult)
+      ) {
+        return mintLeveragedDryRunResult[1] as bigint;
+      }
+    } else {
+      if (selectedType === "LONG" && Array.isArray(redeemPeggedDryRunResult)) {
+        // For redeem, use the fee amount directly (not the difference)
+        return redeemPeggedDryRunResult[1] as bigint;
+      }
+      if (
+        selectedType === "STEAMED" &&
+        Array.isArray(redeemLeveragedDryRunResult)
+      ) {
+        return redeemLeveragedDryRunResult[1] as bigint;
+      }
+    }
+    return undefined;
+  }, [
+    inputAmount,
+    isCollateralAtTop,
+    selectedType,
+    mintPeggedDryRunResult,
+    mintLeveragedDryRunResult,
+    redeemPeggedDryRunResult,
+    redeemLeveragedDryRunResult,
+  ]);
+
+  // Calculate fee percentage for pegged token
+  const peggedTokenFeePercentage = useMemo(() => {
+    if (!inputAmount || parseFloat(inputAmount) === 0 || !dryRunFee)
+      return undefined;
+
+    // For redeem operations, calculate fee percentage relative to output (wstETH)
+    if (!isCollateralAtTop && selectedType === "LONG") {
+      if (
+        Array.isArray(redeemPeggedDryRunResult) &&
+        redeemPeggedDryRunResult.length > 4
+      ) {
+        const outputAmountBigInt = redeemPeggedDryRunResult[4] as bigint; // wrappedCollateralReturned
+        if (outputAmountBigInt === 0n) return undefined;
+
+        const feePercentage =
+          (Number(dryRunFee) / Number(outputAmountBigInt)) * 100;
+
+        // Debug logging for fee calculation
+        console.log("💰 Fee calculation debug (redeem):", {
+          inputAmount,
+          dryRunFee: dryRunFee.toString(),
+          outputAmountBigInt: outputAmountBigInt.toString(),
+          feePercentage,
+          isCollateralAtTop,
+          selectedType,
+        });
+
+        return feePercentage;
+      }
+    }
+
+    // For mint operations, calculate fee percentage relative to input (collateral)
+    const inputAmountBigInt = parseEther(inputAmount);
+    if (inputAmountBigInt === 0n) return undefined;
+
+    const feePercentage = (Number(dryRunFee) / Number(inputAmountBigInt)) * 100;
+
+    // Debug logging for fee calculation
+    console.log("💰 Fee calculation debug (mint):", {
+      inputAmount,
+      inputAmountBigInt: inputAmountBigInt.toString(),
+      dryRunFee: dryRunFee.toString(),
+      feePercentage,
+      isCollateralAtTop,
+      selectedType,
+    });
+
+    return feePercentage;
+  }, [
+    inputAmount,
+    dryRunFee,
+    isCollateralAtTop,
+    selectedType,
+    redeemPeggedDryRunResult,
+  ]);
+
   useEffect(() => {
     if (
       isCollateralAtTop &&
       selectedType === "LONG" &&
       inputAmount &&
       Array.isArray(mintPeggedDryRunResult) &&
-      mintPeggedDryRunResult.length > 1
+      mintPeggedDryRunResult.length > 2
     ) {
       try {
         const parsedInputAmount = parseEther(inputAmount);
-        const collateralNeededFromDryRun = mintPeggedDryRunResult[1] as bigint;
+        const collateralNeededFromDryRun = mintPeggedDryRunResult[2] as bigint; // collateralTaken
         if (
           typeof collateralNeededFromDryRun === "bigint" &&
           collateralNeededFromDryRun < parsedInputAmount
         ) {
-          setShakeCollateralNeeded(true);
-          setTimeout(() => setShakeCollateralNeeded(false), 500);
+          // Auto-adjust input amount to collateral needed
+          const adjustedAmount = formatEther(collateralNeededFromDryRun);
+          setInputAmount(adjustedAmount);
+          setInputAdjusted(true);
+          setAdjustmentReason("Input reduced to maximum mintable amount");
+          setTimeout(() => setInputAdjusted(false), 3000);
         }
       } catch (e) {
-        console.error("Error parsing input amount for shake effect:", e);
+        console.error("Error parsing input amount for adjustment:", e);
+      }
+    }
+  }, [inputAmount, mintPeggedDryRunResult, isCollateralAtTop, selectedType]);
+
+  // Auto-adjust input for STEAMED token minting
+  useEffect(() => {
+    if (
+      isCollateralAtTop &&
+      selectedType === "STEAMED" &&
+      inputAmount &&
+      Array.isArray(mintLeveragedDryRunResult) &&
+      mintLeveragedDryRunResult.length > 3
+    ) {
+      try {
+        const parsedInputAmount = parseEther(inputAmount);
+        const collateralNeededFromDryRun =
+          mintLeveragedDryRunResult[3] as bigint; // wrappedCollateralUsed
+        if (
+          typeof collateralNeededFromDryRun === "bigint" &&
+          collateralNeededFromDryRun < parsedInputAmount
+        ) {
+          // Auto-adjust input amount to collateral needed
+          const adjustedAmount = formatEther(collateralNeededFromDryRun);
+          setInputAmount(adjustedAmount);
+          setInputAdjusted(true);
+          setAdjustmentReason("Input reduced to maximum mintable amount");
+          setTimeout(() => setInputAdjusted(false), 3000);
+        }
+      } catch (e) {
+        console.error("Error parsing input amount for STEAMED adjustment:", e);
+      }
+    }
+  }, [inputAmount, mintLeveragedDryRunResult, isCollateralAtTop, selectedType]);
+
+  // Reverse calculation: Update input when output changes
+  useEffect(() => {
+    // Only run reverse calculation if the user manually edited the output
+    if (!isOutputManual) {
+      // Skip if output wasn't manually set
+      return;
+    }
+
+    // Extra guard: also skip if MAX was clicked recently
+    if (isMaxClick) {
+      console.log("🔄 Skipping reverse calculation due to MAX click");
+      return;
+    }
+
+    if (outputAmount && parseFloat(outputAmount) > 0) {
+      console.log("🔄 Running reverse calculation for output:", outputAmount);
+      if (isCollateralAtTop) {
+        // Mint mode
+        if (
+          selectedType === "LONG" &&
+          Array.isArray(reverseMintPeggedDryRunResult)
+        ) {
+          // For minting pegged tokens, we need to find the collateral input that produces the desired output
+          // The dry run result gives us the collateral taken (index 2)
+          const collateralNeeded = reverseMintPeggedDryRunResult[2] as bigint;
+          if (typeof collateralNeeded === "bigint") {
+            const calculatedInput = formatEther(collateralNeeded);
+            console.log(
+              "🔄 Setting input to calculated value:",
+              calculatedInput
+            );
+            setInputAmount(calculatedInput);
+            setIsOutputManual(false); // Prevent further loops
+            setOutputAdjusted(true);
+            setTimeout(() => setOutputAdjusted(false), 3000);
+          }
+        } else if (
+          selectedType === "STEAMED" &&
+          Array.isArray(reverseMintLeveragedDryRunResult)
+        ) {
+          // For minting leveraged tokens, we need the collateral used (index 3)
+          const collateralNeeded =
+            reverseMintLeveragedDryRunResult[3] as bigint;
+          if (typeof collateralNeeded === "bigint") {
+            const calculatedInput = formatEther(collateralNeeded);
+            console.log(
+              "🔄 Setting input to calculated value:",
+              calculatedInput
+            );
+            setInputAmount(calculatedInput);
+            setIsOutputManual(false);
+            setOutputAdjusted(true);
+            setTimeout(() => setOutputAdjusted(false), 3000);
+          }
+        }
+      } else {
+        // Redeem mode
+        if (
+          selectedType === "LONG" &&
+          Array.isArray(reverseRedeemPeggedDryRunResult)
+        ) {
+          // For redeeming pegged tokens, we need the pegged input that produces the desired collateral output
+          // The dry run result gives us the pegged redeemed (index 3)
+          const peggedNeeded = reverseRedeemPeggedDryRunResult[3] as bigint;
+          if (typeof peggedNeeded === "bigint") {
+            const calculatedInput = formatEther(peggedNeeded);
+            console.log(
+              "🔄 Setting input to calculated value:",
+              calculatedInput
+            );
+            setInputAmount(calculatedInput);
+            setIsOutputManual(false);
+            setOutputAdjusted(true);
+            setTimeout(() => setOutputAdjusted(false), 3000);
+          }
+        } else if (
+          selectedType === "STEAMED" &&
+          Array.isArray(reverseRedeemLeveragedDryRunResult)
+        ) {
+          // For redeeming leveraged tokens, we need the leveraged input that produces the desired collateral output
+          // The dry run result gives us the leveraged redeemed (index 2)
+          const leveragedNeeded =
+            reverseRedeemLeveragedDryRunResult[2] as bigint;
+          if (typeof leveragedNeeded === "bigint") {
+            const calculatedInput = formatEther(leveragedNeeded);
+            console.log(
+              "🔄 Setting input to calculated value:",
+              calculatedInput
+            );
+            setInputAmount(calculatedInput);
+            setIsOutputManual(false);
+            setOutputAdjusted(true);
+            setTimeout(() => setOutputAdjusted(false), 3000);
+          }
+        }
       }
     }
   }, [
-    inputAmount,
-    mintPeggedDryRunResult,
+    outputAmount,
     isCollateralAtTop,
     selectedType,
-    setShakeCollateralNeeded,
+    reverseMintPeggedDryRunResult,
+    reverseMintLeveragedDryRunResult,
+    reverseRedeemPeggedDryRunResult,
+    reverseRedeemLeveragedDryRunResult,
+    isMaxClick,
+    isOutputManual,
   ]);
 
   const { data: outputData, refetch: refetchOutput } = useContractReads({
@@ -542,6 +922,41 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   // Effect Hooks
   useEffect(() => setMounted(true), []);
 
+  // Debug logging for dry-run query conditions
+  useEffect(() => {
+    console.log("🔍 Dry-run Query Conditions:", {
+      mounted,
+      isCollateralAtTop,
+      selectedType,
+      inputAmount,
+      inputAmountFloat: inputAmount ? parseFloat(inputAmount) : 0,
+      mintPeggedEnabled:
+        mounted &&
+        isCollateralAtTop &&
+        selectedType === "LONG" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+      redeemPeggedEnabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "LONG" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+      mintLeveragedEnabled:
+        mounted &&
+        isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+      redeemLeveragedEnabled:
+        mounted &&
+        !isCollateralAtTop &&
+        selectedType === "STEAMED" &&
+        !!inputAmount &&
+        parseFloat(inputAmount) > 0,
+    });
+  }, [mounted, isCollateralAtTop, selectedType, inputAmount]);
+
   useEffect(() => {
     if (isCollateralAtTop) {
       // Mint mode
@@ -550,16 +965,51 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         Array.isArray(mintPeggedDryRunResult) &&
         mintPeggedDryRunResult.length > 2
       ) {
-        const peggedMinted = mintPeggedDryRunResult[2] as bigint;
+        // Debug logging for dry run results
+        console.log("🔍 Mint Pegged Dry Run Results:", {
+          inputAmount,
+          inputAmountWei: inputAmount
+            ? parseEther(inputAmount).toString()
+            : "0",
+          fullResult: mintPeggedDryRunResult,
+          incentiveRatio: mintPeggedDryRunResult[0]?.toString(),
+          wrappedFee: formatEther(mintPeggedDryRunResult[1] as bigint),
+          wrappedCollateralTaken: formatEther(
+            mintPeggedDryRunResult[2] as bigint
+          ),
+          peggedMinted: formatEther(mintPeggedDryRunResult[3] as bigint),
+          price: mintPeggedDryRunResult[4]?.toString(),
+          rate: mintPeggedDryRunResult[5]?.toString(),
+        });
+
+        const peggedMinted = mintPeggedDryRunResult[3] as bigint; // peggedMinted
         if (typeof peggedMinted === "bigint")
           setOutputAmount(formatEther(peggedMinted));
         else setOutputAmount("");
       } else if (
         selectedType === "STEAMED" && // Minting Leveraged
         Array.isArray(mintLeveragedDryRunResult) &&
-        mintLeveragedDryRunResult.length > 2
+        mintLeveragedDryRunResult.length > 4
       ) {
-        const leveragedMinted = mintLeveragedDryRunResult[2] as bigint;
+        // Debug logging for leveraged mint dry run
+        console.log("🔍 Mint Leveraged Dry Run Results:", {
+          inputAmount,
+          inputAmountWei: inputAmount
+            ? parseEther(inputAmount).toString()
+            : "0",
+          fullResult: mintLeveragedDryRunResult,
+          incentiveRatio: mintLeveragedDryRunResult[0]?.toString(),
+          wrappedFee: formatEther(mintLeveragedDryRunResult[1] as bigint),
+          wrappedDiscount: formatEther(mintLeveragedDryRunResult[2] as bigint),
+          wrappedCollateralUsed: formatEther(
+            mintLeveragedDryRunResult[3] as bigint
+          ),
+          leveragedMinted: formatEther(mintLeveragedDryRunResult[4] as bigint),
+          price: mintLeveragedDryRunResult[5]?.toString(),
+          rate: mintLeveragedDryRunResult[6]?.toString(),
+        });
+
+        const leveragedMinted = mintLeveragedDryRunResult[4] as bigint;
         if (typeof leveragedMinted === "bigint")
           setOutputAmount(formatEther(leveragedMinted));
         else setOutputAmount("");
@@ -577,18 +1027,55 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       if (
         selectedType === "LONG" &&
         Array.isArray(redeemPeggedDryRunResult) &&
-        redeemPeggedDryRunResult.length > 2
+        redeemPeggedDryRunResult.length > 4
       ) {
-        const collateralReturned = redeemPeggedDryRunResult[2] as bigint;
+        // Debug logging for pegged redeem dry run
+        console.log("🔍 Redeem Pegged Dry Run Results:", {
+          inputAmount,
+          inputAmountWei: inputAmount
+            ? parseEther(inputAmount).toString()
+            : "0",
+          fullResult: redeemPeggedDryRunResult,
+          incentiveRatio: redeemPeggedDryRunResult[0]?.toString(),
+          wrappedFee: formatEther(redeemPeggedDryRunResult[1] as bigint),
+          wrappedDiscount: formatEther(redeemPeggedDryRunResult[2] as bigint),
+          peggedRedeemed: formatEther(redeemPeggedDryRunResult[3] as bigint),
+          wrappedCollateralReturned: formatEther(
+            redeemPeggedDryRunResult[4] as bigint
+          ),
+          price: redeemPeggedDryRunResult[5]?.toString(),
+          rate: redeemPeggedDryRunResult[6]?.toString(),
+        });
+
+        const collateralReturned = redeemPeggedDryRunResult[4] as bigint;
         if (typeof collateralReturned === "bigint")
           setOutputAmount(formatEther(collateralReturned));
         else setOutputAmount("");
       } else if (
         selectedType === "STEAMED" &&
         Array.isArray(redeemLeveragedDryRunResult) &&
-        redeemLeveragedDryRunResult.length > 2
+        redeemLeveragedDryRunResult.length > 3
       ) {
-        const collateralReturned = redeemLeveragedDryRunResult[2] as bigint;
+        // Debug logging for leveraged redeem dry run
+        console.log("🔍 Redeem Leveraged Dry Run Results:", {
+          inputAmount,
+          inputAmountWei: inputAmount
+            ? parseEther(inputAmount).toString()
+            : "0",
+          fullResult: redeemLeveragedDryRunResult,
+          incentiveRatio: redeemLeveragedDryRunResult[0]?.toString(),
+          wrappedFee: formatEther(redeemLeveragedDryRunResult[1] as bigint),
+          leveragedRedeemed: formatEther(
+            redeemLeveragedDryRunResult[2] as bigint
+          ),
+          wrappedCollateralReturned: formatEther(
+            redeemLeveragedDryRunResult[3] as bigint
+          ),
+          price: redeemLeveragedDryRunResult[4]?.toString(),
+          rate: redeemLeveragedDryRunResult[5]?.toString(),
+        });
+
+        const collateralReturned = redeemLeveragedDryRunResult[3] as bigint;
         if (typeof collateralReturned === "bigint")
           setOutputAmount(formatEther(collateralReturned));
         else setOutputAmount("");
@@ -599,6 +1086,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   }, [
     mintPeggedDryRunResult,
     redeemPeggedDryRunResult,
+    mintLeveragedDryRunResult,
     redeemLeveragedDryRunResult,
     outputData,
     inputAmount,
@@ -618,6 +1106,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     if (/^\d*\.?\d*$/.test(value)) {
       // Allow only numbers and a single dot
       setInputAmount(value);
+      setIsOutputManual(false); // User changed input, not output
       if (!value || parseFloat(value) === 0) {
         setOutputAmount("");
       }
@@ -628,9 +1117,11 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     const value = e.target.value;
     if (/^\d*\.?\d*$/.test(value)) {
       setOutputAmount(value);
-      // Future: Implement reverse calculation if needed
+      setIsOutputManual(true); // User manually changed output
+      // Clear input when output is cleared
       if (!value || parseFloat(value) === 0) {
         setInputAmount("");
+        setOutputAdjusted(false);
       }
     }
   };
@@ -642,8 +1133,50 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       ? peggedBalance?.[0]?.result
       : leveragedBalance?.[0]?.result;
 
+    console.log("🔍 handleMaxClick debug:", {
+      isCollateralAtTop,
+      selectedType,
+      collateralBalance: collateralBalance?.[0]?.result?.toString(),
+      peggedBalance: peggedBalance?.[0]?.result?.toString(),
+      leveragedBalance: leveragedBalance?.[0]?.result?.toString(),
+      balanceToSetResult: balanceToSetResult?.toString(),
+    });
+
     if (typeof balanceToSetResult === "bigint") {
-      setInputAmount(formatEther(balanceToSetResult));
+      const formattedAmount = formatEther(balanceToSetResult);
+      console.log("📊 Setting input amount to:", formattedAmount);
+      setIsMaxClick(true);
+      setIsOutputManual(false); // Disable reverse calculation after MAX
+      setInputAmount(formattedAmount);
+      // Reset the flag after a longer delay to prevent reverse calculation from running
+      setTimeout(() => {
+        console.log("🔄 Resetting isMaxClick flag");
+        setIsMaxClick(false);
+      }, 500);
+    } else {
+      console.log("⚠️ No valid balance found for MAX click");
+    }
+  };
+
+  // Function to refetch all relevant data after successful transaction
+  const refetchAllData = async () => {
+    try {
+      console.log("🔄 Refetching all market data after transaction...");
+      // Refetch all balance data, dry run results, and market state
+      await Promise.all([
+        refetchCollateralBalance(),
+        refetchPeggedBalance(),
+        refetchLeveragedBalance(),
+        refetchMintPeggedDryRun(),
+        refetchMintLeveragedDryRun(),
+        refetchRedeemPeggedDryRun(),
+        refetchRedeemLeveragedDryRun(),
+        refetchMarketData(),
+        refetchOnChainEnded(),
+      ]);
+      console.log("✅ All market data refetched successfully");
+    } catch (error) {
+      console.error("Error refetching data:", error);
     }
   };
 
@@ -656,6 +1189,33 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       !walletClient
     )
       return;
+
+    // Set up transaction details for the modal
+    const transactionType = isCollateralAtTop ? "mint" : "redeem";
+    const inputToken = isCollateralAtTop
+      ? "wstETH"
+      : selectedType === "LONG"
+      ? marketInfoData?.peggedToken.name || "ZHE"
+      : marketInfoData?.leveragedToken.name || "STEAMED";
+    const outputToken = isCollateralAtTop
+      ? selectedType === "LONG"
+        ? marketInfoData?.peggedToken.name || "ZHE"
+        : marketInfoData?.leveragedToken.name || "STEAMED"
+      : "wstETH";
+
+    setTransactionDetails({
+      type: transactionType,
+      tokenType: selectedType,
+      inputAmount,
+      outputAmount: outputAmount || "0",
+      inputToken,
+      outputToken,
+    });
+
+    // Show modal immediately
+    setShowStatusModal(true);
+    setTransactionHash(undefined);
+
     setIsPending(true);
     setPendingStep(null);
     try {
@@ -722,55 +1282,80 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           if (
             Array.isArray(mintPeggedDryRunResult) &&
             mintPeggedDryRunResult.length > 2 &&
-            typeof mintPeggedDryRunResult[2] === "bigint"
+            typeof mintPeggedDryRunResult[3] === "bigint"
           ) {
-            minPeggedOut = mintPeggedDryRunResult[2] as bigint;
+            minPeggedOut = mintPeggedDryRunResult[3] as bigint; // peggedMinted
           }
-          await writeContractAsync({
+          const hash = await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
             abi: minterABI,
             functionName: "mintPeggedToken",
             args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
           });
+          setTransactionHash(hash);
         } else {
           // Minting Leveraged Token
           let minLeveragedOut = parsedAmount; // Default to input amount
+          console.log("💰 Preparing mintLeveragedToken transaction:", {
+            inputAmount,
+            parsedAmount: parsedAmount.toString(),
+            mintLeveragedDryRunResult,
+            mintLeveragedDryRunResultLength: Array.isArray(
+              mintLeveragedDryRunResult
+            )
+              ? mintLeveragedDryRunResult.length
+              : 0,
+          });
           if (
             // Prefer dry run result if available
             Array.isArray(mintLeveragedDryRunResult) &&
-            mintLeveragedDryRunResult.length > 2 &&
-            typeof mintLeveragedDryRunResult[2] === "bigint"
+            mintLeveragedDryRunResult.length > 4 &&
+            typeof mintLeveragedDryRunResult[4] === "bigint"
           ) {
-            minLeveragedOut = mintLeveragedDryRunResult[2] as bigint;
+            minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
+            console.log(
+              "✅ Using dry-run result for minLeveragedOut:",
+              formatEther(minLeveragedOut)
+            );
           } else if (outputAmount && parseFloat(outputAmount) > 0) {
             // Fallback to calculated outputAmount
             try {
               minLeveragedOut = parseEther(outputAmount);
+              console.log(
+                "📊 Using outputAmount for minLeveragedOut:",
+                formatEther(minLeveragedOut)
+              );
             } catch (e) {
               console.error(
                 "Error parsing outputAmount for minLeveragedOut:",
                 e
               );
             }
+          } else {
+            console.log(
+              "⚠️ Using default parsedAmount for minLeveragedOut:",
+              formatEther(minLeveragedOut)
+            );
           }
-          await writeContractAsync({
+          const hash = await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
             abi: minterABI,
             functionName: "mintLeveragedToken",
             args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
           });
+          setTransactionHash(hash);
         }
       } else {
         if (selectedType === "LONG") {
           let minCollateralOut = parsedAmount;
           if (
             Array.isArray(redeemPeggedDryRunResult) &&
-            redeemPeggedDryRunResult.length > 2 &&
-            typeof redeemPeggedDryRunResult[2] === "bigint"
+            redeemPeggedDryRunResult.length > 4 &&
+            typeof redeemPeggedDryRunResult[4] === "bigint"
           ) {
-            minCollateralOut = redeemPeggedDryRunResult[2] as bigint;
+            minCollateralOut = redeemPeggedDryRunResult[4] as bigint;
           }
-          await writeContractAsync({
+          const hash = await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
             abi: minterABI,
             functionName: "redeemPeggedToken",
@@ -780,16 +1365,17 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               minCollateralOut,
             ],
           });
+          setTransactionHash(hash);
         } else {
           let minCollateralOut = parsedAmount;
           if (
             Array.isArray(redeemLeveragedDryRunResult) &&
-            redeemLeveragedDryRunResult.length > 2 &&
-            typeof redeemLeveragedDryRunResult[2] === "bigint"
+            redeemLeveragedDryRunResult.length > 3 &&
+            typeof redeemLeveragedDryRunResult[3] === "bigint"
           ) {
-            minCollateralOut = redeemLeveragedDryRunResult[2] as bigint;
+            minCollateralOut = redeemLeveragedDryRunResult[3] as bigint;
           }
-          await writeContractAsync({
+          const hash = await writeContractAsync({
             address: currentMarket.addresses.minter as `0x${string}`,
             abi: minterABI,
             functionName: "redeemLeveragedToken",
@@ -799,6 +1385,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               minCollateralOut,
             ],
           });
+          setTransactionHash(hash);
         }
       }
       setInputAmount("");
@@ -833,298 +1420,293 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const mintFeeResult = data?.[1]?.result as bigint | undefined; // This is mintPeggedTokenIncentiveRatio
   const redeemFeeResult = data?.[2]?.result as bigint | undefined; // This is redeemPeggedTokenIncentiveRatio
 
+  // Log when dry-run results change
+  useEffect(() => {
+    if (mintPeggedDryRunResult) {
+      console.log("🔄 mintPeggedDryRunResult updated:", mintPeggedDryRunResult);
+    }
+  }, [mintPeggedDryRunResult]);
+
+  useEffect(() => {
+    if (redeemPeggedDryRunResult) {
+      console.log(
+        "🔄 redeemPeggedDryRunResult updated:",
+        redeemPeggedDryRunResult
+      );
+    }
+  }, [redeemPeggedDryRunResult]);
+
+  useEffect(() => {
+    if (mintLeveragedDryRunResult) {
+      console.log(
+        "🔄 mintLeveragedDryRunResult updated:",
+        mintLeveragedDryRunResult
+      );
+    }
+  }, [mintLeveragedDryRunResult]);
+
+  useEffect(() => {
+    if (redeemLeveragedDryRunResult) {
+      console.log(
+        "🔄 redeemLeveragedDryRunResult updated:",
+        redeemLeveragedDryRunResult
+      );
+    }
+  }, [redeemLeveragedDryRunResult]);
+
   if (!mounted) {
     // Optional: render a simpler loading state for this component if needed
     return (
       <div className="px-6 py-2">
-        <h2 className={`text-2xl text-[#F5F5F5] mb-4 ${geoClassName}`}>
-          Loading Form...
-        </h2>
+        <h2 className={`text-2xl text-[#F5F5F5] mb-4`}>Loading Form...</h2>
       </div>
     );
   }
 
   // JSX for Mint & Redeem section (to be copied from page.tsx)
   return (
-    <div className="px-6 py-2">
-      <div className="w-full max-w-xl mx-auto flex flex-col">
-        {/* Tabs row above the form, left-aligned with form content */}
-        <div className="flex border-b border-zinc-800 mb-1">
-          <button
-            onClick={() => {
-              setSelectedType("LONG");
-              setIsFlipped(false);
-            }}
-            className={clsx(
-              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
-              selectedType === "LONG"
-                ? "border-[#4A7C59] text-[#4A7C59]"
-                : "border-transparent text-zinc-400 hover:text-white"
-            )}
-          >
-            PEGGED
-          </button>
-          <button
-            onClick={() => {
-              setSelectedType("STEAMED");
-              setIsFlipped(true);
-            }}
-            className={clsx(
-              `px-4 py-2 text-base font-medium transition-all duration-200 ease-in-out outline-none focus:outline-none border-b-2 ${geoClassName}`,
-              selectedType === "STEAMED"
-                ? "border-[#4A7C59] text-[#4A7C59]"
-                : "border-transparent text-zinc-400 hover:text-white"
-            )}
-          >
-            LEVERAGE
-          </button>
+    <div className=" py-2">
+      {isGenesisActive && (
+        <div className="bg-red-400/10 border border-red-400/20 text-red-200 text-sm p-4 mb-4">
+          <strong>Genesis Active:</strong> Minting and redeeming are currently
+          disabled for this market.
         </div>
-        <div className="relative [perspective:1000px] w-full">
-          <div
-            className="relative grid [transform-style:preserve-3d] transition-transform duration-500 w-full"
-            style={{
-              transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-            }}
-          >
+      )}
+      <div
+        className={clsx(
+          "w-full mx-auto flex flex-col transition-all duration-300",
+          {
+            "blur-sm pointer-events-none": isGenesisActive,
+          }
+        )}
+      >
+        <div className="relative w-full">
+          <div className="relative grid w-full">
             {/* Front Side (PEGGED) */}
-            <div className="col-start-1 row-start-1 bg-transparent [backface-visibility:hidden] transform-gpu">
+            <div className="col-start-1 row-start-1 bg-transparent">
               <div
-                className={`relative z-10 transition-opacity duration-50 delay-[145ms] ${
-                  selectedType === "LONG" ? "opacity-100" : "opacity-0"
+                className={`relative transition-opacity duration-200 ${
+                  selectedType === "LONG"
+                    ? "opacity-100 z-10 pointer-events-auto"
+                    : "opacity-0 z-0 pointer-events-none"
                 }`}
               >
-                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
-                  <div className="text-center mb-2">
-                    <h1
-                      className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
-                    >
-                      zheUSD
-                    </h1>
-                  </div>
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="flex flex-col space-y-4">
-                      {/* First Token Input (wstETH) */}
-                      <div
-                        className={`space-y-2 ${
-                          isCollateralAtTop ? "order-1" : "order-3"
-                        }`}
-                      >
+                <div className="pt-4 pb-1 flex flex-col gap-2 min-h-[480px]">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-0">
+                    <div className="flex flex-col gap-y-0">
+                      {/* From Token Input */}
+                      <div className="space-y-2 outline outline-1 outline-white/10 rounded-sm p-4">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">From</label>
+                          <label className="text-md font-medium text-zinc-400">
+                            From
+                          </label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
-                            {formatBalance(
-                              collateralBalance?.[0]?.result as
-                                | bigint
-                                | undefined
-                            )}{" "}
-                            wstETH
+                            {isCollateralAtTop ? (
+                              <>
+                                {formatBalance(
+                                  collateralBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                wstETH
+                              </>
+                            ) : (
+                              <>
+                                {formatBalance(
+                                  peggedBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                {marketInfoData?.peggedToken.name || "haUSD"}
+                              </>
+                            )}
                           </span>
                         </div>
                         <div className="flex-1 relative">
                           <input
                             type="text"
-                            value={
-                              isCollateralAtTop ? inputAmount : outputAmount
-                            }
-                            onChange={
-                              isCollateralAtTop
-                                ? handleInputAmountChange
-                                : undefined
-                            }
+                            value={inputAmount}
+                            onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
-                            readOnly={!isCollateralAtTop}
+                            className="w-full text-2xl sm:text-3xl font-semibold bg-transparent text-white focus:outline-none pr-24"
+                            tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
                             <div className="flex items-center gap-2">
-                              {isCollateralAtTop && (
-                                <button
-                                  type="button"
-                                  onClick={handleMaxClick}
-                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                >
-                                  MAX
-                                </button>
-                              )}
-                              <span className="text-[#F5F5F5]/70">wstETH</span>
-                            </div>
-                            {isCollateralAtTop && (
-                              <button
-                                onClick={() =>
-                                  window.open(
-                                    "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-                                    "_blank"
-                                  )
-                                }
-                                className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
-                              >
-                                Get wstETH
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        {isCollateralAtTop && selectedType === "LONG" && (
-                          <div
-                            className={
-                              shakeCollateralNeeded
-                                ? "text-sm text-red-500 font-semibold mt-1"
-                                : "text-sm text-[#F5F5F5]/60 mt-1"
-                            }
-                          >
-                            Collateral Needed:{" "}
-                            {!inputAmount || parseFloat(inputAmount) === 0
-                              ? "-"
-                              : Array.isArray(mintPeggedDryRunResult) &&
-                                mintPeggedDryRunResult.length > 1 &&
-                                typeof mintPeggedDryRunResult[1] === "bigint"
-                              ? formatMinimal(mintPeggedDryRunResult[1])
-                              : "-"}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Swap Direction and Fee */}
-                      <div className="flex items-center w-full order-2">
-                        {/* Left: Fee */}
-                        <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
-                          {!isCollateralAtTop && ( // Fee display for redeeming
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "LONG"
-                                  ? formatFeeRatio(redeemFeeResult)
-                                  : "-"}
-                              </span>
-                            </>
-                          )}
-                          {isCollateralAtTop && ( // Fee display for minting
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "LONG"
-                                  ? formatFeeRatio(mintFeeResult)
-                                  : "-"}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        {/* Center: Mint/Arrows/Redeem */}
-                        <div className="flex-grow flex items-center justify-center gap-x-4">
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Mint
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsCollateralAtTop(!isCollateralAtTop)
-                            }
-                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 4V20M19 13L12 20L5 13"
-                                stroke="#F5F5F5"
-                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 20V4M5 11L12 4L19 11"
-                                stroke="#F5F5F5"
-                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              !isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Redeem
-                          </span>
-                        </div>
-                        {/* Right: Spacer, same width as left */}
-                        <div className="min-w-[80px]"></div>
-                      </div>
-
-                      {/* Second Token Input (zheUSD) */}
-                      <div
-                        className={`space-y-2 ${
-                          isCollateralAtTop ? "order-3" : "order-1"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">To</label>
-                          <span className="text-sm text-zinc-500">
-                            Balance:{" "}
-                            {formatBalance(
-                              peggedBalance?.[0]?.result as bigint | undefined
-                            )}{" "}
-                            zheUSD
-                          </span>
-                        </div>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            value={
-                              isCollateralAtTop ? outputAmount : inputAmount
-                            }
-                            onChange={
-                              isCollateralAtTop
-                                ? handleOutputAmountChange
-                                : handleInputAmountChange
-                            }
-                            placeholder="0.0"
-                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            readOnly={isCollateralAtTop}
-                          />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                            {!isCollateralAtTop && selectedType === "LONG" && (
                               <button
                                 type="button"
                                 onClick={handleMaxClick}
-                                className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                                className="text-white/70 hover:text-white text-sm transition-colors"
                               >
                                 MAX
                               </button>
-                            )}
-                            <span className="text-[#F5F5F5]/70">zheUSD</span>
+                              <span className="text-[#F5F5F5]/70">
+                                {isCollateralAtTop
+                                  ? "wstETH"
+                                  : marketInfoData?.peggedToken.name || "haUSD"}
+                              </span>
+                            </div>
+                            <div style={{ minHeight: "1rem" }}>
+                              {isCollateralAtTop && (
+                                <button
+                                  onClick={() =>
+                                    window.open(
+                                      "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+                                      "_blank"
+                                    )
+                                  }
+                                  className="text-white/60 hover:text-white/80 text-[10px] transition-colors"
+                                >
+                                  Get wstETH
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        {!isCollateralAtTop &&
-                          selectedType === "LONG" &&
-                          redeemPeggedDryRunError && (
-                            <div className="text-sm text-red-500 font-semibold mt-1">
-                              Invalid amount or not enough balance
+                        <div
+                          className={
+                            selectedType === "LONG"
+                              ? inputAdjusted && isCollateralAtTop
+                                ? "text-sm text-yellow-400 font-semibold mt-1"
+                                : "text-sm text-[#F5F5F5]/60 mt-1"
+                              : "text-sm mt-1"
+                          }
+                          style={{ minHeight: "1.25rem" }}
+                        >
+                          {selectedType === "LONG" &&
+                          isCollateralAtTop &&
+                          inputAdjusted ? (
+                            <>⚠️ {adjustmentReason}</>
+                          ) : (
+                            <span className="opacity-0">&nbsp;</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Swap Direction */}
+                      <div className="relative h-0 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsCollateralAtTop(!isCollateralAtTop)
+                          }
+                          className="outline outline-1 outline-white/10 hover:outline-white/20 bg-transparent text-white h-12 w-12 flex items-center justify-center transition-colors focus:outline-none z-10"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`w-5 h-5 transition-transform duration-300 ${
+                              !isCollateralAtTop ? "rotate-180" : "rotate-0"
+                            }`}
+                          >
+                            <path d="M12 4v16m-6-6 6 6 6-6" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* To Token Input */}
+                      <div className="space-y-2 outline outline-1 outline-white/10 rounded-sm p-4 mt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-md font-medium text-zinc-400">
+                            To
+                          </label>
+                          <span className="text-sm text-zinc-500">
+                            Balance:{" "}
+                            {isCollateralAtTop ? (
+                              <>
+                                {formatBalance(
+                                  peggedBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                {marketInfoData?.peggedToken.name || "haUSD"}
+                              </>
+                            ) : (
+                              <>
+                                {formatBalance(
+                                  collateralBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                wstETH
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={outputAmount}
+                            onChange={handleOutputAmountChange}
+                            placeholder="0.0"
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            tabIndex={0}
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                            <span className="text-[#F5F5F5]/70">
+                              {isCollateralAtTop
+                                ? marketInfoData?.peggedToken.name || "haUSD"
+                                : "wstETH"}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Removed invisible placeholder and extra margin here for PEGGED tab */}
+                        <div
+                          className={`text-sm mt-0 ${
+                            !isCollateralAtTop &&
+                            selectedType === "LONG" &&
+                            redeemPeggedDryRunError
+                              ? "text-red-500 font-semibold"
+                              : "invisible"
+                          }`}
+                          style={{ minHeight: "0.25rem" }}
+                        >
+                          Invalid amount or not enough balance
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fee Display - Always visible */}
+                    <div className="outline outline-1 outline-white/10 rounded-sm p-2 mt-1 mb-0">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">Fee:</span>
+                        <div className="text-right">
+                          <div className="text-indigo-400 font-medium">
+                            {inputAmount && parseFloat(inputAmount) > 0
+                              ? selectedType === "LONG"
+                                ? formatFeeToken(dryRunFee)
+                                : dryRunFeeRatio
+                                ? `${formatFeeToken(
+                                    dryRunFee
+                                  )} (${formatFeeRatio(dryRunFeeRatio)})`
+                                : formatFeeToken(dryRunFee)
+                              : "-"}
+                          </div>
+                          {selectedType === "LONG" ? (
+                            peggedTokenFeePercentage !== undefined &&
+                            inputAmount &&
+                            parseFloat(inputAmount) > 0 ? (
+                              <div className="text-xs text-zinc-500">
+                                {peggedTokenFeePercentage < 0.01
+                                  ? peggedTokenFeePercentage.toFixed(6)
+                                  : peggedTokenFeePercentage.toFixed(2)}
+                                %
+                              </div>
+                            ) : (
+                              <div className="text-xs text-zinc-500">-</div>
+                            )
+                          ) : (
+                            // Placeholder to keep consistent height with pegged fee box
+                            <div className="text-xs text-zinc-500 opacity-0">
+                              -
                             </div>
                           )}
+                        </div>
                       </div>
                     </div>
 
@@ -1134,7 +1716,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Connect Wallet
                         </button>
@@ -1142,7 +1724,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for approval transaction...
                         </button>
@@ -1150,57 +1732,24 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for mint/redeem transaction...
                         </button>
                       ) : (
-                        <div
-                          className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
-                          style={{
-                            transformOrigin: "center center",
-                            transform: isCollateralAtTop
-                              ? "rotateX(0deg)"
-                              : "rotateX(180deg)",
-                          }}
+                        <button
+                          onClick={handleSubmit}
+                          disabled={
+                            !inputAmount || parseFloat(inputAmount) <= 0
+                          }
+                          className={`w-full h-[60px] p-4 text-center text-xl outline outline-1 outline-white/10 hover:outline-white/20 text-white font-medium disabled:outline-white/5 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200`}
                         >
-                          <button
-                            onClick={handleSubmit}
-                            disabled={
-                              !inputAmount || parseFloat(inputAmount) <= 0
-                            }
-                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
-                          >
-                            <span className={geoClassName}>
-                              {(() => {
-                                if (
-                                  !inputAmount ||
-                                  parseFloat(inputAmount) <= 0
-                                )
-                                  return "Enter Amount";
-                                return isCollateralAtTop ? "MINT" : "REDEEM";
-                              })()}
-                            </span>
-                          </button>
-                          <button
-                            onClick={handleSubmit}
-                            disabled={
-                              !inputAmount || parseFloat(inputAmount) <= 0
-                            }
-                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
-                          >
-                            <span className={geoClassName}>
-                              {(() => {
-                                if (
-                                  !inputAmount ||
-                                  parseFloat(inputAmount) <= 0
-                                )
-                                  return "Enter Amount";
-                                return isCollateralAtTop ? "MINT" : "REDEEM";
-                              })()}
-                            </span>
-                          </button>
-                        </div>
+                          {(() => {
+                            if (!inputAmount || parseFloat(inputAmount) <= 0)
+                              return "Enter Amount";
+                            return isCollateralAtTop ? "MINT" : "REDEEM";
+                          })()}
+                        </button>
                       )}
                     </div>
                   </form>
@@ -1209,246 +1758,231 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             </div>
 
             {/* Back Side (LEVERAGE) */}
-            <div className="col-start-1 row-start-1 bg-transparent [backface-visibility:hidden] [transform:rotateY(180deg)] transform-gpu">
+            <div className="col-start-1 row-start-1 bg-transparent">
               <div
-                className={`relative z-10 transition-opacity duration-50 delay-[145ms] ${
-                  selectedType === "STEAMED" ? "opacity-100" : "opacity-0"
+                className={`relative transition-opacity duration-200 ${
+                  selectedType === "STEAMED"
+                    ? "opacity-100 z-10 pointer-events-auto"
+                    : "opacity-0 z-0 pointer-events-none"
                 }`}
               >
-                <div className="pt-2 pb-1 px-6 flex flex-col gap-2">
-                  <div className="text-center mb-2">
-                    <h1
-                      className={`text-3xl text-[#4A7C59] mb-1 ${geoClassName}`}
-                    >
-                      steamedETH {/* Dynamic for selected leveraged token */}
-                    </h1>
-                    <div className="text-zinc-400 text-sm -mt-1">
-                      <span className="block text-[10px] mb-0.5">Leverage</span>
-                      {formatLeverageRatio(leverageRatioResult)}
-                    </div>
-                  </div>
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="flex flex-col space-y-4">
-                      {/* First Token Input (wstETH) */}
-                      <div
-                        className={`space-y-2 ${
-                          isCollateralAtTop ? "order-1" : "order-3"
-                        }`}
-                      >
+                <div className="pt-4 pb-1 flex flex-col gap-2 min-h-[480px]">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-0">
+                    <div className="flex flex-col gap-y-0">
+                      {/* From Token Input */}
+                      <div className="space-y-2 outline outline-1 outline-white/10 rounded-sm p-4">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">From</label>
+                          <label className="text-md font-medium text-zinc-400">
+                            From
+                          </label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
-                            {formatBalance(
-                              collateralBalance?.[0]?.result as
-                                | bigint
-                                | undefined
-                            )}{" "}
-                            wstETH
+                            {isCollateralAtTop ? (
+                              <>
+                                {formatBalance(
+                                  collateralBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                wstETH
+                              </>
+                            ) : (
+                              <>
+                                {formatBalance(
+                                  leveragedBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                {marketInfoData?.leveragedToken.name ||
+                                  "steamedETH"}
+                              </>
+                            )}
                           </span>
                         </div>
                         <div className="flex-1 relative">
                           <input
                             type="text"
-                            value={
-                              isCollateralAtTop ? inputAmount : outputAmount
-                            }
-                            onChange={
-                              isCollateralAtTop
-                                ? handleInputAmountChange
-                                : undefined
-                            }
+                            value={inputAmount}
+                            onChange={handleInputAmountChange}
                             placeholder="0.0"
-                            className="w-full bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24 shadow-sm"
-                            readOnly={!isCollateralAtTop}
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
                             <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={handleMaxClick}
+                                className="text-white/70 hover:text-white text-sm transition-colors"
+                              >
+                                MAX
+                              </button>
+                              <span className="text-[#F5F5F5]/70">
+                                {isCollateralAtTop
+                                  ? "wstETH"
+                                  : marketInfoData?.leveragedToken.name ||
+                                    "steamedETH"}
+                              </span>
+                            </div>
+                            <div style={{ minHeight: "1rem" }}>
                               {isCollateralAtTop && (
                                 <button
-                                  type="button"
-                                  onClick={handleMaxClick}
-                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
+                                  onClick={() =>
+                                    window.open(
+                                      "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+                                      "_blank"
+                                    )
+                                  }
+                                  className="text-white/60 hover:text-white/80 text-[10px] transition-colors"
                                 >
-                                  MAX
+                                  Get wstETH
                                 </button>
                               )}
-                              <span className="text-[#F5F5F5]/70">wstETH</span>
                             </div>
-                            {isCollateralAtTop && (
-                              <button
-                                onClick={() =>
-                                  window.open(
-                                    "https://swap.defillama.com/?chain=ethereum&from=0x0000000000000000000000000000000000000000&tab=swap&to=0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-                                    "_blank"
-                                  )
-                                }
-                                className="text-[#4A7C59] hover:text-[#3A6147] text-[10px] transition-colors mt-1"
-                              >
-                                Get wstETH
-                              </button>
-                            )}
                           </div>
                         </div>
-                      </div>
-
-                      {/* Swap Direction and Fee - LEVERAGE */}
-                      <div className="flex items-center w-full order-2">
-                        {/* Left: Fee */}
-                        <div className="text-xs text-left min-w-[80px] flex items-center justify-start gap-1">
-                          {!isCollateralAtTop && ( // Fee display for redeeming
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "STEAMED" &&
-                                Array.isArray(redeemLeveragedDryRunResult) &&
-                                redeemLeveragedDryRunResult.length > 0 &&
-                                typeof redeemLeveragedDryRunResult[0] ===
-                                  "bigint"
-                                  ? formatFeeRatio(
-                                      redeemLeveragedDryRunResult[0] as bigint
-                                    )
-                                  : "-"}
-                              </span>
-                            </>
-                          )}
-                          {isCollateralAtTop && ( // Fee display for minting
-                            <>
-                              <span className="text-zinc-400">Fee:</span>
-                              <span className="text-[#4A7C59]">
-                                {selectedType === "STEAMED" &&
-                                Array.isArray(mintLeveragedDryRunResult) &&
-                                mintLeveragedDryRunResult.length > 0 &&
-                                typeof mintLeveragedDryRunResult[0] === "bigint"
-                                  ? formatFeeRatio(
-                                      mintLeveragedDryRunResult[0] as bigint
-                                    )
-                                  : "-"}
-                              </span>
-                            </>
+                        <div
+                          className={
+                            selectedType === "STEAMED"
+                              ? inputAdjusted && isCollateralAtTop
+                                ? "text-sm text-yellow-400 font-semibold mt-1"
+                                : "text-sm text-[#F5F5F5]/60 mt-1"
+                              : "text-sm mt-1"
+                          }
+                          style={{ minHeight: "1.25rem" }}
+                        >
+                          {selectedType === "STEAMED" &&
+                          isCollateralAtTop &&
+                          inputAdjusted ? (
+                            <>⚠️ {adjustmentReason}</>
+                          ) : (
+                            <span className="opacity-0">&nbsp;</span>
                           )}
                         </div>
-                        {/* Center: Mint/Arrows/Redeem */}
-                        <div className="flex-grow flex items-center justify-center gap-x-4">
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Mint
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsCollateralAtTop(!isCollateralAtTop)
-                            }
-                            className="group relative flex items-center justify-center px-2 py-2 mx-2 bg-[#4A7C59] hover:bg-[#3A6147] transition-colors"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 4V20M19 13L12 20L5 13"
-                                stroke="#F5F5F5"
-                                strokeOpacity={isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                !isCollateralAtTop ? "rotate-180" : "rotate-0"
-                              }`}
-                            >
-                              <path
-                                d="M12 20V4M5 11L12 4L19 11"
-                                stroke="#F5F5F5"
-                                strokeOpacity={!isCollateralAtTop ? "1" : "0.3"}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span
-                            className={`text-sm font-medium transition-colors duration-200 ${
-                              !isCollateralAtTop
-                                ? "text-[#4A7C59]"
-                                : "text-[#F5F5F5]/40"
-                            }`}
-                          >
-                            Redeem
-                          </span>
-                        </div>
-                        {/* Right: Spacer, same width as left */}
-                        <div className="min-w-[80px]"></div>
                       </div>
 
-                      {/* Second Token Input (steamedETH) */}
-                      <div
-                        className={`space-y-2 ${
-                          isCollateralAtTop ? "order-3" : "order-1"
-                        }`}
-                      >
+                      {/* Swap Direction - LEVERAGE */}
+                      <div className="relative h-0 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsCollateralAtTop(!isCollateralAtTop)
+                          }
+                          className="outline outline-1 outline-white/10 hover:outline-white/20 bg-transparent text-white h-12 w-12 flex items-center justify-center transition-colors focus:outline-none z-10"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`w-5 h-5 transition-transform duration-300 ${
+                              !isCollateralAtTop ? "rotate-180" : "rotate-0"
+                            }`}
+                          >
+                            <path d="M12 4v16m-6-6 6 6 6-6" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* To Token Input */}
+                      <div className="space-y-2 outline outline-1 outline-white/10 rounded-sm p-4 mt-1">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-zinc-400">To</label>
+                          <label className="text-md font-medium text-zinc-400">
+                            To
+                          </label>
                           <span className="text-sm text-zinc-500">
                             Balance:{" "}
-                            {formatBalance(
-                              leveragedBalance?.[0]?.result as
-                                | bigint
-                                | undefined
-                            )}{" "}
-                            steamedETH {/* Dynamic */}
+                            {isCollateralAtTop ? (
+                              <>
+                                {formatBalance(
+                                  leveragedBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                {marketInfoData?.leveragedToken.name ||
+                                  "steamedETH"}
+                              </>
+                            ) : (
+                              <>
+                                {formatBalance(
+                                  collateralBalance?.[0]?.result as
+                                    | bigint
+                                    | undefined
+                                )}{" "}
+                                wstETH
+                              </>
+                            )}
                           </span>
                         </div>
-                        <div className="relative">
+                        <div className="flex-1 relative">
                           <input
-                            type="number"
-                            value={
-                              isCollateralAtTop ? outputAmount : inputAmount
-                            }
-                            onChange={
-                              isCollateralAtTop
-                                ? handleOutputAmountChange
-                                : handleInputAmountChange
-                            }
+                            type="text"
+                            value={outputAmount}
+                            onChange={handleOutputAmountChange}
                             placeholder="0.0"
-                            className="w-full p-4 bg-[#0F0F0F] text-white border border-emerald-900/25 focus:border-[#4A7C59] outline-none transition-all pr-24 shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            readOnly={isCollateralAtTop}
+                            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold text-white focus:outline-none  pr-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            tabIndex={0}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                            {!isCollateralAtTop &&
-                              selectedType === "STEAMED" && (
-                                <button
-                                  type="button"
-                                  onClick={handleMaxClick}
-                                  className="text-[#4A7C59] hover:text-[#3A6147] text-sm transition-colors"
-                                >
-                                  MAX
-                                </button>
-                              )}
                             <span className="text-[#F5F5F5]/70">
-                              steamedETH
+                              {isCollateralAtTop
+                                ? marketInfoData?.leveragedToken.name ||
+                                  "steamedETH"
+                                : "wstETH"}
                             </span>
                           </div>
                         </div>
-                        {!isCollateralAtTop &&
-                          selectedType === "STEAMED" &&
-                          redeemLeveragedDryRunError && (
-                            <div className="text-sm text-red-500 font-semibold mt-1">
-                              Invalid amount or not enough balance
+                        <div
+                          className={`text-sm mt-0 ${
+                            !isCollateralAtTop &&
+                            selectedType === "STEAMED" &&
+                            redeemLeveragedDryRunError
+                              ? "text-red-500 font-semibold"
+                              : "invisible"
+                          }`}
+                          style={{ minHeight: "0.25rem" }}
+                        >
+                          Invalid amount or not enough balance
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fee Display - Always visible */}
+                    <div className="outline outline-1 outline-white/10 rounded-sm p-2 mt-1 mb-0">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-400">Fee:</span>
+                        <div className="text-right">
+                          <div className="text-indigo-400 font-medium">
+                            {inputAmount && parseFloat(inputAmount) > 0
+                              ? formatFeeToken(dryRunFee)
+                              : "-"}
+                          </div>
+                          {selectedType === "LONG" ? (
+                            peggedTokenFeePercentage !== undefined &&
+                            inputAmount &&
+                            parseFloat(inputAmount) > 0 ? (
+                              <div className="text-xs text-zinc-500">
+                                {peggedTokenFeePercentage < 0.01
+                                  ? peggedTokenFeePercentage.toFixed(6)
+                                  : peggedTokenFeePercentage.toFixed(2)}
+                                %
+                              </div>
+                            ) : (
+                              <div className="text-xs text-zinc-500">-</div>
+                            )
+                          ) : // For leveraged tokens, show the fee ratio percentage
+                          dryRunFeeRatio &&
+                            inputAmount &&
+                            parseFloat(inputAmount) > 0 ? (
+                            <div className="text-xs text-zinc-500">
+                              {formatFeeRatio(dryRunFeeRatio)}
                             </div>
+                          ) : (
+                            <div className="text-xs text-zinc-500">-</div>
                           )}
+                        </div>
                       </div>
                     </div>
 
@@ -1458,7 +1992,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Connect Wallet
                         </button>
@@ -1466,7 +2000,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for approval transaction...
                         </button>
@@ -1474,57 +2008,24 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                         <button
                           type="submit"
                           disabled
-                          className={`w-full p-4 text-center text-xl bg-zinc-800 text-zinc-500 cursor-not-allowed font-medium ${geoClassName}`}
+                          className={`w-full p-4 text-center text-xl outline outline-1 outline-white/5 text-zinc-500 cursor-not-allowed font-medium`}
                         >
                           Waiting for mint/redeem transaction...
                         </button>
                       ) : (
-                        <div
-                          className="[transform-style:preserve-3d] transition-transform duration-200 relative h-[60px]"
-                          style={{
-                            transformOrigin: "center center",
-                            transform: isCollateralAtTop
-                              ? "rotateX(0deg)"
-                              : "rotateX(180deg)",
-                          }}
+                        <button
+                          onClick={handleSubmit}
+                          disabled={
+                            !inputAmount || parseFloat(inputAmount) <= 0
+                          }
+                          className={`w-full h-[60px] p-4 text-center text-xl outline outline-1 outline-white/10 hover:outline-white/20 text-white font-medium disabled:outline-white/5 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors duration-200`}
                         >
-                          <button
-                            onClick={handleSubmit}
-                            disabled={
-                              !inputAmount || parseFloat(inputAmount) <= 0
-                            }
-                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [backface-visibility:hidden] [transform-style:preserve-3d] shadow-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
-                          >
-                            <span className={geoClassName}>
-                              {(() => {
-                                if (
-                                  !inputAmount ||
-                                  parseFloat(inputAmount) <= 0
-                                )
-                                  return "Enter Amount";
-                                return isCollateralAtTop ? "MINT" : "REDEEM";
-                              })()}
-                            </span>
-                          </button>
-                          <button
-                            onClick={handleSubmit}
-                            disabled={
-                              !inputAmount || parseFloat(inputAmount) <= 0
-                            }
-                            className={`w-full p-4 text-center text-xl bg-[#4A7C59] hover:bg-[#3d6b4d] text-white font-medium absolute inset-0 [transform:rotateX(180deg)] [backface-visibility:hidden] [transform-style:preserve-3d] disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-all duration-200 ${geoClassName}`}
-                          >
-                            <span className={geoClassName}>
-                              {(() => {
-                                if (
-                                  !inputAmount ||
-                                  parseFloat(inputAmount) <= 0
-                                )
-                                  return "Enter Amount";
-                                return isCollateralAtTop ? "MINT" : "REDEEM";
-                              })()}
-                            </span>
-                          </button>
-                        </div>
+                          {(() => {
+                            if (!inputAmount || parseFloat(inputAmount) <= 0)
+                              return "Enter Amount";
+                            return isCollateralAtTop ? "MINT" : "REDEEM";
+                          })()}
+                        </button>
                       )}
                     </div>
                   </form>
@@ -1536,7 +2037,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         {/* Modal skeleton */}
         {showConfirmModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-[#181818] p-8 rounded-lg shadow-lg w-full max-w-md">
+            <div className="bg-[#181818] p-8 shadow-lg w-full max-w-md">
               <h3 className="text-xl font-bold mb-4 text-[#F5F5F5]">
                 Confirm Mint Transaction
               </h3>
@@ -1560,13 +2061,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               </div>
               <div className="flex justify-end gap-4 mt-6">
                 <button
-                  className="px-4 py-2 bg-[#2A2A2A] text-[#F5F5F5] rounded hover:bg-[#333]"
+                  className="px-4 py-2 bg-[#2A2A2A] text-[#F5F5F5] hover:bg-[#333]"
                   onClick={() => setShowConfirmModal(false)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="px-4 py-2 bg-[#4A7C59] text-white rounded hover:bg-[#5A8C69] font-bold"
+                  className="px-4 py-2 outline outline-1 outline-white/10 hover:outline-white/20 text-white font-bold"
                   // TODO: Wire up to actual mint
                 >
                   Confirm
@@ -1575,6 +2076,27 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
             </div>
           </div>
         )}
+
+        {/* Transaction Status Modal */}
+        <MintRedeemStatusModal
+          isOpen={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          transactionType={transactionDetails.type}
+          tokenType={transactionDetails.tokenType}
+          inputAmount={transactionDetails.inputAmount}
+          outputAmount={transactionDetails.outputAmount}
+          inputToken={transactionDetails.inputToken}
+          outputToken={transactionDetails.outputToken}
+          transactionHash={transactionHash}
+          onTransactionSuccess={async () => {
+            setInputAmount("");
+            setOutputAmount("");
+            setIsPending(false);
+            setPendingStep(null);
+            // Refetch all data to update balances and other contract state
+            await refetchAllData();
+          }}
+        />
       </div>
     </div>
   );

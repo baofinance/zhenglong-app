@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
-import { markets } from "../config/contracts";
+import { markets } from "../config/markets";
 import type { PriceDataPoint } from "../config/contracts";
 
 // Chainlink aggregator ABI for historical price data

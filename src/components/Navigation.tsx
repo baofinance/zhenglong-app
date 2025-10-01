@@ -1,79 +1,184 @@
 "use client";
-
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+} from "@headlessui/react";
+import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import CurrencySelect from "./CurrencySelect";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import WalletButton from "./WalletButton";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Geo } from "next/font/google";
 import { ConnectWallet } from "@/components/Wallet";
 
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+export default function Example() {
+  const { code, setCode, options } = useCurrency();
+  const pathname = usePathname();
 
-export default function Navigation() {
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname?.startsWith(href);
+  };
+
+  const linkClass = (href: string) =>
+    `rounded-md px-3 py-2 text-sm font-medium ${
+      isActive(href)
+        ? "text-white bg-white/5"
+        : "text-gray-300 hover:bg-white/5 hover:text-white"
+    }`;
+
+  const optionsForSelect = options.map((o) => ({
+    code: o.code,
+    label: o.label,
+    symbol: o.symbol,
+  }));
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1A1A1A]/90 backdrop-blur-sm border-b border-[#4A7C59]/20">
-      <div className="container mx-auto px-6">
-        <div className="flex items-center h-20">
-          {/* Left side: Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center">
+    <Disclosure<"nav">
+      as="nav"
+      className="relative bg-[#111213] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px mb-6"
+    >
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center">
+            <Link href="/" className="w-8 h-8 relative mr-4">
               <Image
-                src="/logo.svg"
-                alt="Zhenglong Protocol"
-                width={32}
-                height={32}
-                className="w-full h-full"
+                src="/logo.png"
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority
               />
-            </div>
-            <span
-              className={`text-xl tracking-wider text-[#4A7C59] ${geo.className}`}
-            >
-              ZHENGLONG
-            </span>
-          </Link>
-
-          {/* Center: Navigation Links */}
-          <div className="flex-1 flex justify-center">
-            <div className="flex items-center gap-12">
-              <Link
-                href="/app"
-                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
-              >
-                MINT/REDEEM
-              </Link>
-              <Link
-                href="/earn"
-                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
-              >
-                EARN
-              </Link>
-              <Link
-                href="/vote"
-                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
-              >
-                VOTE
-              </Link>
-              <Link
-                href="/genesis"
-                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
-              >
-                GENESIS
-              </Link>
-              <Link
-                href="/staking"
-                className={`text-xl text-white hover:text-white/80 transition-colors ${geo.className}`}
-              >
-                STAKING
-              </Link>
+            </Link>
+            <div className="hidden sm:block">
+              <div className="flex space-x-2">
+                <Link
+                  href="/"
+                  className={linkClass("/")}
+                  aria-current={isActive("/") ? "page" : undefined}
+                >
+                  Dashboard
+                </Link>
+                {/* <Link
+                  href="/"
+                  className={linkClass("/")}
+                  aria-current={isActive("/") ? "page" : undefined}
+                >
+                  Mint + Redeem
+                </Link> */}
+                <Link
+                  href="/genesis"
+                  className={linkClass("/genesis")}
+                  aria-current={isActive("/genesis") ? "page" : undefined}
+                >
+                  Genesis
+                </Link>
+                <Link
+                  href="/flow"
+                  className={linkClass("/flow")}
+                  aria-current={isActive("/flow") ? "page" : undefined}
+                >
+                  Flow
+                </Link>
+                <Link
+                  href="/earn"
+                  className={linkClass("/earn")}
+                  aria-current={isActive("/earn") ? "page" : undefined}
+                >
+                  Earn
+                </Link>
+              </div>
             </div>
           </div>
-
-          {/* Right side: Connect Button */}
-          <ConnectWallet />
+          <div className="hidden sm:ml-6 sm:block">
+            <div className="flex items-center gap-3">
+              <CurrencySelect
+                value={code}
+                onValueChange={setCode}
+                options={optionsForSelect}
+              />
+              <WalletButton />
+            </div>
+          </div>
+          <div className="-mr-2 flex sm:hidden">
+            {/* Mobile menu button */}
+            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-harbor">
+              <span className="absolute -inset-0.5" />
+              <span className="sr-only">Open main menu</span>
+              <Bars3Icon
+                aria-hidden="true"
+                className="block size-6 group-data-open:hidden"
+              />
+              <XMarkIcon
+                aria-hidden="true"
+                className="hidden size-6 group-data-open:block"
+              />
+            </DisclosureButton>
+          </div>
         </div>
       </div>
-    </nav>
+
+      <DisclosurePanel className="sm:hidden">
+        <div className="px-2 pt-2 pb-3 space-y-1">
+          <DisclosureButton
+            as={Link}
+            href="/dashboard"
+            className={linkClass("/dashboard")}
+            aria-current={isActive("/dashboard") ? "page" : undefined}
+          >
+            Dashboard
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/"
+            className={linkClass("/")}
+            aria-current={isActive("/") ? "page" : undefined}
+          >
+            Mint + Redeem
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/genesis"
+            className={linkClass("/genesis")}
+            aria-current={isActive("/genesis") ? "page" : undefined}
+          >
+            Genesis
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/flow"
+            className={linkClass("/flow")}
+            aria-current={isActive("/flow") ? "page" : undefined}
+          >
+            Flow
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/earn"
+            className={linkClass("/earn")}
+            aria-current={isActive("/earn") ? "page" : undefined}
+          >
+            Earn
+          </DisclosureButton>
+        </div>
+        <div className="border-t border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <CurrencySelect
+              value={code}
+              onValueChange={setCode}
+              options={optionsForSelect}
+            />
+            <WalletButton />
+          </div>
+        </div>
+      </DisclosurePanel>
+    </Disclosure>
   );
 }

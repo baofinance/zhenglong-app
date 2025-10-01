@@ -6,7 +6,7 @@ import { useAccount, useContractReads, useContractWrite } from "wagmi";
 import { parseEther } from "viem";
 import Link from "next/link";
 import Image from "next/image";
-import ConnectButton from "../../components/ConnectButton";
+import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
 
 const geo = Geo({
@@ -124,12 +124,12 @@ export default function Staking() {
   const { isConnected, address } = useAccount();
   const [stakingState, setStakingState] = useState<StakingState>({
     amount: "",
-    lockDuration: 1,
+    lockDuration: 1, // in weeks
     activeTab: "stake",
   });
+
   const [isPending, setIsPending] = useState(false);
 
-  // Contract reads
   const { data: stakingData } = useContractReads({
     contracts: [
       {
@@ -154,8 +154,10 @@ export default function Staking() {
           ]
         : []),
     ],
-    watch: true,
+    query: { enabled: true },
   });
+
+  const { writeContract: write } = useContractWrite();
 
   const formatEther = (value: bigint | undefined) => {
     if (!value) return "0";
@@ -173,28 +175,18 @@ export default function Staking() {
         stakingState.lockDuration * 7 * 24 * 60 * 60;
 
       // First approve tokens
-      const { writeAsync: approve } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xTokenAddress" as `0x${string}`,
-          abi: erc20ABI,
-          functionName: "approve",
-        })
-      );
-
-      await approve({
+      await write({
+        address: "0xTokenAddress" as `0x${string}`,
+        abi: erc20ABI,
+        functionName: "approve",
         args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
       });
 
       // Then create lock
-      const { writeAsync: createLock } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "create_lock",
-        })
-      );
-
-      await createLock({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "create_lock",
         args: [parsedAmount, BigInt(unlockTime)],
       });
 
@@ -213,15 +205,10 @@ export default function Staking() {
       setIsPending(true);
       const parsedAmount = parseEther(stakingState.amount);
 
-      const { writeAsync: increaseAmount } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_amount",
-        })
-      );
-
-      await increaseAmount({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "increase_amount",
         args: [parsedAmount],
       });
 
@@ -242,15 +229,10 @@ export default function Staking() {
         Math.floor(Date.now() / 1000) +
         stakingState.lockDuration * 7 * 24 * 60 * 60;
 
-      const { writeAsync: increaseLockTime } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "increase_unlock_time",
-        })
-      );
-
-      await increaseLockTime({
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "increase_unlock_time",
         args: [BigInt(unlockTime)],
       });
     } catch (error) {
@@ -266,15 +248,12 @@ export default function Staking() {
     try {
       setIsPending(true);
 
-      const { writeAsync: withdraw } = await import("wagmi").then((m) =>
-        m.useContractWrite({
-          address: "0xVotingEscrowAddress" as `0x${string}`,
-          abi: votingEscrowABI,
-          functionName: "withdraw",
-        })
-      );
-
-      await withdraw();
+      await write({
+        address: "0xVotingEscrowAddress" as `0x${string}`,
+        abi: votingEscrowABI,
+        functionName: "withdraw",
+        args: [],
+      });
     } catch (error) {
       console.error("Error withdrawing:", error);
     } finally {
@@ -283,38 +262,9 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1A1A1A] to-black text-[#F5F5F5] font-sans relative">
-      {/* Steam Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Large base squares */}
-        <div className="absolute top-[10%] left-[20%] w-[200px] h-[200px] bg-[#4A7C59]/[0.06]"></div>
-        <div className="absolute top-[15%] left-[35%] w-[180px] h-[180px] bg-[#4A7C59]/[0.05]"></div>
-        <div className="absolute top-[20%] left-[50%] w-[160px] h-[160px] bg-[#4A7C59]/[0.07]"></div>
-
-        {/* Medium squares - Layer 1 */}
-        <div className="absolute top-[30%] left-[15%] w-[150px] h-[150px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
-        <div className="absolute top-[35%] left-[30%] w-[140px] h-[140px] bg-[#4A7C59]/[0.045] animate-float-2"></div>
-        <div className="absolute top-[40%] left-[45%] w-[130px] h-[130px] bg-[#4A7C59]/[0.055] animate-float-3"></div>
-
-        {/* Medium squares - Layer 2 */}
-        <div className="absolute top-[50%] left-[25%] w-[120px] h-[120px] bg-[#4A7C59]/[0.065] animate-float-4"></div>
-        <div className="absolute top-[55%] left-[40%] w-[110px] h-[110px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
-        <div className="absolute top-[60%] left-[55%] w-[100px] h-[100px] bg-[#4A7C59]/[0.06] animate-float-2"></div>
-
-        {/* Small squares */}
-        <div className="absolute top-[70%] left-[20%] w-[80px] h-[80px] bg-[#4A7C59]/[0.075] animate-steam-1"></div>
-        <div className="absolute top-[75%] left-[35%] w-[70px] h-[70px] bg-[#4A7C59]/[0.07] animate-steam-2"></div>
-        <div className="absolute top-[80%] left-[50%] w-[60px] h-[60px] bg-[#4A7C59]/[0.08] animate-steam-3"></div>
-        <div className="absolute top-[85%] left-[65%] w-[50px] h-[50px] bg-[#4A7C59]/[0.065] animate-steam-1"></div>
-        <div className="absolute top-[90%] left-[80%] w-[40px] h-[40px] bg-[#4A7C59]/[0.075] animate-steam-2"></div>
-        <div className="absolute top-[95%] left-[95%] w-[30px] h-[30px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
-      </div>
-
-      {/* Navigation */}
-      <Navigation />
-
+    <div className="min-h-screen  text-[#F5F5F5] font-sans relative max-w-[1300px] mx-auto">
       {/* Main Content */}
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+      <main className="container mx-auto px-6 pt-[6rem] pb-20 relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
@@ -327,7 +277,7 @@ export default function Staking() {
         </div>
 
         <div className="max-w-5xl mx-auto space-y-6">
-          <div className="bg-[#1A1A1A] p-6 relative">
+          <div className="bg-zinc-900/50 p-6 relative">
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-black p-4 border border-[#4A7C59]/20">
@@ -552,7 +502,7 @@ export default function Staking() {
               </div>
             ) : (
               <div className="text-center">
-                <ConnectButton />
+                <WalletButton />
               </div>
             )}
           </div>

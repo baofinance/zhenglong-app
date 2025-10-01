@@ -1,0 +1,300 @@
+export const stabilityPoolABI = [
+  {
+    type: "function",
+    name: "ASSET_TOKEN",
+    inputs: [],
+    outputs: [{ name: "token", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "GAUGE_REWARD_TOKEN",
+    inputs: [],
+    outputs: [{ name: "token", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "GAUGE_STAKE_TOKEN",
+    inputs: [],
+    outputs: [{ name: "token", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "LIQUIDATION_TOKEN",
+    inputs: [],
+    outputs: [{ name: "token", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "REBALANCER_ROLE",
+    inputs: [],
+    outputs: [{ name: "role", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "REWARDER_ROLE",
+    inputs: [],
+    outputs: [{ name: "role", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "accumulateReward",
+    inputs: [
+      { name: "rewardToken", type: "address", internalType: "address" },
+      { name: "rewardAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "assetBalanceOf",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "deposit",
+    inputs: [
+      { name: "assetAmount", type: "uint256", internalType: "uint256" },
+      { name: "receiver", type: "address", internalType: "address" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [
+      { name: "sharesMinted", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "gauge",
+    inputs: [],
+    outputs: [{ name: "gauge_", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "lastAssetLossError",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalAssetSupply",
+    inputs: [],
+    outputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalAssetSupplyHistory",
+    inputs: [{ name: "index", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      { name: "atDay", type: "uint40", internalType: "uint40" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "updateGauge",
+    inputs: [{ name: "newGauge", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    inputs: [
+      { name: "assetAmount", type: "uint256", internalType: "uint256" },
+      { name: "receiver", type: "address", internalType: "address" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [
+      { name: "sharesBurned", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "Deposit",
+    inputs: [
+      {
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "reciever",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "GaugeUpdated",
+    inputs: [
+      {
+        name: "newGauge",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Liquidated",
+    inputs: [
+      {
+        name: "liquidatedToken",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+      {
+        name: "liquidatedAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "liquidatedToToken",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+      {
+        name: "liquidatedToAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "RewardReceived",
+    inputs: [
+      {
+        name: "rewardToken",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+      {
+        name: "rewardAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "UserDepositChange",
+    inputs: [
+      {
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newDeposit",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "loss",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Withdraw",
+    inputs: [
+      {
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "reciever",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "error",
+    name: "DepositAmountLessThanMinimum",
+    inputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  { type: "error", name: "DepositZeroAmount", inputs: [] },
+  {
+    type: "error",
+    name: "InvalidLiquidationToken",
+    inputs: [{ name: "token", type: "address", internalType: "address" }],
+  },
+  {
+    type: "error",
+    name: "InvalidReceiver",
+    inputs: [{ name: "receiver", type: "address", internalType: "address" }],
+  },
+  { type: "error", name: "VotingEscrowNotReady", inputs: [] },
+  {
+    type: "error",
+    name: "WithdrawAmountExceedsBalance",
+    inputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "balance", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "WithdrawAmountLessThanMinimum",
+    inputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  { type: "error", name: "WithdrawZeroAmount", inputs: [] },
+] as const;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useContractReads } from "wagmi";
-import { markets } from "../config/contracts";
+import { markets } from "../config/markets";
 
 // ABI for just the read functions we need
 const minterABI = [
@@ -202,10 +202,10 @@ export default function ContractInfo({
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4 p-4">
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-3/4"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-1/2"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-2/3"></div>
-        <div className="h-4 bg-[#4A7C59]/20 rounded w-1/2"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-3/4"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-2/3"></div>
+        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
       </div>
     );
   }
@@ -233,8 +233,8 @@ export default function ContractInfo({
 
   const StatusIndicator = ({ isError }: { isError: boolean }) => (
     <span
-      className={`inline-block w-2 h-2 rounded-full ${
-        isError ? "bg-red-500" : "bg-green-500"
+      className={`inline-block w-2 h-2-full ${
+        isError ? "bg-red-500" : "bg-blue-500"
       }`}
     ></span>
   );
@@ -334,7 +334,7 @@ export default function ContractInfo({
           className={`text-lg ${
             Number(mintFeeData?.[0]?.result || 0) > 0
               ? "text-red-400"
-              : "text-green-400"
+              : "text-blue-400"
           }`}
         >
           {formatIncentiveRatio(mintFeeData?.[0]?.result)}

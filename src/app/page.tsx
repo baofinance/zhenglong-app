@@ -1,378 +1,618 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Geo } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  useAccount,
-  useContractReads,
-  useContractWrite,
-  useContractRead,
-  useChainId,
-} from "wagmi";
-import { parseEther, formatEther } from "viem";
-import { markets, marketConfig } from "../config/contracts";
-import TradingViewChart from "../components/TradingViewChart";
-import ConnectButton from "../components/ConnectButton";
-import Navigation from "../components/Navigation";
-import MintRedeemForm from "@/components/MintRedeemForm"; // Adjust path as needed
-import Head from "next/head";
-import SystemHealthComponent from "@/components/SystemHealth";
+import React from "react";
+import { useAccount, useContractReads } from "wagmi";
+import Navigation from "@/components/Navigation";
+import SystemHealth from "@/components/SystemHealth";
+import { markets } from "@/config/markets";
+import { minterABI } from "@/abis/minter";
+import NeutralBarChart, {
+  type NeutralBarPoint,
+  type NeutralBarSeries,
+} from "@/components/NeutralBarChart";
+// safety stats removed; no extra ABI needed
+import { useCurrency } from "@/contexts/CurrencyContext";
+import GlobalHeatmap from "@/components/GlobalHeatmap";
+import CountUp from "@/components/CountUp";
+import InfoTooltip from "@/components/InfoTooltip";
+import TokenIcon from "@/components/TokenIcon";
 
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
+const chainlinkOracleABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [{ type: "int256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
-type TokenType = "LONG" | "STEAMED";
-type TokenAction = "MINT" | "REDEEM";
+const genesisViewABI = [
+  {
+    inputs: [{ name: "depositor", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ type: "uint256", name: "share" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "depositor", type: "address" }],
+    name: "claimable",
+    outputs: [
+      { type: "uint256", name: "peggedAmount" },
+      { type: "uint256", name: "leveragedAmount" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
-interface SystemHealthProps {
-  marketId: string;
-  collateralTokenBalance?: string;
-  geoClassName?: string;
-}
-
-interface WagmiContractResult {
-  error?: Error;
-  result?: bigint;
-  status: "success" | "failure";
-}
-
-interface ContractReadResult extends WagmiContractResult {}
-
-interface SystemHealthValueProps {
-  type:
-    | "collateralValue"
-    | "collateralTokens"
-    | "collateralRatio"
-    | "peggedValue"
-    | "peggedTokens"
-    | "leveragedValue"
-    | "leveragedTokens";
-  marketId: string;
-  collateralTokenBalance?: string;
-  collateralAllowance?: { result?: bigint }[];
-  peggedAllowance?: { result?: bigint }[];
-  leveragedAllowance?: { result?: bigint }[];
-  totalCollateralValue?: string;
-  collateralRatio?: string;
-  peggedTokenData?: WagmiContractResult[];
-  leveragedTokenData?: WagmiContractResult[];
-  priceData?: bigint;
-  leveragedTokenPrice?: bigint;
-}
-
-// Helper functions
-const formatValue = (value: string | undefined): string => {
-  if (!value) return "0";
-  // Remove any trailing zeros after decimal point
-  return parseFloat(value).toString();
-};
-
-const formatAllowance = (
-  allowance: { result?: bigint } | undefined
-): string => {
-  if (!allowance || typeof allowance.result === "undefined") {
-    return "0";
-  }
-  return formatEther(allowance.result);
-};
-
-const formatTokenBalance = (balance: bigint | undefined): string => {
-  if (typeof balance === "undefined") {
-    return "0";
-  }
-  return formatEther(balance);
-};
-
-// Calculate output amount based on input
-const calculateOutput = (inputValue: number): string => {
-  return inputValue.toString();
-};
-
-// Calculate input amount based on output
-const calculateInput = (outputValue: number): string => {
-  return outputValue.toString();
-};
-
-// Helper function to safely get bigint result
-const getContractResult = (data: any): bigint | undefined => {
-  if (data?.status === "success" && typeof data?.result === "bigint") {
-    return data.result;
-  }
-  return undefined;
-};
-
-// Helper function to safely get bigint result from contract read
-const getContractReadResult = (
-  data: WagmiContractResult | undefined
-): bigint => {
-  if (!data || data.status !== "success" || !data.result) {
-    return BigInt(0);
-  }
-  return data.result;
-};
-
-const SystemHealthValue: React.FC<SystemHealthValueProps> = ({
-  type,
-  marketId,
-  collateralTokenBalance,
-  collateralAllowance,
-  peggedAllowance,
-  leveragedAllowance,
-  totalCollateralValue,
-  collateralRatio,
-  peggedTokenData,
-  leveragedTokenData,
-  priceData,
-  leveragedTokenPrice,
-}) => {
-  const getValue = (): string => {
-    switch (type) {
-      case "collateralValue":
-        return totalCollateralValue || "0";
-      case "collateralTokens":
-        return formatValue(collateralTokenBalance);
-      case "collateralRatio":
-        return collateralRatio ? `${collateralRatio}%` : "0%";
-      case "peggedValue":
-      case "peggedTokens": {
-        // Get the pegged token balance from the minter contract
-        const peggedBalance =
-          peggedTokenData?.[0] && getContractResult(peggedTokenData[0]);
-        if (!peggedBalance) return "0";
-
-        // Convert from raw value (with 18 decimals) to actual token amount
-        const formattedValue = Number(formatEther(peggedBalance));
-        console.log("Raw pegged balance:", peggedBalance.toString());
-        console.log("Formatted pegged balance:", formattedValue);
-
-        // For pegged tokens, value in USD equals token amount (1:1 peg)
-        return type === "peggedValue"
-          ? formattedValue.toFixed(2)
-          : formattedValue.toFixed(4);
-      }
-      case "leveragedValue": {
-        // Get the leveraged token balance from the minter contract
-        const leveragedBalance =
-          leveragedTokenData?.[0] && getContractResult(leveragedTokenData[0]);
-        if (!leveragedBalance || !leveragedTokenPrice) return "0";
-
-        // Correct Calculation: (balance * price) / (10^18 * 10^18)
-        const leveragedValue =
-          (Number(leveragedBalance) * Number(leveragedTokenPrice)) / 1e36;
-        return leveragedValue.toFixed(2);
-      }
-      case "leveragedTokens": {
-        // Get the leveraged token balance from the minter contract
-        const leveragedBalance =
-          leveragedTokenData?.[0] && getContractResult(leveragedTokenData[0]);
-        if (!leveragedBalance) return "0";
-
-        // For token amount display
-        if (type === "leveragedTokens") {
-          const formattedTokens = Number(formatEther(leveragedBalance));
-          console.log("Raw leveraged balance:", leveragedBalance.toString());
-          console.log("Formatted leveraged balance:", formattedTokens);
-          return formattedTokens.toFixed(4);
-        }
-
-        // For value calculation
-        const leveragedOutput =
-          leveragedTokenData?.[1] && getContractResult(leveragedTokenData[1]);
-        if (!leveragedOutput || !priceData) return "0";
-
-        const leveragedValue =
-          (Number(formatEther(leveragedBalance)) *
-            Number(formatEther(leveragedOutput)) *
-            Number(formatEther(priceData))) /
-          1e8;
-        return leveragedValue.toFixed(2);
-      }
-      default:
-        return "0";
-    }
-  };
-
-  return <>{getValue()}</>;
-};
-
-const SystemHealth = Object.assign(SystemHealthComponent, {
-  Value: SystemHealthValue,
-});
-
-// Add TokenType to page.tsx if it was removed, or ensure it's available
-// Assuming tokens constant is available or we define a default for page-level chart
-const pageScopedTokens = {
-  LONG: ["zheUSD"], // Define a sensible default, e.g., the primary pegged token for the market context
-  STEAMED: ["steamedETH"], // Or primary leveraged token
-};
-
-export default function App() {
-  // State hooks
-  const [mounted, setMounted] = useState(false);
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
-  const [selectedMarket, setSelectedMarket] = useState<string>("steth-usd");
-  const [showPopup, setShowPopup] = useState(false);
-  const formCardRef = useRef<HTMLDivElement>(null);
-  const chartCardRef = useRef<HTMLDivElement>(null);
-
-  // Effect hooks
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    const formEl = formCardRef.current;
-    const chartEl = chartCardRef.current;
-
-    if (!formEl || !chartEl || !mounted) return;
-
-    const setHeights = () => {
-      if (window.innerWidth >= 1024) {
-        // Tailwind's lg breakpoint
-        const formHeight = formEl.offsetHeight;
-        chartEl.style.height = `${formHeight}px`;
-      } else {
-        chartEl.style.height = "auto";
-      }
-    };
-
-    const observer = new ResizeObserver(setHeights);
-    observer.observe(formEl);
-
-    window.addEventListener("resize", setHeights);
-
-    setHeights(); // Set initial height
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", setHeights);
-    };
-  }, [mounted]);
-
-  // Get the default market
-  const currentMarket = useMemo(
-    () => markets[selectedMarket],
-    [selectedMarket]
-  );
-
-  // Define state for PriceChart props at page level
-  // Default to LONG type and its first token for the current market
-  const pageSelectedType: TokenType = "LONG"; // Default to LONG for page-level chart
-  const pageSelectedToken: string = pageScopedTokens[pageSelectedType][0]; // Get the default token for LONG
-
-  const handleMarketClick = () => {
-    setShowPopup(true);
-    setTimeout(() => {
-      setShowPopup(false);
-    }, 2500);
-  };
-
-  const handleMarketChange = (marketId: string) => {
-    setSelectedMarket(marketId);
-  };
-
-  console.log("[DEBUG page.tsx] geo.className:", geo.className); // DEBUG LINE
-
-  // The main return statement of page.tsx
+// Minimal inline icons
+function IconCoins() {
   return (
-    <>
-      <Head>
-        <title>Zhenglong</title>
-        <meta name="description" content="Zhenglong App" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="8" cy="8" r="4" />
+      <circle cx="16" cy="16" r="4" />
+    </svg>
+  );
+}
+function IconGift() {
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="8" width="18" height="12" rx="2" />
+      <path d="M12 8v12M3 12h18M7 8c0-2 2-3 3-3s3 1 3 3M17 8c0-2-2-3-3-3s-3 1-3 3" />
+    </svg>
+  );
+}
+function IconShield() {
+  return (
+    <svg
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M12 3l7 4v5c0 5-3.5 9-7 9s-7-4-7-9V7l7-4z" />
+    </svg>
+  );
+}
+function IconGauge() {
+  return (
+    <svg
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M12 21a9 9 0 1 1 9-9" />
+      <path d="M12 12l5-2" />
+    </svg>
+  );
+}
+function IconSafe() {
+  return (
+    <svg
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M7 12h2M15 12h2" />
+    </svg>
+  );
+}
+function IconToken() {
+  return (
+    <svg
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <ellipse cx="12" cy="7" rx="7" ry="3" />
+      <path d="M5 7v10c0 1.7 3.1 3 7 3s7-1.3 7-3V7" />
+    </svg>
+  );
+}
 
-      <main className="container mx-auto max-w-full px-6 sm:px-8 lg:px-16 xl:px-24 2xl:px-32 pt-28 pb-20">
-        {/* Navigation */}
-        <Navigation />
+export default function DashboardPage() {
+  const { address, isConnected } = useAccount();
+  const { formatFiat, selected } = useCurrency();
 
-        {/* Header */}
-        <div className="text-center mb-4">
-          <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
-            MINT & REDEEM
-          </h1>
-          <p className="text-[#F5F5F5]/60 text-sm mt-2">
-            Mint or redeem pegged and leverage tokens from any market
-          </p>
-        </div>
+  const genesisMarkets = Object.entries(markets);
 
-        {/* Market Selector */}
-        <div className="max-w-7xl mx-auto mb-4">
-          <div className="flex items-center">
-            <div className="flex-1"></div>
-            <div className="flex items-center gap-4 w-[200px] justify-end relative">
-              <label className="text-[#F5F5F5]/70">Market</label>
-              <button
-                onClick={handleMarketClick}
-                className="px-4 py-2 bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 hover:border-[#4A7C59] hover:bg-[#2A2A2A] outline-none transition-all text-left w-[120px] shadow-md font-medium"
+  // Mock fallbacks so UI is populated during design/dev
+  const MOCKS = {
+    depositWstEth: 12.3456,
+    claimableTotal: 789.1234,
+    stethPrice: 2000,
+    minterCollateral: 3456.78,
+  };
+
+  // User-specific reads (balanceOf, claimable)
+  const { data: userReads } = useContractReads({
+    contracts: isConnected
+      ? genesisMarkets.flatMap(([_, m]) => [
+          {
+            address: m.addresses.genesis as `0x${string}`,
+            abi: genesisViewABI,
+            functionName: "balanceOf",
+            args: [address as `0x${string}`],
+          },
+          {
+            address: m.addresses.genesis as `0x${string}`,
+            abi: genesisViewABI,
+            functionName: "claimable",
+            args: [address as `0x${string}`],
+          },
+        ])
+      : [],
+    query: { enabled: isConnected && genesisMarkets.length > 0 },
+  });
+
+  // Oracle reads (decimals, latestAnswer)
+  const { data: oracleReads } = useContractReads({
+    contracts: genesisMarkets.flatMap(([_, m]) => [
+      {
+        address: m.addresses.priceOracle as `0x${string}`,
+        abi: chainlinkOracleABI,
+        functionName: "decimals",
+      },
+      {
+        address: m.addresses.priceOracle as `0x${string}`,
+        abi: chainlinkOracleABI,
+        functionName: "latestAnswer",
+      },
+    ]),
+    query: { enabled: genesisMarkets.length > 0 },
+  });
+
+  // Minter reads (collateralTokenBalance)
+  const { data: minterReads } = useContractReads({
+    contracts: genesisMarkets.map(([_, m]) => ({
+      address: m.addresses.minter as `0x${string}`,
+      abi: minterABI,
+      functionName: "collateralTokenBalance",
+    })),
+    query: { enabled: genesisMarkets.length > 0 },
+  });
+
+  // Loosen types for indexed access to avoid deep TS instantiation
+  const userR = (userReads as unknown as Array<{ result?: unknown }>) ?? [];
+  const oracleR = (oracleReads as unknown as Array<{ result?: unknown }>) ?? [];
+  const minterR = (minterReads as unknown as Array<{ result?: unknown }>) ?? [];
+  const isSingleMarket = genesisMarkets.length === 1;
+
+  // Currency selector removed from Portfolio; using global currency context
+
+  return (
+    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <main className="container mx-auto px-4 sm:px-10">
+        {/* Rewards Overview + Safety Stats side-by-side */}
+        <section className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
+            <div className="md:col-span-2 h-full">
+              <div
+                className={`outline outline-1 outline-white/10 rounded-sm p-4 w-full h-full flex flex-col`}
               >
-                {currentMarket.name}
-              </button>
-              {showPopup && (
-                <div
-                  className={`absolute top-full right-0 mt-2 px-4 py-2 bg-[#4A7C59] text-white shadow-xl border border-zinc-600/30 whitespace-nowrap z-50 ${geo.className} animate-fade-out backdrop-blur-sm`}
-                >
-                  New markets coming soon!
+                <div className="relative mb-6">
+                  <div className="inline-flex items-center gap-2">
+                    <h2 className={`font-semibold font-mono text-white`}>
+                      Rewards & Airdrops
+                    </h2>
+                    <InfoTooltip
+                      label="Cumulative rewards and airdrops over time by market."
+                      side="top"
+                    />
+                  </div>
                 </div>
-              )}
+                <div
+                  className={`grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-fr flex-1 w-full`}
+                >
+                  {genesisMarkets.map(([id, m], idx) => {
+                    const userOffset = idx * 2;
+                    const balanceRaw = userR[userOffset]?.result as unknown;
+                    const claimableRaw = userR[userOffset + 1]
+                      ?.result as unknown;
+                    const balance =
+                      (balanceRaw as bigint | undefined) ?? undefined;
+                    const claimable =
+                      (claimableRaw as [bigint, bigint] | undefined) ??
+                      undefined;
+
+                    const oracleOffset = idx * 2;
+                    const oracleDecRaw = oracleR[oracleOffset]
+                      ?.result as unknown;
+                    const oraclePriceRaw = oracleR[oracleOffset + 1]
+                      ?.result as unknown;
+                    const oracleDec =
+                      (oracleDecRaw as number | undefined) ?? undefined;
+                    const oracleVal =
+                      (oraclePriceRaw as bigint | undefined) ?? undefined;
+                    const price =
+                      oracleDec !== undefined && oracleVal !== undefined
+                        ? Number(oracleVal) / 10 ** Number(oracleDec)
+                        : undefined;
+
+                    const rewardPool = Number(m.rewardToken.amount);
+
+                    const depositText = balance
+                      ? (Number(balance) / 1e18).toFixed(4)
+                      : MOCKS.depositWstEth.toFixed(4);
+                    const claimableText = claimable
+                      ? (Number(claimable[0] + claimable[1]) / 1e18).toFixed(4)
+                      : MOCKS.claimableTotal.toFixed(4);
+
+                    // Rewards-only neutral bar series
+                    const rewardsVal = parseFloat(claimableText);
+                    const weeks = 12;
+                    const weekMs = 7 * 24 * 60 * 60 * 1000;
+                    const now = Date.now();
+                    const data: NeutralBarPoint[] = Array.from(
+                      { length: weeks },
+                      (_, i) => {
+                        const factor = 0.6 + (i / (weeks - 1)) * 0.4;
+                        return {
+                          timestamp: now - (weeks - 1 - i) * weekMs,
+                          rewards: Math.max(0, rewardsVal * factor),
+                        } as NeutralBarPoint;
+                      }
+                    );
+                    const series: NeutralBarSeries[] = [
+                      { key: "rewards", label: "Rewards", fill: "#00df82" },
+                    ];
+
+                    return (
+                      <div
+                        key={id}
+                        className={` hover:outline-white/20 transition-colors rounded-sm h-full w-full min-w-0 ${
+                          isSingleMarket ? "md:col-span-2" : ""
+                        }`}
+                      >
+                        <div
+                          className={`text-[11px] sm:text-xs text-white/70 uppercase tracking-wider mb-2`}
+                        >
+                          {m.name}
+                        </div>
+                        <NeutralBarChart
+                          data={data}
+                          series={series}
+                          height={160}
+                          sprinkleAccent={false}
+                          formatTimestamp={(ts) =>
+                            new Date(ts).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="h-full">
+              <div
+                className={`outline outline-1 outline-white/10 rounded-sm p-3 h-full flex flex-col`}
+              >
+                <div className="relative mb-3">
+                  <div className="inline-flex items-center gap-2">
+                    <h2 className={`font-semibold font-mono text-white`}>
+                      Portfolio
+                    </h2>
+                    <InfoTooltip
+                      label="Total portfolio value and 24h change with breakdown."
+                      side="top"
+                    />
+                    <span className="ml-1 text-[10px] text-white/60 border border-white/10 rounded px-1 py-0.5">
+                      Coming Soon
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1 py-3 text-white/60 text-sm">
+                  Portfolio analytics and token holdings will appear here.
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* System Health with uniform spacing */}
-        <div className="mb-2">
-          {mounted && currentMarket && (
-            <SystemHealthComponent
-              marketId={selectedMarket}
-              geoClassName={geo.className}
-            />
-          )}
-        </div>
+        {/* Activity + Buybacks */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Protocol Activity
+                  </h2>
+                  <InfoTooltip
+                    label="Daily liquidity movement across the protocol (last 3 months)."
+                    side="top"
+                  />
+                </div>
+                <div className="text-xs text-white/60">Last 3 months</div>
+              </div>
+              <GlobalHeatmap
+                mode="github"
+                weeks={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  return Math.ceil((startWeekday + dayCount) / 7);
+                })()}
+                startDate={(() => {
+                  const now = new Date();
+                  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                })()}
+                gapPx={6}
+                dates={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const out: Date[] = Array(total);
+                  for (let idx = 0; idx < total; idx++) {
+                    const d = new Date(start);
+                    d.setDate(start.getDate() + (idx - startWeekday));
+                    out[idx] = d;
+                  }
+                  return out;
+                })()}
+                actives={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  return Array.from({ length: total }, (_, idx) => {
+                    const d = new Date(start);
+                    d.setDate(start.getDate() + (idx - startWeekday));
+                    return d >= start && d <= end;
+                  });
+                })()}
+                values={(() => {
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const vals = Array(total).fill(0);
+                  for (let idx = 0; idx < total; idx++) {
+                    const dt = new Date(start);
+                    dt.setDate(start.getDate() + (idx - startWeekday));
+                    if (dt >= start && dt <= end) {
+                      const dnum = Math.floor(
+                        (dt.getTime() - start.getTime()) / 86400000
+                      );
+                      const seed = Math.sin((dnum + 1) * 1.37) * 0.5 + 0.5; // 0..1
+                      vals[idx] = Math.max(0, Math.min(1, seed));
+                    }
+                  }
+                  return vals as number[];
+                })()}
+                amounts={(() => {
+                  // Base TVL approximation from deposits * price (fallback to mocks)
+                  const totalUSD = genesisMarkets.reduce(
+                    (sum, [id, m], idx) => {
+                      const userOffset = idx * 2;
+                      const balanceRaw = userR[userOffset]?.result as unknown;
+                      const balance =
+                        (balanceRaw as bigint | undefined) ?? undefined;
+                      const deposit = balance
+                        ? Number(balance) / 1e18
+                        : MOCKS.depositWstEth;
+                      const oracleOffset = idx * 2;
+                      const decRaw = oracleR[oracleOffset]?.result as unknown;
+                      const priceRaw = oracleR[oracleOffset + 1]
+                        ?.result as unknown;
+                      const dec = (decRaw as number | undefined) ?? 8;
+                      const price = (priceRaw as bigint | undefined)
+                        ? Number(priceRaw as bigint) / 10 ** dec
+                        : MOCKS.stethPrice;
+                      return sum + deposit * price;
+                    },
+                    0
+                  );
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
-          <div>
-            {mounted && currentMarket ? (
-              <div
-                ref={formCardRef}
-                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full"
-              >
-                <MintRedeemForm
-                  geoClassName={geo.className}
-                  currentMarket={currentMarket}
-                  isConnected={isConnected}
-                  userAddress={address}
-                />
-              </div>
-            ) : (
-              <div className="bg-[#1C1C1C] border border-zinc-800 p-6 h-full">
-                <h2 className={`text-2xl text-white mb-4 ${geo.className}`}>
-                  Loading Form...
-                </h2>
-              </div>
-            )}
-          </div>
-          <div>
-            {mounted && currentMarket ? (
-              <div
-                ref={chartCardRef}
-                className="bg-[#1A1A1A]/90 border border-[#4A7C59]/20 hover:border-[#4A7C59]/40 transition-colors px-6 py-4 w-full flex flex-col"
-              >
-                <div className="flex-1 min-h-0">
-                  <TradingViewChart symbol="BITSTAMP:ETHUSD" theme="dark" />
+                  const now = new Date();
+                  const end = new Date(
+                    now.getFullYear(),
+                    now.getMonth() + 1,
+                    0
+                  );
+                  const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 2,
+                    1
+                  );
+                  const startWeekday = start.getDay();
+                  const dayCount =
+                    Math.floor((end.getTime() - start.getTime()) / 86400000) +
+                    1;
+                  const weeks = Math.ceil((startWeekday + dayCount) / 7);
+                  const total = weeks * 7;
+                  const arr = Array(total).fill(0);
+                  for (let idx = 0; idx < total; idx++) {
+                    const dt = new Date(start);
+                    dt.setDate(start.getDate() + (idx - startWeekday));
+                    if (dt >= start && dt <= end) {
+                      const dnum = Math.floor(
+                        (dt.getTime() - start.getTime()) / 86400000
+                      );
+                      const noise = Math.sin((dnum + 3.14) * 0.73) * 0.5 + 0.5; // 0..1
+                      const factor = 0.005 + noise * 0.025; // 0.5%..3.0% of TVL
+                      arr[idx] = Math.max(0, totalUSD * factor);
+                    }
+                  }
+                  return arr as number[];
+                })()}
+                formatAmount={(n) => formatFiat(n)}
+              />
+            </div>
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Pre-TGE Rewards
+                  </h2>
+                  <InfoTooltip
+                    label="Track reward pools before token generation."
+                    side="top"
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="bg-[rgba(28,28,28,0.8)] backdrop-blur-md border border-zinc-800 p-6 text-center h-full">
-                Loading Price Chart...
+              {(() => {
+                const totalRewardPool = genesisMarkets.reduce(
+                  (sum, [id, m]) => {
+                    const amt = Number(m.rewardToken.amount || 0);
+                    return sum + (isFinite(amt) ? amt : 0);
+                  },
+                  0
+                );
+
+                return (
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="outline outline-1 outline-white/10 p-2">
+                        <div className="text-white/60 text-xs">
+                          Total Reward Pool
+                        </div>
+                        <div className="text-white font-mono text-base">
+                          {totalRewardPool.toLocaleString()}{" "}
+                          {
+                            markets[
+                              Object.keys(markets)[0] as keyof typeof markets
+                            ].rewardToken.symbol
+                          }
+                        </div>
+                      </div>
+                      <div className="outline outline-1 outline-white/10 p-2">
+                        <div className="text-white/60 text-xs">Markets</div>
+                        <div className="text-white font-mono text-base">
+                          {genesisMarkets.length}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-white/60 text-xs">
+                      Allocations by Market
+                    </div>
+                    <div className="flex-1 overflow-auto space-y-1">
+                      {genesisMarkets.map(([id, m]) => (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between text-xs outline outline-1 outline-white/10 p-2"
+                        >
+                          <span className="text-white/80">{m.name}</span>
+                          <span className="text-white font-mono">
+                            {Number(m.rewardToken.amount).toLocaleString()}{" "}
+                            {m.rewardToken.symbol}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="md:col-span-1 outline outline-1 outline-white/10 rounded-sm p-4 h-full flex flex-col">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold font-mono text-white">
+                    Market Prices
+                  </h2>
+                  <InfoTooltip
+                    label="Current oracle prices per market."
+                    side="top"
+                  />
+                  <span className="ml-2 text-[10px] text-white/60 border border-white/10 rounded px-1 py-0.5">
+                    Coming Soon
+                  </span>
+                </div>
               </div>
-            )}
+              <div className="text-white/60 text-sm">
+                Live market price feed with conversions will appear here.
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
-    </>
+    </div>
   );
 }

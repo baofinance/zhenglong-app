@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { formatEther, decodeEventLog } from "viem";
-import { markets, PriceDataPoint, minterABI } from "../config/contracts";
+import { markets } from "../config/markets";
+import type { PriceDataPoint } from "../config/contracts";
+import { minterABI } from "../config/contracts";
 
 const BLOCKS_PER_DAY = 7200; // Approximate number of blocks per day on Ethereum
 const DAYS_TO_FETCH = 30; // Number of days of history to fetch
