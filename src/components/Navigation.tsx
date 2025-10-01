@@ -15,6 +15,8 @@ import WalletButton from "./WalletButton";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Geo } from "next/font/google";
+import { ConnectWallet } from "@/components/Wallet";
 
 export default function Example() {
   const { code, setCode, options } = useCurrency();
