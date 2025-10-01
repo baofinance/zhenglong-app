@@ -10,6 +10,7 @@ const proxyFeeds = [
   { label: "fxSAVE/EUR", address: "0xbf77C0707680427c27bf7C065b521331C0F052EA" as const },
   { label: "fxSAVE/MCAP", address: "0xc1C61df639d7a0A71D4cdC2A506F8153DE2Ae9f5" as const },
   { label: "fxSAVE/XAU", address: "0x4FDAB525D937F374eAbC6882CC0A3e7508cc8871" as const },
+  { label: "wstETH/BTC", address: "0xe129bc4Ce2E71e9036279C79Db5a8065A807B195" as const },
 ];
 
 // Minimal ABI for proxy feeds (same as fxSAVE/ETH proxy)
@@ -104,21 +105,19 @@ function formatUnit(value?: bigint, decimals?: number, maxFrac = 6) {
   return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
 }
 
-function unitForLabel(label: string): string {
-  if (label.includes("ETH")) return "ETH";
-  if (label.includes("BTC")) return "BTC";
-  if (label.includes("EUR")) return "EUR";
-  if (label.includes("XAU")) return "GOLD";
-  if (label.includes("MCAP")) return "MCAP";
-  return "";
+function parsePair(label: string): { base: string; quote: string } {
+  const idx = label.indexOf("/");
+  if (idx === -1) return { base: label, quote: "" };
+  return { base: label.slice(0, idx), quote: label.slice(idx + 1) };
 }
 
-function formatFxSaveDisplay(label: string, price: string | undefined): string {
+function formatPairDisplay(label: string, price: string | undefined): string {
   if (!price || price === "-") return "-";
-  return `1 fxSAVE = ${price} ${unitForLabel(label)}`;
+  const { base, quote } = parsePair(label);
+  return `1 ${base} = ${price} ${quote}`;
 }
 
-function fxSaveEstimateLabel(label: string, raw?: bigint, priceStr?: string): string | undefined {
+function pairEstimateLabel(label: string, raw?: bigint, priceStr?: string): string | undefined {
   let p: number | undefined;
   if (raw !== undefined) {
     p = Number(raw) / 1e18;
@@ -128,8 +127,8 @@ function fxSaveEstimateLabel(label: string, raw?: bigint, priceStr?: string): st
   }
   if (!p || p <= 0) return undefined;
   const inv = 1 / p;
-  const unit = unitForLabel(label);
-  return `${inv.toLocaleString(undefined, { maximumFractionDigits: 6 })} fxSAVE for 1 ${unit}`;
+  const { base, quote } = parsePair(label);
+  return `${inv.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${base} for 1 ${quote}`;
 }
 
 function etherscanAddressUrl(address?: `0x${string}` | string): string | undefined {
@@ -287,7 +286,7 @@ export default function FlowPage() {
         setExtraFallback([...results]);
       }
       if (!cancelled && results.length === 0) {
-        setExtraFallback(extraFeeds.map(() => ({ price: "-", decimals: undefined, updatedAt: "-" })));
+        setExtraFallback(proxyFeeds.slice(1).map(() => ({ price: "-", decimals: undefined, updatedAt: "-" })));
       }
     })();
 
@@ -378,7 +377,7 @@ export default function FlowPage() {
           <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4 overflow-x-auto">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-semibold text-white/90">Feeds</h2>
-              <div className="text-xs text-white/50">5 feeds</div>
+              <div className="text-xs text-white/50">{proxyFeeds.length} feeds</div>
             </div>
             <table className="min-w-full text-left text-sm table-fixed">
               <thead>
@@ -399,8 +398,8 @@ export default function FlowPage() {
                     </div>
                   </td>
                   <td className="py-2 px-4">Chainlink</td>
-                  <td className="py-2 px-4 font-mono" title={fxSaveEstimateLabel("fxSAVE/ETH", price)}>
-                    {formatFxSaveDisplay("fxSAVE/ETH", format18(price))}
+                  <td className="py-2 px-4 font-mono" title={pairEstimateLabel("fxSAVE/ETH", price)}>
+                    {formatPairDisplay("fxSAVE/ETH", format18(price))}
                   </td>
                 </tr>
                 {proxyFeeds.slice(1).map((f, idx) => (
@@ -417,13 +416,13 @@ export default function FlowPage() {
                     <td className="py-2 px-4">Chainlink</td>
                     <td
                       className="py-2 px-4 font-mono"
-                      title={fxSaveEstimateLabel(
+                      title={pairEstimateLabel(
                         f.label,
                         (extraReads?.[idx]?.result as bigint | undefined),
                         (extraFeedPrices[idx] || extraFallback[idx]?.price) as string | undefined
                       )}
                     >
-                      {formatFxSaveDisplay(
+                      {formatPairDisplay(
                         f.label,
                         (extraFeedPrices[idx] || extraFallback[idx]?.price || "-") as string
                       )}
@@ -449,8 +448,8 @@ export default function FlowPage() {
                   <div className="space-y-1 font-mono">
                     <div>{feedLabel} min price: {format18(tuple?.[0])}</div>
                     <div>{feedLabel} max price: {format18(tuple?.[1])}</div>
-                    <div>fxSAVE min rate: {format18(tuple?.[2])}</div>
-                    <div>fxSAVE max rate: {format18(tuple?.[3])}</div>
+                    <div>{parsePair(feedLabel).base} min rate: {format18(tuple?.[2])}</div>
+                    <div>{parsePair(feedLabel).base} max rate: {format18(tuple?.[3])}</div>
                   </div>
                 </div>
                 <div className="md:col-span-3 outline outline-1 outline-white/10 rounded-sm p-4">
@@ -485,12 +484,12 @@ export default function FlowPage() {
                       )}
                     </div>
                     <div className="outline outline-1 outline-white/10 rounded-sm p-4">
-                      <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
+                    <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
                       <div className="space-y-1 font-mono">
-                        <div>{label} min price: {format18(latest?.[0])}</div>
-                        <div>{label} max price: {format18(latest?.[1])}</div>
-                        <div>fxSAVE min rate: {format18(latest?.[2])}</div>
-                        <div>fxSAVE max rate: {format18(latest?.[3])}</div>
+                      <div>{label} min price: {format18(latest?.[0])}</div>
+                      <div>{label} max price: {format18(latest?.[1])}</div>
+                      <div>{parsePair(label).base} min rate: {format18(latest?.[2])}</div>
+                      <div>{parsePair(label).base} max rate: {format18(latest?.[3])}</div>
                       </div>
                     </div>
                     <div className="md:col-span-3 outline outline-1 outline-white/10 rounded-sm p-4">
